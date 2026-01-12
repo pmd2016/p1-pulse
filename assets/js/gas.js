@@ -209,6 +209,32 @@
 
         formatNumber(v, decimals = 2) { return (Math.round((v || 0) * Math.pow(10, decimals)) / Math.pow(10, decimals)).toFixed(decimals); },
 
+        calculateNiceTicks(min, max, count) {
+            const range = max - min;
+            if (range <= 0) return [0, max];
+            const roughStep = range / (count - 1);
+            const step = this.calculateNiceStep(roughStep);
+            const niceMin = Math.floor(min / step) * step;
+            const niceMax = Math.ceil(max / step) * step;
+            const ticks = [];
+            for (let i = niceMin; i <= niceMax + step / 2; i += step) { // + step/2 to include niceMax
+                ticks.push(Math.round(i * 1000) / 1000); // round to 3 decimals to avoid floating point issues
+            }
+            return ticks.slice(0, count); // limit to count
+        },
+
+        calculateNiceStep(rough) {
+            const log = Math.log10(Math.abs(rough));
+            const exponent = Math.floor(log);
+            const fraction = rough / Math.pow(10, exponent);
+            let niceFraction;
+            if (fraction <= 1) niceFraction = 1;
+            else if (fraction <= 2) niceFraction = 2;
+            else if (fraction <= 5) niceFraction = 5;
+            else niceFraction = 10;
+            return niceFraction * Math.pow(10, exponent);
+        },
+
         getPeriodLabel() {
             return this.currentPeriod === 'hours' ? 'uren' : this.currentPeriod === 'days' ? 'dagen' : this.currentPeriod === 'months' ? 'maanden' : 'jaren';
         },
@@ -257,22 +283,22 @@
             // Choose values for plotting (use computed deltas if available)
             const values = (this.plotValues && this.plotValues.length > 0) ? this.plotValues : this.data.map(d => parseFloat(d.gas) || 0);
             const maxV = Math.max(...values, 0.001);
-            const gridLines = 4;
+            const ticks = this.calculateNiceTicks(0, maxV, gridLines + 1);
+            const niceMax = Math.max(...ticks);
             this.ctx.strokeStyle = gridColor;
             this.ctx.fillStyle = textColor;
             this.ctx.font = '12px sans-serif';
 
             // Draw Y-axis grid and labels
-            for (let i = 0; i <= gridLines; i++) {
-                const v = maxV * (i / gridLines);
-                const y = paddingTop + graphHeight - (graphHeight * (i / gridLines));
+            ticks.forEach(v => {
+                const y = paddingTop + graphHeight - (graphHeight * (v / niceMax));
                 this.ctx.beginPath();
                 this.ctx.moveTo(paddingLeft, y);
                 this.ctx.lineTo(width - paddingRight, y);
                 this.ctx.stroke();
                 this.ctx.textAlign = 'right';
                 this.ctx.fillText(this.formatNumber(v, 2) + ' m³', paddingLeft - 8, y + 4);
-            }
+            });
 
             // Draw X-axis line
             this.ctx.strokeStyle = gridColor;
@@ -288,7 +314,7 @@
             this.ctx.fillStyle = '#fb923c';
             values.forEach((v, idx) => {
                 const x = paddingLeft + idx * totalBarWidth + 1;
-                const h = (v / maxV) * graphHeight;
+                const h = (v / niceMax) * graphHeight;
                 const y = paddingTop + graphHeight - h;
                 this.ctx.fillRect(x, y, barWidth, h);
             });
@@ -298,7 +324,7 @@
 
             // Draw hover tooltip
             if (this.hoverState.isHovering) {
-                this.drawTooltip(paddingLeft, paddingTop, paddingRight, paddingBottom, graphWidth, graphHeight, height, maxV, totalBarWidth, textColor, isDark);
+                this.drawTooltip(paddingLeft, paddingTop, paddingRight, paddingBottom, graphWidth, graphHeight, height, totalBarWidth, textColor, isDark);
             }
         },
 
@@ -375,7 +401,7 @@
             });
         },
 
-        drawTooltip(paddingLeft, paddingTop, paddingRight, paddingBottom, graphWidth, graphHeight, height, maxValue, totalBarWidth, textColor, isDark) {
+        drawTooltip(paddingLeft, paddingTop, paddingRight, paddingBottom, graphWidth, graphHeight, height, totalBarWidth, textColor, isDark) {
             if (!this.data) return;
 
             const mouseX = this.hoverState.x;
