@@ -34,7 +34,28 @@
             // Watch for window resize
             this.watchResize();
             
+            // Hide nav items based on visibility settings
+            this.applyVisibilitySettings();
+            
             console.log('Sidebar system initialized');
+        },
+        
+        /**
+         * Apply visibility settings to navigation items
+         */
+        applyVisibilitySettings() {
+            const config = window.P1MonConfig || {};
+            
+            // Hide water nav item if not available
+            if (config.visibility && config.visibility.hide_water) {
+                const navItems = document.querySelectorAll('.nav-item');
+                navItems.forEach(item => {
+                    const href = item.getAttribute('href');
+                    if (href && href.includes('page=water')) {
+                        item.style.display = 'none';
+                    }
+                });
+            }
         },
         
         /**
