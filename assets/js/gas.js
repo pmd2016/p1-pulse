@@ -19,6 +19,28 @@
             isHovering: false
         },
 
+        // Zoom options per period
+        zoomOptions: {
+            hours: [
+                { value: 24, label: '24 uur' },
+                { value: 48, label: '48 uur' },
+                { value: 72, label: '72 uur' }
+            ],
+            days: [
+                { value: 7, label: '7 dagen' },
+                { value: 14, label: '14 dagen' },
+                { value: 30, label: '30 dagen' }
+            ],
+            months: [
+                { value: 12, label: '12 maanden' },
+                { value: 24, label: '24 maanden' }
+            ],
+            years: [
+                { value: 5, label: '5 jaar' },
+                { value: 10, label: '10 jaar' }
+            ]
+        },
+
         init() {
             this.canvas = document.getElementById('gas-chart');
             if (this.canvas) {
@@ -71,16 +93,15 @@
         updateZoomButtons() {
             const container = document.getElementById('zoom-buttons-gas');
             if (!container) return;
-            // keep simple fixed options
             container.innerHTML = '';
-            const options = [24, 48, 72];
-            options.forEach((v, i) => {
+            const options = this.zoomOptions[this.currentPeriod] || this.zoomOptions.hours;
+            options.forEach((opt, i) => {
                 const btn = document.createElement('button');
                 btn.className = 'control-button';
-                btn.dataset.zoom = v;
-                btn.textContent = v === 24 ? '24 uur' : `${v} uur`;
+                btn.dataset.zoom = opt.value;
+                btn.textContent = opt.label;
                 if (i === 0) btn.classList.add('active');
-                btn.addEventListener('click', () => this.changeZoom(v));
+                btn.addEventListener('click', () => this.changeZoom(opt.value));
                 container.appendChild(btn);
             });
         },
@@ -115,6 +136,7 @@
 
                 console.log('Gas data loaded for period:', this.currentPeriod, 'items:', payload.chartData.length);
                 this.data = payload.chartData;
+                this.data = this.fillMissingData(this.data, this.currentPeriod);
                 this.updateStatistics();
                 this.redrawChart();
                 this.hideError();
@@ -187,8 +209,14 @@
                 flow = delta / hours;
             }
 
-            this.updateElement('stat-total-gas', this.formatNumber(total, 3) + ' m³');
-            this.updateElement('stat-gas-period', `Laatste ${this.currentZoom} ${this.getPeriodLabel()}`);
+            if (this.currentPeriod === 'hours') {
+                const currentConsumption = valuesForStats[valuesForStats.length - 1] || 0;
+                this.updateElement('stat-total-gas', this.formatNumber(currentConsumption, 3) + ' m³');
+                this.updateElement('stat-gas-period', `Huidig uur`);
+            } else {
+                this.updateElement('stat-total-gas', this.formatNumber(total, 3) + ' m³');
+                this.updateElement('stat-gas-period', `Laatste ${this.currentZoom} ${this.getPeriodLabel()}`);
+            }
             this.updateElement('stat-gas-cost', '€ ' + this.formatNumber(total * 1.5, 2));
             this.updateElement('stat-gas-cost-period', `Geschat`);
             this.updateElement('stat-gas-average', this.formatNumber(avg, 3) + ' m³');
@@ -233,6 +261,57 @@
             else if (fraction <= 5) niceFraction = 5;
             else niceFraction = 10;
             return niceFraction * Math.pow(10, exponent);
+        },
+
+        fillMissingData(data, period) {
+            if (data.length === 0) return data;
+
+            // Sort by timestamp
+            data.sort((a, b) => (a.unixTimestamp || 0) - (b.unixTimestamp || 0));
+
+            const filled = [];
+            const startTs = data[0].unixTimestamp || 0;
+            const endTs = data[data.length - 1].unixTimestamp || 0;
+            const startDate = new Date(startTs * 1000);
+            const endDate = new Date(endTs * 1000);
+
+            // Create a map of date string to data item
+            const dataMap = new Map();
+            data.forEach(d => {
+                const date = new Date((d.unixTimestamp || 0) * 1000);
+                const dateStr = date.toDateString();
+                dataMap.set(dateStr, d);
+            });
+
+            let currentDate = new Date(startDate);
+            while (currentDate <= endDate) {
+                const dateStr = currentDate.toDateString();
+                if (dataMap.has(dateStr)) {
+                    filled.push(dataMap.get(dateStr));
+                } else {
+                    const ts = Math.floor(currentDate.getTime() / 1000);
+                    filled.push({
+                        timestamp: ts.toString(),
+                        unixTimestamp: ts,
+                        gas: 0
+                    });
+                }
+
+                // Increment date based on period
+                if (period === 'hours') {
+                    currentDate.setHours(currentDate.getHours() + 1);
+                } else if (period === 'days') {
+                    currentDate.setDate(currentDate.getDate() + 1);
+                } else if (period === 'months') {
+                    currentDate.setMonth(currentDate.getMonth() + 1);
+                } else if (period === 'years') {
+                    currentDate.setFullYear(currentDate.getFullYear() + 1);
+                } else {
+                    currentDate.setHours(currentDate.getHours() + 1); // default
+                }
+            }
+
+            return filled;
         },
 
         getPeriodLabel() {
