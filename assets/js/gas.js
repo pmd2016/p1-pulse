@@ -101,15 +101,53 @@
         updateStatistics() {
             if (!this.data || this.data.length === 0) return;
 
-            const total = this.data.reduce((s, p) => s + (parseFloat(p.gas) || 0), 0);
-            const avg = total / this.data.length;
-            let peak = { value: 0, time: '' };
-            for (const p of this.data) {
-                const v = parseFloat(p.gas) || 0;
-                if (v > peak.value) { peak.value = v; peak.time = p.timestamp || p.unixTimestamp || ''; }
+            // Raw gas readings (may be cumulative meter readings)
+            const raw = this.data.map(d => parseFloat(d.gas) || 0);
+
+            // Compute deltas between consecutive readings (consumption per interval)
+            const deltas = [];
+            for (let i = 1; i < raw.length; i++) {
+                let d = raw[i] - raw[i - 1];
+                if (d < 0) d = 0; // protect against meter resets/negative
+                deltas.push(d);
             }
 
-            // estimate current flow (m3/h) from last two points
+            // Decide whether to use deltas (if they sum to something reasonable)
+            const sumDeltas = deltas.reduce((s, v) => s + v, 0);
+            let valuesForStats = [];
+            let usedDeltas = false;
+
+            if (sumDeltas > 0.0001) {
+                // Use deltas as the true consumption per interval
+                valuesForStats = deltas.slice();
+                usedDeltas = true;
+            } else {
+                // Fallback: raw values are already per-interval
+                valuesForStats = raw.slice();
+                usedDeltas = false;
+            }
+
+            // Save series for charting
+            this.plotValues = valuesForStats;
+
+            // Compute totals, averages and peaks
+            const total = valuesForStats.reduce((s, v) => s + v, 0);
+            const avg = valuesForStats.length > 0 ? total / valuesForStats.length : 0;
+            let peakValue = 0;
+            let peakTime = '';
+            if (valuesForStats.length > 0) {
+                valuesForStats.forEach((v, idx) => {
+                    if (v > peakValue) {
+                        peakValue = v;
+                        // If using deltas, the timestamp corresponds to the later reading
+                        const dataIndex = usedDeltas ? idx + 1 : idx;
+                        const p = this.data[dataIndex];
+                        peakTime = p ? (p.timestamp || p.unixTimestamp || '') : '';
+                    }
+                });
+            }
+
+            // estimate current flow (m3/h) from last two raw points
             let flow = 0;
             if (this.data.length >= 2) {
                 const a = this.data[this.data.length - 2];
@@ -128,8 +166,8 @@
             this.updateElement('stat-gas-average', this.formatNumber(avg, 3) + ' m³');
             this.updateElement('stat-gas-average-period', `per ${this.getPeriodLabelSingular()}`);
             this.updateElement('stat-gas-flow', this.formatNumber(flow, 3) + ' m³/h');
-            this.updateElement('stat-gas-peak', this.formatNumber(peak.value, 3) + ' m³');
-            this.updateElement('stat-gas-peak-time', this.formatPeakTime(peak.time));
+            this.updateElement('stat-gas-peak', this.formatNumber(peakValue, 3) + ' m³');
+            this.updateElement('stat-gas-peak-time', this.formatPeakTime(peakTime));
         },
 
         formatPeakTime(ts) {
@@ -183,8 +221,8 @@
 
             this.ctx.clearRect(0,0,width,height);
 
-            // Y scale
-            const values = this.data.map(d => parseFloat(d.gas) || 0);
+            // Choose values for plotting (use computed deltas if available)
+            const values = (this.plotValues && this.plotValues.length > 0) ? this.plotValues : this.data.map(d => parseFloat(d.gas) || 0);
             const maxV = Math.max(...values, 0.001);
             const gridLines = 4;
             this.ctx.strokeStyle = '#2b3948';
@@ -203,11 +241,10 @@
             }
 
             // Draw bars
-            const count = this.data.length;
+            const count = values.length;
             const barWidth = Math.max(graphWidth / count - 2, 1);
             this.ctx.fillStyle = '#fb923c';
-            this.data.forEach((pt, idx) => {
-                const v = parseFloat(pt.gas) || 0;
+            values.forEach((v, idx) => {
                 const x = paddingLeft + idx * (graphWidth / count) + 1;
                 const h = (v / maxV) * graphHeight;
                 const y = paddingTop + graphHeight - h;
