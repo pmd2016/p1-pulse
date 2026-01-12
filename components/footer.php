@@ -11,6 +11,11 @@
     <?php if ($currentPage === 'electricity'): ?>
     <script src="<?php echo CUSTOM_BASE_URL; ?>/assets/js/electricity.js"></script>
     <?php endif; ?>
+
+    <!-- Gas specific script (only loads on gas page) -->
+    <?php if ($currentPage === 'gas'): ?>
+    <script src="<?php echo CUSTOM_BASE_URL; ?>/assets/js/gas.js"></script>
+    <?php endif; ?>
     
     <script>
         // Pass PHP config to JavaScript
