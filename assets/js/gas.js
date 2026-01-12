@@ -12,16 +12,41 @@
         data: null,
         canvas: null,
         ctx: null,
+        plotValues: [],
+        hoverState: {
+            x: -1,
+            y: -1,
+            isHovering: false
+        },
 
         init() {
             this.canvas = document.getElementById('gas-chart');
-            if (this.canvas) this.ctx = this.canvas.getContext('2d');
+            if (this.canvas) {
+                this.ctx = this.canvas.getContext('2d');
+                this.setupChartHover();
+            }
 
             this.setupEventListeners();
             this.updateZoomButtons();
             this.loadData();
 
             window.addEventListener('resize', () => this.redrawChart());
+        },
+
+        setupChartHover() {
+            if (!this.canvas) return;
+            this.canvas.addEventListener('mousemove', (e) => {
+                const rect = this.canvas.getBoundingClientRect();
+                this.hoverState.x = e.clientX - rect.left;
+                this.hoverState.y = e.clientY - rect.top;
+                this.hoverState.isHovering = true;
+                this.redrawChart();
+            });
+
+            this.canvas.addEventListener('mouseleave', () => {
+                this.hoverState.isHovering = false;
+                this.redrawChart();
+            });
         },
 
         setupEventListeners() {
@@ -66,6 +91,7 @@
             // defaults
             const defaults = { hours: 24, days: 7, months: 12, years: 5 };
             this.currentZoom = defaults[period] || 24;
+            console.log('Period changed to:', period, 'zoom set to:', this.currentZoom);
             this.updateZoomButtons();
             this.loadData();
         },
@@ -83,9 +109,11 @@
                 const payload = await window.P1API.getElectricityData(this.currentPeriod, this.currentZoom, false);
                 if (!payload || !payload.chartData) {
                     this.showError('Geen data beschikbaar');
+                    console.warn('No chartData returned for period:', this.currentPeriod, 'zoom:', this.currentZoom, 'payload:', payload);
                     return;
                 }
 
+                console.log('Gas data loaded for period:', this.currentPeriod, 'items:', payload.chartData.length);
                 this.data = payload.chartData;
                 this.updateStatistics();
                 this.redrawChart();
@@ -215,20 +243,26 @@
             const paddingLeft = 60;
             const paddingRight = 20;
             const paddingTop = 30;
-            const paddingBottom = 40;
+            const paddingBottom = 60;
             const graphWidth = width - paddingLeft - paddingRight;
             const graphHeight = height - paddingTop - paddingBottom;
 
             this.ctx.clearRect(0,0,width,height);
 
+            // Get theme colors
+            const isDark = document.body.classList.contains('dark-theme');
+            const gridColor = isDark ? '#334155' : '#e2e8f0';
+            const textColor = isDark ? '#94a3b8' : '#64748b';
+
             // Choose values for plotting (use computed deltas if available)
             const values = (this.plotValues && this.plotValues.length > 0) ? this.plotValues : this.data.map(d => parseFloat(d.gas) || 0);
             const maxV = Math.max(...values, 0.001);
             const gridLines = 4;
-            this.ctx.strokeStyle = '#2b3948';
-            this.ctx.fillStyle = '#94a3b8';
+            this.ctx.strokeStyle = gridColor;
+            this.ctx.fillStyle = textColor;
             this.ctx.font = '12px sans-serif';
 
+            // Draw Y-axis grid and labels
             for (let i = 0; i <= gridLines; i++) {
                 const v = maxV * (i / gridLines);
                 const y = paddingTop + graphHeight - (graphHeight * (i / gridLines));
@@ -240,16 +274,214 @@
                 this.ctx.fillText(this.formatNumber(v, 2) + ' m³', paddingLeft - 8, y + 4);
             }
 
+            // Draw X-axis line
+            this.ctx.strokeStyle = gridColor;
+            this.ctx.beginPath();
+            this.ctx.moveTo(paddingLeft, height - paddingBottom);
+            this.ctx.lineTo(width - paddingRight, height - paddingBottom);
+            this.ctx.stroke();
+
             // Draw bars
             const count = values.length;
-            const barWidth = Math.max(graphWidth / count - 2, 1);
+            const totalBarWidth = graphWidth / count;
+            const barWidth = Math.max(totalBarWidth - 2, 1);
             this.ctx.fillStyle = '#fb923c';
             values.forEach((v, idx) => {
-                const x = paddingLeft + idx * (graphWidth / count) + 1;
+                const x = paddingLeft + idx * totalBarWidth + 1;
                 const h = (v / maxV) * graphHeight;
                 const y = paddingTop + graphHeight - h;
                 this.ctx.fillRect(x, y, barWidth, h);
             });
+
+            // Draw X-axis labels
+            this.drawXAxisLabels(paddingLeft, paddingBottom, graphWidth, graphHeight, height, textColor);
+
+            // Draw hover tooltip
+            if (this.hoverState.isHovering) {
+                this.drawTooltip(paddingLeft, paddingTop, paddingRight, paddingBottom, graphWidth, graphHeight, height, maxV, totalBarWidth, textColor, isDark);
+            }
+        },
+
+        drawXAxisLabels(paddingLeft, paddingBottom, graphWidth, graphHeight, height, textColor) {
+            if (!this.data || this.data.length === 0) return;
+
+            const dataCount = this.data.length;
+            const totalBarWidth = graphWidth / dataCount;
+            const isMobile = window.innerWidth <= 768;
+
+            this.ctx.fillStyle = textColor;
+            this.ctx.textAlign = 'center';
+            this.ctx.font = isMobile ? '9px sans-serif' : '11px sans-serif';
+
+            // Show fewer labels on small screens or with many data points
+            let labelInterval = 1;
+            if (this.currentPeriod === 'hours') {
+                if (isMobile || dataCount > 24) {
+                    labelInterval = Math.ceil(dataCount / 6);
+                } else if (dataCount > 12) {
+                    labelInterval = 2;
+                }
+            } else if (this.currentPeriod === 'days') {
+                if (isMobile && dataCount > 7) {
+                    labelInterval = Math.ceil(dataCount / 5);
+                } else if (dataCount > 14) {
+                    labelInterval = Math.ceil(dataCount / 7);
+                } else if (dataCount > 7) {
+                    labelInterval = 2;
+                }
+            } else if (this.currentPeriod === 'months') {
+                if (isMobile && dataCount > 6) {
+                    labelInterval = Math.ceil(dataCount / 4);
+                } else if (dataCount > 12) {
+                    labelInterval = 2;
+                }
+            } else if (this.currentPeriod === 'years') {
+                labelInterval = 1;
+            }
+
+            this.data.forEach((point, index) => {
+                if (index % labelInterval !== 0 && index !== dataCount - 1) return;
+
+                const x = paddingLeft + (index * totalBarWidth) + totalBarWidth / 2;
+                const y = height - paddingBottom + 20;
+
+                let label = '';
+                const ts = point.unixTimestamp || (typeof point.timestamp === 'string' && parseInt(point.timestamp));
+                const date = ts ? new Date(ts * 1000) : new Date();
+
+                if (this.currentPeriod === 'hours') {
+                    label = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+                } else if (this.currentPeriod === 'days') {
+                    const day = date.getDate();
+                    const months = ['jan', 'feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'];
+                    label = `${day} ${months[date.getMonth()]}`;
+                } else if (this.currentPeriod === 'months') {
+                    const months = ['jan', 'feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'];
+                    label = isMobile ? `${months[date.getMonth()]}` : `${months[date.getMonth()]} ${date.getFullYear()}`;
+                } else if (this.currentPeriod === 'years') {
+                    label = `${date.getFullYear()}`;
+                }
+
+                if (isMobile && totalBarWidth < 30) {
+                    this.ctx.save();
+                    this.ctx.translate(x, y);
+                    this.ctx.rotate(-Math.PI / 4);
+                    this.ctx.textAlign = 'right';
+                    this.ctx.fillText(label, 0, 0);
+                    this.ctx.restore();
+                } else {
+                    this.ctx.fillText(label, x, y);
+                }
+            });
+        },
+
+        drawTooltip(paddingLeft, paddingTop, paddingRight, paddingBottom, graphWidth, graphHeight, height, maxValue, totalBarWidth, textColor, isDark) {
+            if (!this.data) return;
+
+            const mouseX = this.hoverState.x;
+            const dataCount = this.data.length;
+
+            // Find closest data point
+            const index = Math.floor((mouseX - paddingLeft) / totalBarWidth);
+
+            if (index < 0 || index >= dataCount) return;
+
+            const point = this.data[index];
+            const x = paddingLeft + (index * totalBarWidth) + totalBarWidth / 2;
+
+            // Draw vertical line
+            this.ctx.strokeStyle = isDark ? '#64748b' : '#94a3b8';
+            this.ctx.lineWidth = 1;
+            this.ctx.setLineDash([5, 5]);
+            this.ctx.beginPath();
+            this.ctx.moveTo(x, paddingTop);
+            this.ctx.lineTo(x, height - paddingBottom);
+            this.ctx.stroke();
+            this.ctx.setLineDash([]);
+
+            // Prepare tooltip content
+            const ts = point.unixTimestamp || (typeof point.timestamp === 'string' && parseInt(point.timestamp));
+            const date = ts ? new Date(ts * 1000) : new Date();
+            const timeText = this.formatTooltipTime(date);
+            const gasValue = this.plotValues && this.plotValues[index] ? this.plotValues[index] : (parseFloat(point.gas) || 0);
+            const gasText = `Verbruik: ${this.formatNumber(gasValue, 3)} m³`;
+
+            // Calculate tooltip dimensions
+            const tooltipPadding = 12;
+            this.ctx.font = 'bold 13px sans-serif';
+            const timeWidth = this.ctx.measureText(timeText).width;
+            this.ctx.font = '12px sans-serif';
+            const gasWidth = this.ctx.measureText(gasText).width;
+
+            const maxWidth = Math.max(timeWidth, gasWidth);
+            const tooltipWidth = maxWidth + tooltipPadding * 2;
+            const tooltipHeight = 65;
+
+            // Position tooltip
+            let tooltipX = x + 15;
+            let tooltipY = paddingTop + 20;
+
+            if (tooltipX + tooltipWidth > this.canvas.width - paddingRight) {
+                tooltipX = x - tooltipWidth - 15;
+            }
+
+            if (tooltipX < paddingLeft + 10) {
+                tooltipX = paddingLeft + 10;
+            }
+
+            if (tooltipY + tooltipHeight > this.canvas.height - paddingBottom) {
+                tooltipY = this.canvas.height - paddingBottom - tooltipHeight - 10;
+            }
+
+            // Draw tooltip background
+            this.ctx.fillStyle = isDark ? '#1e293b' : '#ffffff';
+            this.ctx.strokeStyle = isDark ? '#475569' : '#e2e8f0';
+            this.ctx.lineWidth = 1;
+
+            const radius = 6;
+            this.ctx.beginPath();
+            this.ctx.moveTo(tooltipX + radius, tooltipY);
+            this.ctx.lineTo(tooltipX + tooltipWidth - radius, tooltipY);
+            this.ctx.quadraticCurveTo(tooltipX + tooltipWidth, tooltipY, tooltipX + tooltipWidth, tooltipY + radius);
+            this.ctx.lineTo(tooltipX + tooltipWidth, tooltipY + tooltipHeight - radius);
+            this.ctx.quadraticCurveTo(tooltipX + tooltipWidth, tooltipY + tooltipHeight, tooltipX + tooltipWidth - radius, tooltipY + tooltipHeight);
+            this.ctx.lineTo(tooltipX + radius, tooltipY + tooltipHeight);
+            this.ctx.quadraticCurveTo(tooltipX, tooltipY + tooltipHeight, tooltipX, tooltipY + tooltipHeight - radius);
+            this.ctx.lineTo(tooltipX, tooltipY + radius);
+            this.ctx.quadraticCurveTo(tooltipX, tooltipY, tooltipX + radius, tooltipY);
+            this.ctx.closePath();
+            this.ctx.fill();
+            this.ctx.stroke();
+
+            // Draw tooltip text
+            this.ctx.textAlign = 'left';
+
+            this.ctx.fillStyle = textColor;
+            this.ctx.font = 'bold 13px sans-serif';
+            this.ctx.fillText(timeText, tooltipX + tooltipPadding, tooltipY + 20);
+
+            this.ctx.font = '12px sans-serif';
+            this.ctx.fillStyle = '#fb923c';
+            this.ctx.fillText(gasText, tooltipX + tooltipPadding, tooltipY + 40);
+        },
+
+        formatTooltipTime(date) {
+            if (this.currentPeriod === 'hours') {
+                const days = ['Zondag', 'Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag'];
+                const hours = String(date.getHours()).padStart(2, '0');
+                const minutes = String(date.getMinutes()).padStart(2, '0');
+                return `${days[date.getDay()]} ${hours}:${minutes}`;
+            } else if (this.currentPeriod === 'days') {
+                const day = date.getDate();
+                const months = ['januari', 'februari', 'maart', 'april', 'mei', 'juni', 'juli', 'augustus', 'september', 'oktober', 'november', 'december'];
+                return `${day} ${months[date.getMonth()]} ${date.getFullYear()}`;
+            } else if (this.currentPeriod === 'months') {
+                const months = ['Januari', 'Februari', 'Maart', 'April', 'Mei', 'Juni', 'Juli', 'Augustus', 'September', 'Oktober', 'November', 'December'];
+                return `${months[date.getMonth()]} ${date.getFullYear()}`;
+            } else if (this.currentPeriod === 'years') {
+                return `${date.getFullYear()}`;
+            }
+            return date.toLocaleString('nl-NL');
         }
     };
 
