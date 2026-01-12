@@ -263,6 +263,21 @@
             return niceFraction * Math.pow(10, exponent);
         },
 
+        getPeriodKey(ts, period) {
+            const date = new Date(ts * 1000);
+            if (period === 'hours') {
+                return Math.floor(ts / 3600);
+            } else if (period === 'days') {
+                return date.toDateString();
+            } else if (period === 'months') {
+                return date.getFullYear() + '-' + (date.getMonth() + 1);
+            } else if (period === 'years') {
+                return date.getFullYear();
+            } else {
+                return ts;
+            }
+        },
+
         fillMissingData(data, period) {
             if (data.length === 0) return data;
 
@@ -275,21 +290,21 @@
             const startDate = new Date(startTs * 1000);
             const endDate = new Date(endTs * 1000);
 
-            // Create a map of date string to data item
+            // Create a map of period key to data item
             const dataMap = new Map();
             data.forEach(d => {
-                const date = new Date((d.unixTimestamp || 0) * 1000);
-                const dateStr = date.toDateString();
-                dataMap.set(dateStr, d);
+                const ts = d.unixTimestamp || 0;
+                const key = this.getPeriodKey(ts, period);
+                dataMap.set(key, d);
             });
 
             let currentDate = new Date(startDate);
             while (currentDate <= endDate) {
-                const dateStr = currentDate.toDateString();
-                if (dataMap.has(dateStr)) {
-                    filled.push(dataMap.get(dateStr));
+                const ts = Math.floor(currentDate.getTime() / 1000);
+                const key = this.getPeriodKey(ts, period);
+                if (dataMap.has(key)) {
+                    filled.push(dataMap.get(key));
                 } else {
-                    const ts = Math.floor(currentDate.getTime() / 1000);
                     filled.push({
                         timestamp: ts.toString(),
                         unixTimestamp: ts,
