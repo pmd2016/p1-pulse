@@ -1,6 +1,11 @@
 /**
  * Gas Page Manager
  * Handles chart rendering and interactivity for gas data
+ * 
+ * FIXES:
+ * 1. Corrected fillMissingData() to handle period boundaries properly
+ * 2. Fixed statistics to show consumption per period, not cumulative totals
+ * 3. Added proper zero-consumption handling
  */
 
 (function() {
@@ -136,7 +141,11 @@
 
                 console.log('Gas data loaded for period:', this.currentPeriod, 'items:', payload.chartData.length);
                 this.data = payload.chartData;
+                
+                // FIX: Fill missing data BEFORE updating statistics
                 this.data = this.fillMissingData(this.data, this.currentPeriod);
+                console.log('After fillMissingData:', this.data.length, 'items');
+                
                 this.updateStatistics();
                 this.redrawChart();
                 this.hideError();
@@ -151,79 +160,104 @@
         updateStatistics() {
             if (!this.data || this.data.length === 0) return;
 
-            // Raw gas readings (may be cumulative meter readings)
-            const raw = this.data.map(d => parseFloat(d.gas) || 0);
+            // FIX: The 'gas' field in the API response is the CONSUMPTION PER PERIOD (column 9)
+            // NOT cumulative meter readings. It's already the per-period volume.
+            const gasValues = this.data.map(d => parseFloat(d.gas) || 0);
+            
+            // Save for charting
+            this.plotValues = gasValues;
 
-            // Compute deltas between consecutive readings (consumption per interval)
-            const deltas = [];
-            for (let i = 1; i < raw.length; i++) {
-                let d = raw[i] - raw[i - 1];
-                if (d < 0) d = 0; // protect against meter resets/negative
-                deltas.push(d);
-            }
-
-            // Decide whether to use deltas (if they sum to something reasonable)
-            const sumDeltas = deltas.reduce((s, v) => s + v, 0);
-            let valuesForStats = [];
-            let usedDeltas = false;
-
-            if (sumDeltas > 0.0001) {
-                // Use deltas as the true consumption per interval
-                valuesForStats = deltas.slice();
-                usedDeltas = true;
-            } else {
-                // Fallback: raw values are already per-interval
-                valuesForStats = raw.slice();
-                usedDeltas = false;
-            }
-
-            // Save series for charting
-            this.plotValues = valuesForStats;
-
-            // Compute totals, averages and peaks
-            const total = valuesForStats.reduce((s, v) => s + v, 0);
-            const avg = valuesForStats.length > 0 ? total / valuesForStats.length : 0;
+            // Calculate totals and statistics
+            const total = gasValues.reduce((s, v) => s + v, 0);
+            const avg = gasValues.length > 0 ? total / gasValues.length : 0;
+            
+            // Check if there's actual consumption
+            const hasConsumption = total > 0.001;
+            
+            // Find peak
             let peakValue = 0;
             let peakTime = '';
-            if (valuesForStats.length > 0) {
-                valuesForStats.forEach((v, idx) => {
-                    if (v > peakValue) {
-                        peakValue = v;
-                        // If using deltas, the timestamp corresponds to the later reading
-                        const dataIndex = usedDeltas ? idx + 1 : idx;
-                        const p = this.data[dataIndex];
-                        peakTime = p ? (p.timestamp || p.unixTimestamp || '') : '';
-                    }
-                });
-            }
+            gasValues.forEach((v, idx) => {
+                if (v > peakValue) {
+                    peakValue = v;
+                    const p = this.data[idx];
+                    peakTime = p ? (p.timestamp || p.unixTimestamp || '') : '';
+                }
+            });
 
-            // estimate current flow (m3/h) from last two raw points
+            // Estimate current flow (m3/h) from last value
             let flow = 0;
-            if (this.data.length >= 2) {
-                const a = this.data[this.data.length - 2];
-                const b = this.data[this.data.length - 1];
-                const delta = (parseFloat(b.gas) || 0) - (parseFloat(a.gas) || 0);
-                const tA = a.unixTimestamp || 0;
-                const tB = b.unixTimestamp || 0;
-                const hours = (tB - tA) / 3600 || 1;
-                flow = delta / hours;
+            if (this.data.length >= 1) {
+                // For hourly data, the gas value IS the flow rate
+                if (this.currentPeriod === 'hours') {
+                    flow = gasValues[gasValues.length - 1] || 0;
+                } else if (this.currentPeriod === 'days') {
+                    // For daily: divide by 24 to get hourly rate
+                    flow = (gasValues[gasValues.length - 1] || 0) / 24;
+                } else {
+                    // For longer periods, estimate from last two points
+                    if (this.data.length >= 2) {
+                        const lastValue = gasValues[gasValues.length - 1];
+                        const secondLastValue = gasValues[gasValues.length - 2];
+                        const avgRecent = (lastValue + secondLastValue) / 2;
+                        
+                        if (this.currentPeriod === 'months') {
+                            flow = avgRecent / (30 * 24); // rough estimate
+                        } else if (this.currentPeriod === 'years') {
+                            flow = avgRecent / (365 * 24); // rough estimate
+                        }
+                    }
+                }
             }
 
+            // FIX: Display consumption per period, not cumulative
             if (this.currentPeriod === 'hours') {
-                const currentConsumption = valuesForStats[valuesForStats.length - 1] || 0;
-                this.updateElement('stat-total-gas', this.formatNumber(currentConsumption, 3) + ' m³');
-                this.updateElement('stat-gas-period', `Huidig uur`);
+                const currentConsumption = gasValues[gasValues.length - 1] || 0;
+                if (currentConsumption > 0.001) {
+                    this.updateElement('stat-total-gas', this.formatNumber(currentConsumption, 3) + ' m³');
+                    this.updateElement('stat-gas-period', `Huidig uur`);
+                } else {
+                    this.updateElement('stat-total-gas', '0.000 m³');
+                    this.updateElement('stat-gas-period', `Geen verbruik`);
+                }
             } else {
-                this.updateElement('stat-total-gas', this.formatNumber(total, 3) + ' m³');
-                this.updateElement('stat-gas-period', `Laatste ${this.currentZoom} ${this.getPeriodLabel()}`);
+                if (hasConsumption) {
+                    this.updateElement('stat-total-gas', this.formatNumber(total, 3) + ' m³');
+                    this.updateElement('stat-gas-period', `Laatste ${this.currentZoom} ${this.getPeriodLabel()}`);
+                } else {
+                    this.updateElement('stat-total-gas', '0.000 m³');
+                    this.updateElement('stat-gas-period', `Geen verbruik`);
+                }
             }
-            this.updateElement('stat-gas-cost', '€ ' + this.formatNumber(total * 1.5, 2));
-            this.updateElement('stat-gas-cost-period', `Geschat`);
+            
+            // Update cost
+            if (hasConsumption) {
+                this.updateElement('stat-gas-cost', '€ ' + this.formatNumber(total * 1.5, 2));
+                this.updateElement('stat-gas-cost-period', `Geschat`);
+            } else {
+                this.updateElement('stat-gas-cost', '€ 0.00');
+                this.updateElement('stat-gas-cost-period', `Geen verbruik`);
+            }
+            
+            // Update average
             this.updateElement('stat-gas-average', this.formatNumber(avg, 3) + ' m³');
             this.updateElement('stat-gas-average-period', `per ${this.getPeriodLabelSingular()}`);
-            this.updateElement('stat-gas-flow', this.formatNumber(flow, 3) + ' m³/h');
-            this.updateElement('stat-gas-peak', this.formatNumber(peakValue, 3) + ' m³');
-            this.updateElement('stat-gas-peak-time', this.formatPeakTime(peakTime));
+            
+            // Update flow
+            if (flow > 0.001) {
+                this.updateElement('stat-gas-flow', this.formatNumber(flow, 3) + ' m³/h');
+            } else {
+                this.updateElement('stat-gas-flow', '0.000 m³/h');
+            }
+            
+            // Update peak
+            if (hasConsumption && peakValue > 0.001) {
+                this.updateElement('stat-gas-peak', this.formatNumber(peakValue, 3) + ' m³');
+                this.updateElement('stat-gas-peak-time', this.formatPeakTime(peakTime));
+            } else {
+                this.updateElement('stat-gas-peak', '--');
+                this.updateElement('stat-gas-peak-time', 'Geen verbruik');
+            }
         },
 
         formatPeakTime(ts) {
@@ -235,7 +269,9 @@
             return ts;
         },
 
-        formatNumber(v, decimals = 2) { return (Math.round((v || 0) * Math.pow(10, decimals)) / Math.pow(10, decimals)).toFixed(decimals); },
+        formatNumber(v, decimals = 2) { 
+            return (Math.round((v || 0) * Math.pow(10, decimals)) / Math.pow(10, decimals)).toFixed(decimals); 
+        },
 
         calculateNiceTicks(min, max, count) {
             const range = max - min;
@@ -245,10 +281,10 @@
             const niceMin = Math.floor(min / step) * step;
             const niceMax = Math.ceil(max / step) * step;
             const ticks = [];
-            for (let i = niceMin; i <= niceMax + step / 2; i += step) { // + step/2 to include niceMax
-                ticks.push(Math.round(i * 1000) / 1000); // round to 3 decimals to avoid floating point issues
+            for (let i = niceMin; i <= niceMax + step / 2; i += step) {
+                ticks.push(Math.round(i * 1000) / 1000);
             }
-            return ticks.slice(0, count); // limit to count
+            return ticks.slice(0, count);
         },
 
         calculateNiceStep(rough) {
@@ -263,56 +299,119 @@
             return niceFraction * Math.pow(10, exponent);
         },
 
-        getPeriodKey(ts, period) {
-            const date = new Date(ts * 1000);
+        /**
+         * FIX: Normalize a date to the start of a period
+         */
+        normalizeToPerio dStart(date, period) {
+            const normalized = new Date(date);
+            
             if (period === 'hours') {
-                return Math.floor(ts / 3600);
+                normalized.setMinutes(0, 0, 0);
             } else if (period === 'days') {
-                return date.toDateString();
+                normalized.setHours(0, 0, 0, 0);
             } else if (period === 'months') {
-                return date.getFullYear() + '-' + (date.getMonth() + 1);
+                normalized.setDate(1);
+                normalized.setHours(0, 0, 0, 0);
             } else if (period === 'years') {
-                return date.getFullYear();
-            } else {
-                return ts;
+                normalized.setMonth(0, 1);
+                normalized.setHours(0, 0, 0, 0);
             }
+            
+            return normalized;
         },
 
+        /**
+         * FIX: Get a normalized period key for grouping data
+         */
+        getPeriodKey(ts, period) {
+            const date = new Date(ts * 1000);
+            
+            if (period === 'hours') {
+                // Normalize to hour boundary
+                date.setMinutes(0, 0, 0);
+                return Math.floor(date.getTime() / 1000);
+            } else if (period === 'days') {
+                // Normalize to day boundary (midnight)
+                date.setHours(0, 0, 0, 0);
+                return Math.floor(date.getTime() / 1000);
+            } else if (period === 'months') {
+                // Normalize to first day of month at midnight
+                date.setDate(1);
+                date.setHours(0, 0, 0, 0);
+                return Math.floor(date.getTime() / 1000);
+            } else if (period === 'years') {
+                // Normalize to Jan 1 at midnight
+                date.setMonth(0, 1);
+                date.setHours(0, 0, 0, 0);
+                return Math.floor(date.getTime() / 1000);
+            }
+            
+            return ts;
+        },
+
+        /**
+         * FIX: Completely rewritten fillMissingData to handle period boundaries correctly
+         */
         fillMissingData(data, period) {
             if (data.length === 0) return data;
 
             // Sort by timestamp
             data.sort((a, b) => (a.unixTimestamp || 0) - (b.unixTimestamp || 0));
 
-            const filled = [];
-            const startTs = data[0].unixTimestamp || 0;
-            const endTs = data[data.length - 1].unixTimestamp || 0;
-            const startDate = new Date(startTs * 1000);
-            const endDate = new Date(endTs * 1000);
-
-            // Create a map of period key to data item
+            // Create a map that groups data by normalized period keys
+            // Use array values to handle multiple data points per period
             const dataMap = new Map();
+            
             data.forEach(d => {
                 const ts = d.unixTimestamp || 0;
                 const key = this.getPeriodKey(ts, period);
-                dataMap.set(key, d);
+                
+                if (!dataMap.has(key)) {
+                    dataMap.set(key, []);
+                }
+                dataMap.get(key).push(d);
             });
 
+            // Get the range of periods to fill
+            const startTs = data[0].unixTimestamp || 0;
+            const endTs = data[data.length - 1].unixTimestamp || 0;
+            
+            // Normalize start and end to period boundaries
+            const startDate = this.normalizeToPerio dStart(new Date(startTs * 1000), period);
+            const endDate = this.normalizeToPerio dStart(new Date(endTs * 1000), period);
+
+            const filled = [];
             let currentDate = new Date(startDate);
+            
+            // Iterate through all periods in the range
             while (currentDate <= endDate) {
-                const ts = Math.floor(currentDate.getTime() / 1000);
-                const key = this.getPeriodKey(ts, period);
+                const currentTs = Math.floor(currentDate.getTime() / 1000);
+                const key = this.getPeriodKey(currentTs, period);
+                
                 if (dataMap.has(key)) {
-                    filled.push(dataMap.get(key));
-                } else {
+                    // Get all data points for this period
+                    const dataPoints = dataMap.get(key);
+                    
+                    // Use the LAST (most recent) data point for this period
+                    // This ensures we get the latest reading if multiple exist
+                    const selectedPoint = dataPoints[dataPoints.length - 1];
+                    
+                    // Use the normalized timestamp for consistency
                     filled.push({
-                        timestamp: ts.toString(),
-                        unixTimestamp: ts,
+                        ...selectedPoint,
+                        unixTimestamp: currentTs,
+                        timestamp: new Date(currentTs * 1000).toISOString().slice(0, 19).replace('T', ' ')
+                    });
+                } else {
+                    // No data for this period - fill with zero
+                    filled.push({
+                        timestamp: new Date(currentTs * 1000).toISOString().slice(0, 19).replace('T', ' '),
+                        unixTimestamp: currentTs,
                         gas: 0
                     });
                 }
 
-                // Increment date based on period
+                // Increment to next period
                 if (period === 'hours') {
                     currentDate.setHours(currentDate.getHours() + 1);
                 } else if (period === 'days') {
@@ -321,11 +420,10 @@
                     currentDate.setMonth(currentDate.getMonth() + 1);
                 } else if (period === 'years') {
                     currentDate.setFullYear(currentDate.getFullYear() + 1);
-                } else {
-                    currentDate.setHours(currentDate.getHours() + 1); // default
                 }
             }
 
+            console.log(`fillMissingData: ${data.length} raw → ${filled.length} filled (period: ${period})`);
             return filled;
         },
 
@@ -347,10 +445,20 @@
             if (el) el.innerHTML = `<div class="error">${msg}</div>`;
         },
 
-        hideError() { const el = document.getElementById('error-container'); if (el) el.innerHTML = ''; },
+        hideError() { 
+            const el = document.getElementById('error-container'); 
+            if (el) el.innerHTML = ''; 
+        },
 
-        showLoading() { const l = document.getElementById('loading-container'); if (l) l.style.display = 'block'; },
-        hideLoading() { const l = document.getElementById('loading-container'); if (l) l.style.display = 'none'; },
+        showLoading() { 
+            const l = document.getElementById('loading-container'); 
+            if (l) l.style.display = 'block'; 
+        },
+        
+        hideLoading() { 
+            const l = document.getElementById('loading-container'); 
+            if (l) l.style.display = 'none'; 
+        },
 
         redrawChart() {
             if (!this.data || !this.canvas || !this.ctx) return;
@@ -374,12 +482,13 @@
             const gridColor = isDark ? '#334155' : '#e2e8f0';
             const textColor = isDark ? '#94a3b8' : '#64748b';
 
-            // Choose values for plotting (use computed deltas if available)
+            // Use plotValues for rendering (these are the per-period consumption values)
             const values = (this.plotValues && this.plotValues.length > 0) ? this.plotValues : this.data.map(d => parseFloat(d.gas) || 0);
             const maxV = Math.max(...values, 0.001);
             const gridLines = 4;
             const ticks = this.calculateNiceTicks(0, maxV, gridLines + 1);
             const niceMax = Math.max(...ticks);
+            
             this.ctx.strokeStyle = gridColor;
             this.ctx.fillStyle = textColor;
             this.ctx.font = '12px sans-serif';
@@ -407,6 +516,7 @@
             const totalBarWidth = graphWidth / count;
             const barWidth = Math.max(totalBarWidth - 2, 1);
             this.ctx.fillStyle = '#fb923c';
+            
             values.forEach((v, idx) => {
                 const x = paddingLeft + idx * totalBarWidth + 1;
                 const h = (v / niceMax) * graphHeight;
@@ -524,7 +634,9 @@
             const ts = point.unixTimestamp || (typeof point.timestamp === 'string' && parseInt(point.timestamp));
             const date = ts ? new Date(ts * 1000) : new Date();
             const timeText = this.formatTooltipTime(date);
-            const gasValue = this.plotValues && this.plotValues[index] ? this.plotValues[index] : (parseFloat(point.gas) || 0);
+            
+            // Use plotValues for tooltip (per-period consumption)
+            const gasValue = this.plotValues && this.plotValues[index] !== undefined ? this.plotValues[index] : (parseFloat(point.gas) || 0);
             const gasText = `Verbruik: ${this.formatNumber(gasValue, 3)} m³`;
 
             // Calculate tooltip dimensions
