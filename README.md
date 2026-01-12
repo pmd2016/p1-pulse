@@ -1,4 +1,4 @@
-# P1 Monitor - Custom Dashboard UI
+# P1 Pulse - a custom UI for P1 Monitor
 
 A modern, responsive web dashboard for monitoring real-time energy, gas, water, and solar data from P1 Monitor. Built with PHP, JavaScript, and a modern CSS framework for an intuitive user experience.
 
@@ -20,6 +20,8 @@ A modern, responsive web dashboard for monitoring real-time energy, gas, water, 
 
 - **Dashboard** - Overview of all utilities with gauges and peak information
 - **Electricity** - Detailed electricity consumption and production analysis
+
+### 🚧 Work in progress
 - **Gas** - Gas consumption tracking and charts
 - **Water** - Water usage monitoring
 - **Solar** - Solar production data and efficiency metrics
