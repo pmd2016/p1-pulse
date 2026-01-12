@@ -283,6 +283,7 @@
             // Choose values for plotting (use computed deltas if available)
             const values = (this.plotValues && this.plotValues.length > 0) ? this.plotValues : this.data.map(d => parseFloat(d.gas) || 0);
             const maxV = Math.max(...values, 0.001);
+            const gridLines = 4;
             const ticks = this.calculateNiceTicks(0, maxV, gridLines + 1);
             const niceMax = Math.max(...ticks);
             this.ctx.strokeStyle = gridColor;
