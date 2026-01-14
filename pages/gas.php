@@ -94,12 +94,12 @@
                             <label class="control-label">Toon:</label>
                             <div class="toggle-group">
                                 <label class="toggle-switch">
-                                    <input type="checkbox" id="toggle-gas-smoothed" checked>
+                                    <input type="checkbox" id="toggle-gas-degree-days" checked>
                                     <span class="toggle-slider"></span>
-                                    <span class="toggle-label">Glad gemiddelde</span>
+                                    <span class="toggle-label">Graaddagen</span>
                                 </label>
                                 <label class="toggle-switch">
-                                    <input type="checkbox" id="toggle-gas-temp" disabled>
+                                    <input type="checkbox" id="toggle-gas-temp">
                                     <span class="toggle-slider"></span>
                                     <span class="toggle-label">Temperatuur</span>
                                 </label>
@@ -118,13 +118,21 @@
                                     <span class="legend-color"></span>
                                     <span class="legend-text">Verbruik (m³)</span>
                                 </span>
-                                <span class="legend-item flow">
+                                <span class="legend-item degree-days" id="legend-degree-days">
                                     <span class="legend-color"></span>
-                                    <span class="legend-text">Debiet (m³/h)</span>
+                                    <span class="legend-text">Graaddagen</span>
                                 </span>
-                                <span class="legend-item cost" id="legend-gas-cost" style="display: none;">
+                                <span class="legend-item temp-max" id="legend-temp-max" style="display: none;">
                                     <span class="legend-color"></span>
-                                    <span class="legend-text">Kosten</span>
+                                    <span class="legend-text">Temp Max</span>
+                                </span>
+                                <span class="legend-item temp-avg" id="legend-temp-avg" style="display: none;">
+                                    <span class="legend-color"></span>
+                                    <span class="legend-text">Temp Gem</span>
+                                </span>
+                                <span class="legend-item temp-min" id="legend-temp-min" style="display: none;">
+                                    <span class="legend-color"></span>
+                                    <span class="legend-text">Temp Min</span>
                                 </span>
                             </div>
                         </div>

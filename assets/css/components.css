@@ -1063,3 +1063,22 @@
         height: 350px;
     }
 }
+
+/* ============================================================================
+   GAS PAGE STYLES
+   ============================================================================ */
+
+
+/* Degree Days Legend Color */
+
+.legend-item.degree-days .legend-color {
+    background: #3b82f6;
+}
+
+/* Optional: Add a line style to match the chart visualization */
+.legend-item.degree-days .legend-color {
+    background: linear-gradient(to right, #3b82f6 0%, #3b82f6 100%);
+    height: 3px;
+    width: 24px;
+    border-radius: 2px;
+}

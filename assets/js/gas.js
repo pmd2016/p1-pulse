@@ -1,11 +1,10 @@
 /**
- * Gas Page Manager
+ * Gas Page Manager - CONSERVATIVE FIX
  * Handles chart rendering and interactivity for gas data
  * 
  * FIXES:
- * 1. Corrected fillMissingData() to handle period boundaries properly
- * 2. Fixed statistics to show consumption per period, not cumulative totals
- * 3. Added proper zero-consumption handling
+ * 1. Fixed fillMissingData() to not lose data points in same period
+ * 2. Fixed statistics to show consumption per period (not cumulative)
  */
 
 (function() {
@@ -18,6 +17,10 @@
         canvas: null,
         ctx: null,
         plotValues: [],
+        degreeDaysData: null,
+        showDegreeDays: true, // Changed from false to true - visible by default
+        showTemp: false,
+        temperatureData: null,
         hoverState: {
             x: -1,
             y: -1,
@@ -55,6 +58,7 @@
 
             this.setupEventListeners();
             this.updateZoomButtons();
+            this.updateLegend(); // Initialize legend state
             this.loadData();
 
             window.addEventListener('resize', () => this.redrawChart());
@@ -91,8 +95,29 @@
                 });
             });
 
-            const toggle = document.getElementById('toggle-gas-smoothed');
-            if (toggle) toggle.addEventListener('change', () => this.redrawChart());
+            const degreeDaysToggle = document.getElementById('toggle-gas-degree-days');
+            if (degreeDaysToggle) {
+                degreeDaysToggle.addEventListener('change', (e) => {
+                    this.showDegreeDays = e.target.checked;
+                    this.updateLegend();
+                    this.redrawChart();
+                });
+            }
+
+            const tempToggle = document.getElementById('toggle-gas-temp');
+            if (tempToggle) {
+                tempToggle.addEventListener('change', async (e) => {
+                    this.showTemp = e.target.checked;
+                    this.updateLegend();
+                    
+                    // Fetch temperature data if enabling
+                    if (this.showTemp && !this.temperatureData) {
+                        await this.fetchTemperatureData();
+                    }
+                    
+                    this.redrawChart();
+                });
+            }
         },
 
         updateZoomButtons() {
@@ -114,7 +139,6 @@
         changePeriod(period) {
             this.currentPeriod = period;
             document.querySelectorAll('.period-tab').forEach(tab => tab.classList.toggle('active', tab.dataset.period === period));
-            // defaults
             const defaults = { hours: 24, days: 7, months: 12, years: 5 };
             this.currentZoom = defaults[period] || 24;
             console.log('Period changed to:', period, 'zoom set to:', this.currentZoom);
@@ -131,20 +155,25 @@
         async loadData() {
             try {
                 this.showLoading();
-                // Reuse electricity data endpoint which also contains gas in column 9
                 const payload = await window.P1API.getElectricityData(this.currentPeriod, this.currentZoom, false);
                 if (!payload || !payload.chartData) {
                     this.showError('Geen data beschikbaar');
-                    console.warn('No chartData returned for period:', this.currentPeriod, 'zoom:', this.currentZoom, 'payload:', payload);
+                    console.warn('No chartData returned for period:', this.currentPeriod, 'zoom:', this.currentZoom);
                     return;
                 }
 
                 console.log('Gas data loaded for period:', this.currentPeriod, 'items:', payload.chartData.length);
                 this.data = payload.chartData;
-                
-                // FIX: Fill missing data BEFORE updating statistics
                 this.data = this.fillMissingData(this.data, this.currentPeriod);
                 console.log('After fillMissingData:', this.data.length, 'items');
+                
+                // Fetch degree days data
+                await this.fetchDegreeDays();
+                
+                // Fetch temperature data if enabled
+                if (this.showTemp) {
+                    await this.fetchTemperatureData();
+                }
                 
                 this.updateStatistics();
                 this.redrawChart();
@@ -160,21 +189,36 @@
         updateStatistics() {
             if (!this.data || this.data.length === 0) return;
 
-            // FIX: The 'gas' field in the API response is the CONSUMPTION PER PERIOD (column 9)
-            // NOT cumulative meter readings. It's already the per-period volume.
-            const gasValues = this.data.map(d => parseFloat(d.gas) || 0);
+            // FIX: For HOURLY data, gas field contains cumulative meter readings
+            // For DAILY/MONTHLY/YEARLY, it contains per-period consumption
+            let gasValues;
             
-            // Save for charting
+            if (this.currentPeriod === 'hours') {
+                // Calculate deltas (consumption per hour) from cumulative readings
+                const raw = this.data.map(d => parseFloat(d.gas) || 0);
+                gasValues = [];
+                
+                for (let i = 0; i < raw.length; i++) {
+                    if (i === 0) {
+                        // First data point: can't calculate delta, assume 0
+                        gasValues.push(0);
+                    } else {
+                        let delta = raw[i] - raw[i - 1];
+                        if (delta < 0) delta = 0; // Handle meter resets
+                        gasValues.push(delta);
+                    }
+                }
+            } else {
+                // For days/months/years, use values directly (already per-period)
+                gasValues = this.data.map(d => parseFloat(d.gas) || 0);
+            }
+            
             this.plotValues = gasValues;
 
-            // Calculate totals and statistics
             const total = gasValues.reduce((s, v) => s + v, 0);
             const avg = gasValues.length > 0 ? total / gasValues.length : 0;
-            
-            // Check if there's actual consumption
             const hasConsumption = total > 0.001;
             
-            // Find peak
             let peakValue = 0;
             let peakTime = '';
             gasValues.forEach((v, idx) => {
@@ -185,32 +229,23 @@
                 }
             });
 
-            // Estimate current flow (m3/h) from last value
             let flow = 0;
-            if (this.data.length >= 1) {
-                // For hourly data, the gas value IS the flow rate
-                if (this.currentPeriod === 'hours') {
-                    flow = gasValues[gasValues.length - 1] || 0;
-                } else if (this.currentPeriod === 'days') {
-                    // For daily: divide by 24 to get hourly rate
-                    flow = (gasValues[gasValues.length - 1] || 0) / 24;
-                } else {
-                    // For longer periods, estimate from last two points
-                    if (this.data.length >= 2) {
-                        const lastValue = gasValues[gasValues.length - 1];
-                        const secondLastValue = gasValues[gasValues.length - 2];
-                        const avgRecent = (lastValue + secondLastValue) / 2;
-                        
-                        if (this.currentPeriod === 'months') {
-                            flow = avgRecent / (30 * 24); // rough estimate
-                        } else if (this.currentPeriod === 'years') {
-                            flow = avgRecent / (365 * 24); // rough estimate
-                        }
-                    }
+            if (this.currentPeriod === 'hours' && gasValues.length > 0) {
+                flow = gasValues[gasValues.length - 1] || 0;
+            } else if (this.currentPeriod === 'days' && gasValues.length > 0) {
+                flow = (gasValues[gasValues.length - 1] || 0) / 24;
+            } else if (gasValues.length >= 2) {
+                const lastValue = gasValues[gasValues.length - 1];
+                const secondLastValue = gasValues[gasValues.length - 2];
+                const avgRecent = (lastValue + secondLastValue) / 2;
+                if (this.currentPeriod === 'months') {
+                    flow = avgRecent / (30 * 24);
+                } else if (this.currentPeriod === 'years') {
+                    flow = avgRecent / (365 * 24);
                 }
             }
 
-            // FIX: Display consumption per period, not cumulative
+            // Update UI
             if (this.currentPeriod === 'hours') {
                 const currentConsumption = gasValues[gasValues.length - 1] || 0;
                 if (currentConsumption > 0.001) {
@@ -230,7 +265,6 @@
                 }
             }
             
-            // Update cost
             if (hasConsumption) {
                 this.updateElement('stat-gas-cost', '€ ' + this.formatNumber(total * 1.5, 2));
                 this.updateElement('stat-gas-cost-period', `Geschat`);
@@ -239,18 +273,15 @@
                 this.updateElement('stat-gas-cost-period', `Geen verbruik`);
             }
             
-            // Update average
             this.updateElement('stat-gas-average', this.formatNumber(avg, 3) + ' m³');
             this.updateElement('stat-gas-average-period', `per ${this.getPeriodLabelSingular()}`);
             
-            // Update flow
             if (flow > 0.001) {
                 this.updateElement('stat-gas-flow', this.formatNumber(flow, 3) + ' m³/h');
             } else {
                 this.updateElement('stat-gas-flow', '0.000 m³/h');
             }
             
-            // Update peak
             if (hasConsumption && peakValue > 0.001) {
                 this.updateElement('stat-gas-peak', this.formatNumber(peakValue, 3) + ' m³');
                 this.updateElement('stat-gas-peak-time', this.formatPeakTime(peakTime));
@@ -299,119 +330,63 @@
             return niceFraction * Math.pow(10, exponent);
         },
 
-        /**
-         * FIX: Normalize a date to the start of a period
-         */
-        normalizeToPerio dStart(date, period) {
-            const normalized = new Date(date);
-            
-            if (period === 'hours') {
-                normalized.setMinutes(0, 0, 0);
-            } else if (period === 'days') {
-                normalized.setHours(0, 0, 0, 0);
-            } else if (period === 'months') {
-                normalized.setDate(1);
-                normalized.setHours(0, 0, 0, 0);
-            } else if (period === 'years') {
-                normalized.setMonth(0, 1);
-                normalized.setHours(0, 0, 0, 0);
-            }
-            
-            return normalized;
-        },
-
-        /**
-         * FIX: Get a normalized period key for grouping data
-         */
         getPeriodKey(ts, period) {
             const date = new Date(ts * 1000);
-            
             if (period === 'hours') {
-                // Normalize to hour boundary
-                date.setMinutes(0, 0, 0);
-                return Math.floor(date.getTime() / 1000);
+                return Math.floor(ts / 3600);
             } else if (period === 'days') {
-                // Normalize to day boundary (midnight)
-                date.setHours(0, 0, 0, 0);
-                return Math.floor(date.getTime() / 1000);
+                return date.toDateString();
             } else if (period === 'months') {
-                // Normalize to first day of month at midnight
-                date.setDate(1);
-                date.setHours(0, 0, 0, 0);
-                return Math.floor(date.getTime() / 1000);
+                return date.getFullYear() + '-' + (date.getMonth() + 1);
             } else if (period === 'years') {
-                // Normalize to Jan 1 at midnight
-                date.setMonth(0, 1);
-                date.setHours(0, 0, 0, 0);
-                return Math.floor(date.getTime() / 1000);
+                return date.getFullYear();
+            } else {
+                return ts;
             }
-            
-            return ts;
         },
 
         /**
-         * FIX: Completely rewritten fillMissingData to handle period boundaries correctly
+         * FIX: Modified to handle multiple data points per period correctly
          */
         fillMissingData(data, period) {
             if (data.length === 0) return data;
 
-            // Sort by timestamp
             data.sort((a, b) => (a.unixTimestamp || 0) - (b.unixTimestamp || 0));
 
-            // Create a map that groups data by normalized period keys
-            // Use array values to handle multiple data points per period
+            const filled = [];
+            const startTs = data[0].unixTimestamp || 0;
+            const endTs = data[data.length - 1].unixTimestamp || 0;
+            const startDate = new Date(startTs * 1000);
+            const endDate = new Date(endTs * 1000);
+
+            // FIX: Store arrays instead of single values to prevent data loss
             const dataMap = new Map();
-            
             data.forEach(d => {
                 const ts = d.unixTimestamp || 0;
                 const key = this.getPeriodKey(ts, period);
-                
                 if (!dataMap.has(key)) {
                     dataMap.set(key, []);
                 }
                 dataMap.get(key).push(d);
             });
 
-            // Get the range of periods to fill
-            const startTs = data[0].unixTimestamp || 0;
-            const endTs = data[data.length - 1].unixTimestamp || 0;
-            
-            // Normalize start and end to period boundaries
-            const startDate = this.normalizeToPerio dStart(new Date(startTs * 1000), period);
-            const endDate = this.normalizeToPerio dStart(new Date(endTs * 1000), period);
-
-            const filled = [];
             let currentDate = new Date(startDate);
-            
-            // Iterate through all periods in the range
             while (currentDate <= endDate) {
-                const currentTs = Math.floor(currentDate.getTime() / 1000);
-                const key = this.getPeriodKey(currentTs, period);
+                const ts = Math.floor(currentDate.getTime() / 1000);
+                const key = this.getPeriodKey(ts, period);
                 
                 if (dataMap.has(key)) {
-                    // Get all data points for this period
+                    // FIX: Get all data points and use the most recent one
                     const dataPoints = dataMap.get(key);
-                    
-                    // Use the LAST (most recent) data point for this period
-                    // This ensures we get the latest reading if multiple exist
-                    const selectedPoint = dataPoints[dataPoints.length - 1];
-                    
-                    // Use the normalized timestamp for consistency
-                    filled.push({
-                        ...selectedPoint,
-                        unixTimestamp: currentTs,
-                        timestamp: new Date(currentTs * 1000).toISOString().slice(0, 19).replace('T', ' ')
-                    });
+                    filled.push(dataPoints[dataPoints.length - 1]);
                 } else {
-                    // No data for this period - fill with zero
                     filled.push({
-                        timestamp: new Date(currentTs * 1000).toISOString().slice(0, 19).replace('T', ' '),
-                        unixTimestamp: currentTs,
+                        timestamp: ts.toString(),
+                        unixTimestamp: ts,
                         gas: 0
                     });
                 }
 
-                // Increment to next period
                 if (period === 'hours') {
                     currentDate.setHours(currentDate.getHours() + 1);
                 } else if (period === 'days') {
@@ -420,11 +395,178 @@
                     currentDate.setMonth(currentDate.getMonth() + 1);
                 } else if (period === 'years') {
                     currentDate.setFullYear(currentDate.getFullYear() + 1);
+                } else {
+                    currentDate.setHours(currentDate.getHours() + 1);
                 }
             }
 
-            console.log(`fillMissingData: ${data.length} raw → ${filled.length} filled (period: ${period})`);
             return filled;
+        },
+
+        async fetchDegreeDays() {
+            try {
+                if (!this.data || this.data.length === 0) {
+                    this.degreeDaysData = null;
+                    return;
+                }
+
+                // Determine which weather endpoint to use based on period
+                let weatherEndpoint;
+                if (this.currentPeriod === 'hours') {
+                    weatherEndpoint = `${window.P1API.BASE_PATH}/v1/weather/hour?limit=${this.currentZoom}`;
+                } else if (this.currentPeriod === 'days') {
+                    weatherEndpoint = `${window.P1API.BASE_PATH}/v1/weather/day?limit=${this.currentZoom}`;
+                } else if (this.currentPeriod === 'months') {
+                    weatherEndpoint = `${window.P1API.BASE_PATH}/v1/weather/month?limit=${this.currentZoom}`;
+                } else if (this.currentPeriod === 'years') {
+                    weatherEndpoint = `${window.P1API.BASE_PATH}/v1/weather/year?limit=${this.currentZoom}`;
+                } else {
+                    this.degreeDaysData = null;
+                    return;
+                }
+
+                const weatherData = await window.P1API.fetch(weatherEndpoint);
+                
+                if (!weatherData || weatherData.length === 0) {
+                    console.warn('No weather data available');
+                    this.degreeDaysData = null;
+                    return;
+                }
+
+                // Weather data structure (based on API docs):
+                // [0] = TIMESTAMP_LOCAL
+                // [1] = TIMESTAMP_UTC
+                // [19] = DEGREE_DAYS (last field)
+                
+                // Reverse to match our data order (oldest first)
+                weatherData.reverse();
+                
+                // Extract degree days and align with gas data
+                const degreeDays = [];
+                const weatherMap = new Map();
+                
+                weatherData.forEach(record => {
+                    const timestamp = parseInt(record[1]);
+                    const degreeDaysValue = parseFloat(record[19]) || 0;
+                    const key = this.getPeriodKey(timestamp, this.currentPeriod);
+                    weatherMap.set(key, degreeDaysValue);
+                });
+                
+                // Match degree days to gas data points
+                this.data.forEach(gasPoint => {
+                    const key = this.getPeriodKey(gasPoint.unixTimestamp, this.currentPeriod);
+                    const ddValue = weatherMap.get(key) || 0;
+                    degreeDays.push(ddValue);
+                });
+                
+                this.degreeDaysData = degreeDays;
+                console.log('Degree days loaded:', degreeDays.length, 'values');
+                
+            } catch (error) {
+                console.warn('Could not fetch degree days:', error);
+                this.degreeDaysData = null;
+            }
+        },
+
+        async fetchTemperatureData() {
+            try {
+                if (!this.data || this.data.length === 0) {
+                    this.temperatureData = null;
+                    return;
+                }
+
+                // Determine which weather endpoint to use based on period
+                let weatherEndpoint;
+                if (this.currentPeriod === 'hours') {
+                    weatherEndpoint = `${window.P1API.BASE_PATH}/v1/weather/hour?limit=${this.currentZoom}`;
+                } else if (this.currentPeriod === 'days') {
+                    weatherEndpoint = `${window.P1API.BASE_PATH}/v1/weather/day?limit=${this.currentZoom}`;
+                } else if (this.currentPeriod === 'months') {
+                    weatherEndpoint = `${window.P1API.BASE_PATH}/v1/weather/month?limit=${this.currentZoom}`;
+                } else if (this.currentPeriod === 'years') {
+                    weatherEndpoint = `${window.P1API.BASE_PATH}/v1/weather/year?limit=${this.currentZoom}`;
+                } else {
+                    this.temperatureData = null;
+                    return;
+                }
+
+                const weatherData = await window.P1API.fetch(weatherEndpoint);
+                
+                if (!weatherData || weatherData.length === 0) {
+                    console.warn('No weather data available for temperature');
+                    this.temperatureData = null;
+                    return;
+                }
+
+                // Weather data structure:
+                // [4] = TEMPERATURE_LOW
+                // [5] = TEMPERATURE_AVERAGE
+                // [6] = TEMPERATURE_HIGH
+                
+                // Reverse to match our data order (oldest first)
+                weatherData.reverse();
+                
+                // Extract temperature values and align with gas data
+                const tempMap = new Map();
+                
+                weatherData.forEach(record => {
+                    const timestamp = parseInt(record[1]);
+                    const tempLow = parseFloat(record[4]);
+                    const tempAvg = parseFloat(record[5]);
+                    const tempHigh = parseFloat(record[6]);
+                    
+                    if (!isNaN(timestamp) && !isNaN(tempLow) && !isNaN(tempAvg) && !isNaN(tempHigh)) {
+                        const key = this.getPeriodKey(timestamp, this.currentPeriod);
+                        tempMap.set(key, {
+                            min: tempLow,
+                            avg: tempAvg,
+                            max: tempHigh
+                        });
+                    }
+                });
+                
+                // Create temperature arrays aligned with gas data
+                const tempData = {
+                    min: [],
+                    avg: [],
+                    max: []
+                };
+                
+                this.data.forEach(gasPoint => {
+                    const key = this.getPeriodKey(gasPoint.unixTimestamp, this.currentPeriod);
+                    const temp = tempMap.get(key);
+                    if (temp) {
+                        tempData.min.push(temp.min);
+                        tempData.avg.push(temp.avg);
+                        tempData.max.push(temp.max);
+                    } else {
+                        tempData.min.push(null);
+                        tempData.avg.push(null);
+                        tempData.max.push(null);
+                    }
+                });
+                
+                this.temperatureData = tempData;
+                console.log('Temperature data loaded:', tempData.min.filter(v => v !== null).length, 'valid points');
+                
+            } catch (error) {
+                console.warn('Could not fetch temperature data:', error);
+                this.temperatureData = null;
+            }
+        },
+
+        updateLegend() {
+            const degreeDaysLegend = document.getElementById('legend-degree-days');
+            if (degreeDaysLegend) {
+                degreeDaysLegend.style.display = this.showDegreeDays ? 'inline-flex' : 'none';
+            }
+            
+            // Update temperature legend items
+            const tempLegendIds = ['legend-temp-max', 'legend-temp-avg', 'legend-temp-min'];
+            tempLegendIds.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = this.showTemp ? 'inline-flex' : 'none';
+            });
         },
 
         getPeriodLabel() {
@@ -469,7 +611,7 @@
             const width = this.canvas.width;
             const height = this.canvas.height;
             const paddingLeft = 60;
-            const paddingRight = 20;
+            const paddingRight = (this.showDegreeDays || this.showTemp) ? 60 : 20; // Space for secondary axis
             const paddingTop = 30;
             const paddingBottom = 60;
             const graphWidth = width - paddingLeft - paddingRight;
@@ -477,12 +619,10 @@
 
             this.ctx.clearRect(0,0,width,height);
 
-            // Get theme colors
             const isDark = document.body.classList.contains('dark-theme');
             const gridColor = isDark ? '#334155' : '#e2e8f0';
             const textColor = isDark ? '#94a3b8' : '#64748b';
 
-            // Use plotValues for rendering (these are the per-period consumption values)
             const values = (this.plotValues && this.plotValues.length > 0) ? this.plotValues : this.data.map(d => parseFloat(d.gas) || 0);
             const maxV = Math.max(...values, 0.001);
             const gridLines = 4;
@@ -493,7 +633,6 @@
             this.ctx.fillStyle = textColor;
             this.ctx.font = '12px sans-serif';
 
-            // Draw Y-axis grid and labels
             ticks.forEach(v => {
                 const y = paddingTop + graphHeight - (graphHeight * (v / niceMax));
                 this.ctx.beginPath();
@@ -504,14 +643,12 @@
                 this.ctx.fillText(this.formatNumber(v, 2) + ' m³', paddingLeft - 8, y + 4);
             });
 
-            // Draw X-axis line
             this.ctx.strokeStyle = gridColor;
             this.ctx.beginPath();
             this.ctx.moveTo(paddingLeft, height - paddingBottom);
             this.ctx.lineTo(width - paddingRight, height - paddingBottom);
             this.ctx.stroke();
 
-            // Draw bars
             const count = values.length;
             const totalBarWidth = graphWidth / count;
             const barWidth = Math.max(totalBarWidth - 2, 1);
@@ -524,13 +661,272 @@
                 this.ctx.fillRect(x, y, barWidth, h);
             });
 
-            // Draw X-axis labels
+            // Draw degree days line if enabled
+            if (this.showDegreeDays && this.degreeDaysData && this.degreeDaysData.length > 0) {
+                this.drawDegreeDaysLine(paddingLeft, paddingTop, paddingRight, paddingBottom, graphWidth, graphHeight, totalBarWidth);
+            }
+
+            // Draw temperature lines if enabled
+            if (this.showTemp && this.temperatureData) {
+                this.drawTemperatureLines(paddingLeft, paddingTop, paddingRight, paddingBottom, graphWidth, graphHeight, totalBarWidth);
+            }
+
             this.drawXAxisLabels(paddingLeft, paddingBottom, graphWidth, graphHeight, height, textColor);
 
-            // Draw hover tooltip
             if (this.hoverState.isHovering) {
                 this.drawTooltip(paddingLeft, paddingTop, paddingRight, paddingBottom, graphWidth, graphHeight, height, totalBarWidth, textColor, isDark);
             }
+        },
+
+        drawDegreeDaysLine(paddingLeft, paddingTop, paddingRight, paddingBottom, graphWidth, graphHeight, totalBarWidth) {
+            if (!this.degreeDaysData || this.degreeDaysData.length === 0) return;
+
+            // Calculate scale for degree days using nice ticks
+            const maxDD = Math.max(...this.degreeDaysData, 0.1);
+            const minDD = Math.min(...this.degreeDaysData, 0);
+            
+            // Use the same nice tick calculation as gas consumption
+            const ddTicks = this.calculateNiceTicks(minDD, maxDD, 5); // 5 ticks (0-4)
+            const niceMinDD = Math.min(...ddTicks);
+            const niceMaxDD = Math.max(...ddTicks);
+            const ddRange = niceMaxDD - niceMinDD;
+            
+            const getDDY = (value) => {
+                const ratio = (value - niceMinDD) / (ddRange || 1);
+                return paddingTop + graphHeight - (ratio * graphHeight);
+            };
+
+            // Draw degree days line (blue color)
+            this.ctx.strokeStyle = '#3b82f6';
+            this.ctx.lineWidth = 2;
+            this.ctx.setLineDash([]);
+            this.ctx.beginPath();
+
+            this.degreeDaysData.forEach((dd, idx) => {
+                const x = paddingLeft + (idx * totalBarWidth) + totalBarWidth / 2;
+                const y = getDDY(dd);
+                
+                if (idx === 0) {
+                    this.ctx.moveTo(x, y);
+                } else {
+                    this.ctx.lineTo(x, y);
+                }
+            });
+
+            this.ctx.stroke();
+
+            // Draw right Y-axis for degree days
+            const isDark = document.body.classList.contains('dark-theme');
+            const textColor = isDark ? '#94a3b8' : '#64748b';
+            const width = paddingLeft + graphWidth + paddingRight;
+            const rightX = paddingLeft + graphWidth;
+
+            this.ctx.strokeStyle = isDark ? '#334155' : '#e2e8f0';
+            this.ctx.lineWidth = 1;
+            this.ctx.beginPath();
+            this.ctx.moveTo(rightX, paddingTop);
+            this.ctx.lineTo(rightX, paddingTop + graphHeight);
+            this.ctx.stroke();
+
+            // Draw tick marks and labels using nice ticks
+            this.ctx.fillStyle = textColor;
+            this.ctx.font = '11px sans-serif';
+            this.ctx.textAlign = 'left';
+
+            ddTicks.forEach(ddValue => {
+                const y = getDDY(ddValue);
+
+                // Tick mark
+                this.ctx.strokeStyle = isDark ? '#334155' : '#e2e8f0';
+                this.ctx.beginPath();
+                this.ctx.moveTo(rightX, y);
+                this.ctx.lineTo(rightX + 5, y);
+                this.ctx.stroke();
+
+                // Label - format based on value size
+                let label;
+                if (Math.abs(ddValue) >= 10) {
+                    label = Math.round(ddValue).toString();
+                } else {
+                    label = ddValue.toFixed(1);
+                }
+                this.ctx.fillText(label, rightX + 8, y + 4);
+            });
+        },
+
+        drawTemperatureLines(paddingLeft, paddingTop, paddingRight, paddingBottom, graphWidth, graphHeight, totalBarWidth) {
+            if (!this.temperatureData) return;
+
+            const isDark = document.body.classList.contains('dark-theme');
+            const textColor = isDark ? '#94a3b8' : '#64748b';
+            const gridColor = isDark ? '#334155' : '#e2e8f0';
+
+            // Find temperature range from all three series
+            let minTemp = Infinity;
+            let maxTemp = -Infinity;
+            
+            ['min', 'avg', 'max'].forEach(series => {
+                this.temperatureData[series].forEach(t => {
+                    if (t !== null && !isNaN(t)) {
+                        minTemp = Math.min(minTemp, t);
+                        maxTemp = Math.max(maxTemp, t);
+                    }
+                });
+            });
+
+            if (!isFinite(minTemp) || !isFinite(maxTemp)) return;
+
+            // Add padding to scale (10%)
+            const tempRange = maxTemp - minTemp;
+            const padding = Math.max(tempRange * 0.1, 1); // At least 1 degree padding
+            minTemp -= padding;
+            maxTemp += padding;
+            const tempScale = maxTemp - minTemp;
+
+            // Draw secondary Y-axis
+            this.drawTemperatureAxis(paddingLeft, paddingTop, paddingRight, paddingBottom, graphWidth, graphHeight, minTemp, maxTemp, tempScale, textColor, gridColor);
+
+            // Helper to calculate Y position
+            const getTempY = (temp) => {
+                if (temp === null || isNaN(temp)) return null;
+                const ratio = (temp - minTemp) / tempScale;
+                return paddingTop + graphHeight - (ratio * graphHeight);
+            };
+
+            const dataCount = this.temperatureData.min.length;
+
+            // Create points arrays for all three temperature series
+            const createPoints = (series) => {
+                const points = [];
+                for (let i = 0; i < dataCount; i++) {
+                    const temp = this.temperatureData[series][i];
+                    const y = getTempY(temp);
+                    if (y !== null) {
+                        const x = paddingLeft + (i * totalBarWidth) + totalBarWidth / 2;
+                        points.push({ x, y });
+                    }
+                }
+                return points;
+            };
+
+            const maxPoints = createPoints('max');
+            const avgPoints = createPoints('avg');
+            const minPoints = createPoints('min');
+
+            // Fill area between min and max temperature
+            if (maxPoints.length > 1 && minPoints.length > 1) {
+                this.ctx.fillStyle = 'rgba(59, 130, 246, 0.1)'; // Light blue with transparency
+                this.ctx.beginPath();
+                
+                // Start at first min point
+                this.ctx.moveTo(minPoints[0].x, minPoints[0].y);
+                
+                // Draw smooth curve through min points
+                for (let i = 1; i < minPoints.length; i++) {
+                    const current = minPoints[i];
+                    const previous = minPoints[i - 1];
+                    const controlX = (previous.x + current.x) / 2;
+                    const controlY = (previous.y + current.y) / 2;
+                    this.ctx.quadraticCurveTo(previous.x, previous.y, controlX, controlY);
+                    if (i === minPoints.length - 1) {
+                        this.ctx.quadraticCurveTo(current.x, current.y, current.x, current.y);
+                    }
+                }
+                
+                // Draw to last max point
+                this.ctx.lineTo(maxPoints[maxPoints.length - 1].x, maxPoints[maxPoints.length - 1].y);
+                
+                // Draw smooth curve back through max points (in reverse)
+                for (let i = maxPoints.length - 2; i >= 0; i--) {
+                    const current = maxPoints[i];
+                    const next = maxPoints[i + 1];
+                    const controlX = (current.x + next.x) / 2;
+                    const controlY = (current.y + next.y) / 2;
+                    this.ctx.quadraticCurveTo(next.x, next.y, controlX, controlY);
+                    if (i === 0) {
+                        this.ctx.quadraticCurveTo(current.x, current.y, current.x, current.y);
+                    }
+                }
+                
+                this.ctx.closePath();
+                this.ctx.fill();
+            }
+
+            // Function to draw smooth curve through points
+            const drawSmooth = (points, color, dashed = false) => {
+                if (points.length === 0) return;
+
+                this.ctx.strokeStyle = color;
+                this.ctx.lineWidth = 2;
+                if (dashed) this.ctx.setLineDash([5, 5]);
+                else this.ctx.setLineDash([]);
+
+                this.ctx.beginPath();
+                this.ctx.moveTo(points[0].x, points[0].y);
+
+                for (let i = 0; i < points.length - 1; i++) {
+                    const current = points[i];
+                    const next = points[i + 1];
+                    const xMid = (current.x + next.x) / 2;
+                    const yMid = (current.y + next.y) / 2;
+
+                    if (i === 0) {
+                        this.ctx.lineTo(xMid, yMid);
+                    } else {
+                        this.ctx.quadraticCurveTo(current.x, current.y, xMid, yMid);
+                    }
+                }
+
+                // Draw to last point
+                if (points.length > 1) {
+                    const secondLast = points[points.length - 2];
+                    const last = points[points.length - 1];
+                    this.ctx.quadraticCurveTo(secondLast.x, secondLast.y, last.x, last.y);
+                }
+
+                this.ctx.stroke();
+                this.ctx.setLineDash([]);
+            };
+
+            // Draw temperature lines (order matters: max, avg, min on top)
+            drawSmooth(maxPoints, '#ef4444', true);  // Red, dashed
+            drawSmooth(avgPoints, '#374151', false); // Dark gray, solid (matching electricity)
+            drawSmooth(minPoints, '#3b82f6', true);  // Blue, dashed
+        },
+
+        drawTemperatureAxis(paddingLeft, paddingTop, paddingRight, paddingBottom, graphWidth, graphHeight, minTemp, maxTemp, tempScale, textColor, gridColor) {
+            const rightX = paddingLeft + graphWidth;
+
+            // Draw axis line
+            this.ctx.strokeStyle = gridColor;
+            this.ctx.lineWidth = 1;
+            this.ctx.beginPath();
+            this.ctx.moveTo(rightX, paddingTop);
+            this.ctx.lineTo(rightX, paddingTop + graphHeight);
+            this.ctx.stroke();
+
+            // Calculate nice ticks
+            const tempTicks = this.calculateNiceTicks(minTemp, maxTemp, 5);
+
+            // Draw tick marks and labels
+            this.ctx.fillStyle = textColor;
+            this.ctx.font = '11px sans-serif';
+            this.ctx.textAlign = 'left';
+
+            tempTicks.forEach(temp => {
+                const ratio = (temp - minTemp) / tempScale;
+                const y = paddingTop + graphHeight - (ratio * graphHeight);
+
+                // Tick mark
+                this.ctx.strokeStyle = gridColor;
+                this.ctx.beginPath();
+                this.ctx.moveTo(rightX, y);
+                this.ctx.lineTo(rightX + 5, y);
+                this.ctx.stroke();
+
+                // Label
+                this.ctx.fillText(`${Math.round(temp)}°C`, rightX + 8, y + 4);
+            });
         },
 
         drawXAxisLabels(paddingLeft, paddingBottom, graphWidth, graphHeight, height, textColor) {
@@ -544,7 +940,6 @@
             this.ctx.textAlign = 'center';
             this.ctx.font = isMobile ? '9px sans-serif' : '11px sans-serif';
 
-            // Show fewer labels on small screens or with many data points
             let labelInterval = 1;
             if (this.currentPeriod === 'hours') {
                 if (isMobile || dataCount > 24) {
@@ -611,8 +1006,6 @@
 
             const mouseX = this.hoverState.x;
             const dataCount = this.data.length;
-
-            // Find closest data point
             const index = Math.floor((mouseX - paddingLeft) / totalBarWidth);
 
             if (index < 0 || index >= dataCount) return;
@@ -620,7 +1013,6 @@
             const point = this.data[index];
             const x = paddingLeft + (index * totalBarWidth) + totalBarWidth / 2;
 
-            // Draw vertical line
             this.ctx.strokeStyle = isDark ? '#64748b' : '#94a3b8';
             this.ctx.lineWidth = 1;
             this.ctx.setLineDash([5, 5]);
@@ -630,27 +1022,59 @@
             this.ctx.stroke();
             this.ctx.setLineDash([]);
 
-            // Prepare tooltip content
             const ts = point.unixTimestamp || (typeof point.timestamp === 'string' && parseInt(point.timestamp));
             const date = ts ? new Date(ts * 1000) : new Date();
             const timeText = this.formatTooltipTime(date);
-            
-            // Use plotValues for tooltip (per-period consumption)
             const gasValue = this.plotValues && this.plotValues[index] !== undefined ? this.plotValues[index] : (parseFloat(point.gas) || 0);
             const gasText = `Verbruik: ${this.formatNumber(gasValue, 3)} m³`;
 
-            // Calculate tooltip dimensions
+            // Add degree days if shown
+            let ddText = '';
+            if (this.showDegreeDays && this.degreeDaysData && this.degreeDaysData[index] !== undefined) {
+                const ddValue = this.degreeDaysData[index];
+                ddText = `Graaddagen: ${this.formatNumber(ddValue, 1)}`;
+            }
+
+            // Add temperature if shown
+            let tempTexts = [];
+            if (this.showTemp && this.temperatureData && index < this.temperatureData.min.length) {
+                const tempMin = this.temperatureData.min[index];
+                const tempAvg = this.temperatureData.avg[index];
+                const tempMax = this.temperatureData.max[index];
+                
+                if (tempMin !== null && tempAvg !== null && tempMax !== null) {
+                    tempTexts = [
+                        `Max: ${this.formatNumber(tempMax, 1)}°C`,
+                        `Gem: ${this.formatNumber(tempAvg, 1)}°C`,
+                        `Min: ${this.formatNumber(tempMin, 1)}°C`
+                    ];
+                }
+            }
+
             const tooltipPadding = 12;
             this.ctx.font = 'bold 13px sans-serif';
             const timeWidth = this.ctx.measureText(timeText).width;
             this.ctx.font = '12px sans-serif';
             const gasWidth = this.ctx.measureText(gasText).width;
+            let ddWidth = 0;
+            if (ddText) {
+                ddWidth = this.ctx.measureText(ddText).width;
+            }
+            
+            let maxWidth = Math.max(timeWidth, gasWidth, ddWidth);
+            if (tempTexts.length > 0) {
+                this.ctx.font = '11px sans-serif';
+                tempTexts.forEach(t => {
+                    maxWidth = Math.max(maxWidth, this.ctx.measureText(t).width + 20);
+                });
+            }
 
-            const maxWidth = Math.max(timeWidth, gasWidth);
             const tooltipWidth = maxWidth + tooltipPadding * 2;
-            const tooltipHeight = 65;
+            let tooltipHeight = ddText ? 85 : 65;
+            if (tempTexts.length > 0) {
+                tooltipHeight += 60; // Add space for temperature section
+            }
 
-            // Position tooltip
             let tooltipX = x + 15;
             let tooltipY = paddingTop + 20;
 
@@ -666,7 +1090,6 @@
                 tooltipY = this.canvas.height - paddingBottom - tooltipHeight - 10;
             }
 
-            // Draw tooltip background
             this.ctx.fillStyle = isDark ? '#1e293b' : '#ffffff';
             this.ctx.strokeStyle = isDark ? '#475569' : '#e2e8f0';
             this.ctx.lineWidth = 1;
@@ -686,9 +1109,7 @@
             this.ctx.fill();
             this.ctx.stroke();
 
-            // Draw tooltip text
             this.ctx.textAlign = 'left';
-
             this.ctx.fillStyle = textColor;
             this.ctx.font = 'bold 13px sans-serif';
             this.ctx.fillText(timeText, tooltipX + tooltipPadding, tooltipY + 20);
@@ -696,6 +1117,40 @@
             this.ctx.font = '12px sans-serif';
             this.ctx.fillStyle = '#fb923c';
             this.ctx.fillText(gasText, tooltipX + tooltipPadding, tooltipY + 40);
+
+            // Draw degree days if present
+            if (ddText) {
+                this.ctx.fillStyle = '#3b82f6';
+                this.ctx.fillText(ddText, tooltipX + tooltipPadding, tooltipY + 60);
+            }
+
+            // Draw temperature if present
+            if (tempTexts.length > 0) {
+                let yOffset = ddText ? tooltipY + 85 : tooltipY + 65;
+                
+                // Draw separator line
+                this.ctx.strokeStyle = isDark ? '#334155' : '#e2e8f0';
+                this.ctx.beginPath();
+                this.ctx.moveTo(tooltipX + tooltipPadding, yOffset - 5);
+                this.ctx.lineTo(tooltipX + tooltipWidth - tooltipPadding, yOffset - 5);
+                this.ctx.stroke();
+
+                // Draw temperature label
+                this.ctx.fillStyle = textColor;
+                this.ctx.font = 'bold 11px sans-serif';
+                this.ctx.fillText('Temperatuur:', tooltipX + tooltipPadding, yOffset + 5);
+                
+                yOffset += 15;
+                
+                // Draw temperature values
+                this.ctx.font = '11px sans-serif';
+                const colors = ['#ef4444', '#374151', '#3b82f6']; // Red, dark gray, blue
+                tempTexts.forEach((text, i) => {
+                    this.ctx.fillStyle = colors[i];
+                    this.ctx.fillText(text, tooltipX + tooltipPadding, yOffset);
+                    yOffset += 14;
+                });
+            }
         },
 
         formatTooltipTime(date) {
@@ -718,7 +1173,6 @@
         }
     };
 
-    // Auto-init when on gas page
     document.addEventListener('DOMContentLoaded', () => {
         if (window.P1MonConfig && window.P1MonConfig.currentPage === 'gas') {
             GasManager.init();
