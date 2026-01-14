@@ -4,26 +4,35 @@
  * Based on working Python implementation
  * 
  * This version uses the End User API endpoints with signature authentication
+ * Updated to match collector's 5-parameter call signature
  */
 
 class SolplanetAPI {
     
-    private $api_key;      // Your plant's API key
+    private $api_key;      // Your plant's API key (for 'key=' parameter)
     private $app_key;      // App Key for signature
     private $app_secret;   // App Secret for signature
+    private $sn;           // Inverter serial number
     private $base_url = 'https://eu-api-genergal.aisweicloud.com';
     
     /**
      * Initialize the Solplanet API client
      * 
-     * @param string $api_key Your plant's API key
-     * @param string $app_key Application Key for signature
-     * @param string $app_secret Application Secret for signature
+     * Constructor matches solar-collector.php call:
+     * new SolplanetAPI($appKey, $appSecret, $apiKey, $token, $sn)
+     * 
+     * @param string $app_key Application Key for signature (param 1)
+     * @param string $app_secret Application Secret for signature (param 2)
+     * @param string $api_key Your plant's API key (param 3)
+     * @param string $token Token (param 4 - not used for End User API)
+     * @param string $sn Inverter serial number (param 5)
      */
-    public function __construct($api_key, $app_key, $app_secret) {
-        $this->api_key = $api_key;
+    public function __construct($app_key, $app_secret, $api_key, $token, $sn) {
         $this->app_key = $app_key;
         $this->app_secret = $app_secret;
+        $this->api_key = $api_key;
+        $this->sn = $sn;
+        // $token is ignored for End User API
     }
     
     /**
@@ -55,7 +64,7 @@ class SolplanetAPI {
             $endpoint = $parts[0] . '?' . implode('&', $params);
         }
         
-        // Build signature string
+        // Build signature string (CRITICAL: No space after colon in X-Ca-Key:)
         $string_to_sign = $method . "\n" .
                          $accept . "\n" .
                          "\n" .
@@ -99,6 +108,7 @@ class SolplanetAPI {
         if ($response === false) {
             $error = error_get_last();
             return [
+                'success' => false,
                 'error' => 'Connection Error: ' . ($error['message'] ?? 'Unknown error'),
                 'status' => 0
             ];
@@ -115,21 +125,33 @@ class SolplanetAPI {
             }
         }
         
+        // Handle non-200 responses
+        if ($http_code !== 200) {
+            return [
+                'success' => false,
+                'error' => "HTTP Error: $http_code",
+                'status' => $http_code,
+                'response' => $response
+            ];
+        }
+        
         // Parse JSON response
         $json = json_decode($response, true);
         if (json_last_error() !== JSON_ERROR_NONE) {
             return [
+                'success' => false,
                 'error' => 'JSON Parse Error: ' . json_last_error_msg(),
                 'status' => $http_code,
                 'response' => $response
             ];
         }
         
-        // Add status info
-        $json['httpcode'] = $http_code;
-        $json['status'] = $http_code == 200 ? '200' : (string)$http_code;
-        
-        return $json;
+        // Return successful response
+        return [
+            'success' => true,
+            'data' => $json,
+            'status' => $http_code
+        ];
     }
     
     // ============================================================
@@ -249,14 +271,13 @@ class SolplanetAPI {
      * Get detailed inverter data for a time period
      * API: getInverterData
      * 
-     * @param string $sn Inverter serial number
      * @param string $start_time Start time 'YYYY-MM-DD HH:MM:SS'
      * @param string $end_time End time 'YYYY-MM-DD HH:MM:SS'
      * @return array Detailed inverter data
      */
-    public function getInverterData($sn, $start_time, $end_time) {
+    public function getInverterData($start_time, $end_time) {
         return $this->makeRequest('/getInverterData', [
-            'sn' => $sn,
+            'sn' => $this->sn,
             'starttime' => $start_time,
             'endtime' => $end_time
         ]);
@@ -278,7 +299,7 @@ class SolplanetAPI {
         $devices = $this->getDeviceList();
         $results['tests']['device_list'] = [
             'endpoint' => 'devicelist',
-            'success' => isset($devices['status']) && $devices['status'] == '200',
+            'success' => isset($devices['success']) && $devices['success'],
             'response' => $devices
         ];
         
@@ -286,7 +307,7 @@ class SolplanetAPI {
         $overview = $this->getPlantOverview();
         $results['tests']['plant_overview'] = [
             'endpoint' => 'getPlantOverview',
-            'success' => isset($overview['status']) && $overview['status'] == '200',
+            'success' => isset($overview['success']) && $overview['success'],
             'response' => $overview
         ];
         
@@ -294,7 +315,7 @@ class SolplanetAPI {
         $today = $this->getPlantOutput('bydays', date('Y-m-d'));
         $results['tests']['today_production'] = [
             'endpoint' => 'getPlantOutput',
-            'success' => isset($today['status']) && $today['status'] == '200',
+            'success' => isset($today['success']) && $today['success'],
             'response' => $today
         ];
         
