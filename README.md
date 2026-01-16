@@ -20,9 +20,9 @@ A modern, responsive web dashboard for monitoring real-time energy, gas, water, 
 
 - **Dashboard** - Overview of all utilities with gauges and peak information
 - **Electricity** - Detailed electricity consumption and production analysis
+- **Gas** - Gas consumption tracking and charts
 
 ### 🚧 Work in progress
-- **Gas** - Gas consumption tracking and charts
 - **Water** - Water usage monitoring
 - **Solar** - Solar production data and efficiency metrics
 - **Costs** - Energy cost analysis and savings calculations
@@ -38,34 +38,47 @@ A modern, responsive web dashboard for monitoring real-time energy, gas, water, 
 ## 📁 Project Structure
 
 ```
-├── p1mon.php                 # Main entry point
-├── config.php                # Configuration and helper functions
-├── components/               # Reusable UI components
-│   ├── header.php           # Top navigation and branding
-│   ├── sidebar.php          # Navigation menu
-│   ├── footer.php           # Page footer
-│   └── theme-toggle.php     # Theme switcher
-├── pages/                    # Page templates
-│   ├── dashboard.php        # Main dashboard view
-│   ├── electricity.php      # Electricity details
-│   ├── gas.php              # Gas tracking
-│   ├── water.php            # Water usage
-│   ├── solar.php            # Solar production
-│   └── costs.php            # Cost analysis
-└── assets/                  # Static assets
-    ├── css/                 # Stylesheets
-    │   ├── variables.css    # CSS custom properties for theming
-    │   ├── base.css         # Base styles and resets
-    │   ├── components.css   # Component-specific styles
-    │   └── layout.css       # Layout and grid system
-    └── js/                  # JavaScript modules
-        ├── api.js           # P1 Monitor API wrapper
-        ├── charts.js        # Chart.js initialization
-        ├── dashboard.js     # Dashboard functionality
-        ├── electricity.js   # Electricity page logic
-        ├── theme.js         # Theme switching logic
-        ├── sidebar.js       # Sidebar interaction
-        └── header.js        # Header functionality
+├── p1mon.php                    # Main entry point
+├── config.php                   # Configuration and helper functions
+├── api/                         # API (currently used for Solplanet Cloud integration)
+|   └── solar.php                #
+├── components/                  # Reusable UI components
+│   ├── header.php               # Top navigation and branding
+│   ├── sidebar.php              # Navigation menu
+│   ├── footer.php               # Page footer
+│   └── theme-toggle.php         # Theme switcher
+├── data/                        # SQLite 3 Database
+|   └── solar.db                 # SQLite 3 Database for solar production data
+├── lib/                         #
+|   ├── SolarConfig.php          #
+|   └── SolplanetAPI.php         #
+├── pages/                       # Page templates
+│   ├── dashboard.php            # Main dashboard view
+│   ├── electricity.php          # Electricity details
+│   ├── gas.php                  # Gas tracking
+│   ├── water.php                # Water usage
+│   ├── solar.php                # Solar production
+│   └── costs.php                # Cost analysis
+├── scripts/                     #
+│   ├── init-solar-database.php  #
+│   ├── solar-collector.php      #
+│   ├── solar-debug.php          #
+│   ├── solar-diagnostics.php    #
+│   └── test-solar.api           #
+└── assets/                      # Static assets
+    ├── css/                     # Stylesheets
+    │   ├── variables.css        # CSS custom properties for theming
+    │   ├── base.css             # Base styles and resets
+    │   ├── components.css       # Component-specific styles
+    │   └── layout.css           # Layout and grid system
+    └── js/                      # JavaScript modules
+        ├── api.js               # P1 Monitor API wrapper
+        ├── charts.js            # Chart.js initialization
+        ├── dashboard.js         # Dashboard functionality
+        ├── electricity.js       # Electricity page logic
+        ├── theme.js             # Theme switching logic
+        ├── sidebar.js           # Sidebar interaction
+        └── header.js            # Header functionality
 ```
 
 ## 🚀 Installation
