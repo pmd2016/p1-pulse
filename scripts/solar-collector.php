@@ -149,13 +149,13 @@ function collectData() {
         $data = $overview['data'];
         
         // Extract values - API returns nested objects with 'value' and 'unit' properties
-        // Power.value is in KW, convert to W
-        $powerCurrent = isset($data['Power']['value']) ? (int)($data['Power']['value'] * 1000) : 0;
-        
-        // Energy values are already in kWh, convert to Wh
+        // Power.value is ALREADY in W (not KW as initially thought)
+        $powerCurrent = isset($data['Power']['value']) ? (int)$data['Power']['value'] : 0;
+
+        // Energy values are in kWh, convert to Wh
         $energyToday = isset($data['E-Today']['value']) ? (int)($data['E-Today']['value'] * 1000) : 0;
         $energyMonth = isset($data['E-Month']['value']) ? (int)($data['E-Month']['value'] * 1000) : 0;
-        
+
         // E-Total is in MWh, convert to Wh
         $energyTotal = isset($data['E-Total']['value']) ? (int)($data['E-Total']['value'] * 1000000) : 0;
         
