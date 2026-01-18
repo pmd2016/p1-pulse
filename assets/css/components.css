@@ -1082,3 +1082,85 @@
     width: 24px;
     border-radius: 2px;
 }
+
+/* ============================================================================
+   SOLAR PAGE STYLES
+   ============================================================================ */
+
+/* Solar-specific stat card colors */
+.stats-grid .stat-card.production .stat-icon {
+    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+}
+
+.stats-grid .stat-card.energy .stat-icon {
+    background: linear-gradient(135deg, #fbbf24 0%, #f97316 100%);
+}
+
+.stats-grid .stat-card.capacity .stat-icon {
+    background: linear-gradient(135deg, #84cc16 0%, #65a30d 100%);
+}
+
+.stats-grid .stat-card.sunlight .stat-icon {
+    background: linear-gradient(135deg, #fbbf24 0%, #eab308 100%);
+}
+
+/* Solar legend item - production bars */
+.chart-legend .legend-item.production .legend-color {
+    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+}
+
+/* Solar legend item - power line */
+.chart-legend .legend-item.power .legend-color {
+    background: #ea580c;
+    height: 3px;
+    border-radius: 2px;
+}
+
+/* Temperature legend items (reuse from electricity but ensure visibility) */
+.chart-legend .legend-item.temp-max .legend-color {
+    background: #ef4444;
+    border: 2px dashed #ef4444;
+    background-clip: padding-box;
+}
+
+.chart-legend .legend-item.temp-avg .legend-color {
+    background: #f59e0b;
+}
+
+.chart-legend .legend-item.temp-min .legend-color {
+    background: #3b82f6;
+    border: 2px dashed #3b82f6;
+    background-clip: padding-box;
+}
+
+/* Capacity factor indicator colors */
+.stat-card.capacity .stat-value {
+    background: linear-gradient(135deg, #84cc16, #65a30d);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* Dark theme adjustments */
+.dark-theme .stat-card.capacity .stat-value {
+    background: linear-gradient(135deg, #a3e635, #84cc16);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* Solar chart specific - ensure good contrast */
+#solar-chart {
+    background: var(--card-background);
+}
+
+/* Mobile optimizations for solar stats */
+@media (max-width: 768px) {
+    .stats-grid {
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    }
+    
+    .stat-card .stat-value {
+        font-size: 1.25rem;
+    }
+}

@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solar Dashboard Diagnostics</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 { color: #333; }
+        .test-section {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-section h2 {
+            margin-top: 0;
+            color: #2563eb;
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 10px;
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .status.success { background: #86efac; color: #166534; }
+        .status.error { background: #fca5a5; color: #991b1b; }
+        .status.warning { background: #fde68a; color: #92400e; }
+        .status.info { background: #93c5fd; color: #1e40af; }
+        
+        pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
+        }
+        button:hover { background: #1d4ed8; }
+        button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+        .result-item {
+            padding: 8px;
+            margin: 5px 0;
+            border-left: 3px solid #e5e7eb;
+            padding-left: 15px;
+        }
+        .result-item.good { border-left-color: #22c55e; }
+        .result-item.bad { border-left-color: #ef4444; }
+        .loading {
+            color: #6b7280;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <h1>☀️ Solar Dashboard Diagnostics</h1>
+    <p>This page tests the solar dashboard frontend and API connectivity.</p>
+
+    <!-- Test 1: Configuration Check -->
+    <div class="test-section">
+        <h2>Test 1: Configuration Check</h2>
+        <div id="test1-results">
+            <button onclick="runTest1()">Run Test</button>
+        </div>
+    </div>
+
+    <!-- Test 2: API Endpoint - Current Data -->
+    <div class="test-section">
+        <h2>Test 2: API - Current Data</h2>
+        <div id="test2-results">
+            <button onclick="runTest2()">Run Test</button>
+        </div>
+    </div>
+
+    <!-- Test 3: API Endpoint - Historical Data -->
+    <div class="test-section">
+        <h2>Test 3: API - Historical Data (Hours)</h2>
+        <div id="test3-results">
+            <button onclick="runTest3()">Run Test</button>
+        </div>
+    </div>
+
+    <!-- Test 4: JavaScript Initialization -->
+    <div class="test-section">
+        <h2>Test 4: JavaScript Environment</h2>
+        <div id="test4-results">
+            <button onclick="runTest4()">Run Test</button>
+        </div>
+    </div>
+
+    <!-- Test 5: DOM Elements -->
+    <div class="test-section">
+        <h2>Test 5: Required DOM Elements</h2>
+        <div id="test5-results">
+            <button onclick="runTest5()">Run Test</button>
+        </div>
+    </div>
+
+    <!-- Test 6: Run All Tests -->
+    <div class="test-section">
+        <h2>Run All Tests</h2>
+        <button onclick="runAllTests()" style="background: #059669; font-size: 16px; padding: 12px 24px;">🚀 Run All Tests</button>
+    </div>
+
+    <script>
+        // Test 1: Configuration
+        function runTest1() {
+            const container = document.getElementById('test1-results');
+            container.innerHTML = '<div class="loading">Running...</div>';
+            
+            const results = [];
+            
+            // Check if P1MonConfig exists
+            if (typeof window.P1MonConfig !== 'undefined') {
+                results.push({ 
+                    status: 'good', 
+                    text: '✅ window.P1MonConfig exists'
+                });
+                results.push({
+                    status: 'info',
+                    text: 'Current page: ' + (window.P1MonConfig.currentPage || 'undefined')
+                });
+            } else {
+                results.push({ 
+                    status: 'bad', 
+                    text: '❌ window.P1MonConfig NOT found'
+                });
+            }
+            
+            // Check theme
+            const theme = document.body.classList.contains('dark-theme') ? 'dark' : 'light';
+            results.push({
+                status: 'info',
+                text: 'Theme: ' + theme
+            });
+            
+            displayResults(container, results);
+        }
+
+        // Test 2: Current Data API
+        async function runTest2() {
+            const container = document.getElementById('test2-results');
+            container.innerHTML = '<div class="loading">Running...</div>';
+            
+            const results = [];
+            
+            try {
+                const response = await fetch('/custom/api/solar.php?action=current');
+                
+                results.push({
+                    status: response.ok ? 'good' : 'bad',
+                    text: `HTTP Status: ${response.status} ${response.statusText}`
+                });
+                
+                const data = await response.json();
+                
+                results.push({
+                    status: 'good',
+                    text: '✅ Valid JSON response'
+                });
+                
+                // Check response structure
+                if (data.power !== undefined) {
+                    results.push({
+                        status: 'good',
+                        text: `✅ Power: ${data.power} W`
+                    });
+                } else {
+                    results.push({
+                        status: 'bad',
+                        text: '❌ Power field missing'
+                    });
+                }
+                
+                if (data.energy !== undefined) {
+                    results.push({
+                        status: 'good',
+                        text: `✅ Energy: ${data.energy} kWh`
+                    });
+                } else {
+                    results.push({
+                        status: 'bad',
+                        text: '❌ Energy field missing'
+                    });
+                }
+                
+                results.push({
+                    status: 'info',
+                    text: 'Full response:'
+                });
+                
+                results.push({
+                    status: 'info',
+                    text: '<pre>' + JSON.stringify(data, null, 2) + '</pre>'
+                });
+                
+            } catch (err) {
+                results.push({
+                    status: 'bad',
+                    text: '❌ Error: ' + err.message
+                });
+            }
+            
+            displayResults(container, results);
+        }
+
+        // Test 3: Historical Data API
+        async function runTest3() {
+            const container = document.getElementById('test3-results');
+            container.innerHTML = '<div class="loading">Running...</div>';
+            
+            const results = [];
+            
+            try {
+                const response = await fetch('/custom/api/solar.php?period=hours&zoom=24');
+                
+                results.push({
+                    status: response.ok ? 'good' : 'bad',
+                    text: `HTTP Status: ${response.status} ${response.statusText}`
+                });
+                
+                const data = await response.json();
+                
+                results.push({
+                    status: 'good',
+                    text: '✅ Valid JSON response'
+                });
+                
+                // Check response structure
+                if (data.period) {
+                    results.push({
+                        status: 'good',
+                        text: `✅ Period: ${data.period}`
+                    });
+                }
+                
+                if (data.zoom) {
+                    results.push({
+                        status: 'good',
+                        text: `✅ Zoom: ${data.zoom}`
+                    });
+                }
+                
+                if (data.chartData && Array.isArray(data.chartData)) {
+                    results.push({
+                        status: data.chartData.length > 0 ? 'good' : 'warning',
+                        text: `${data.chartData.length > 0 ? '✅' : '⚠️'} ChartData entries: ${data.chartData.length}`
+                    });
+                    
+                    if (data.chartData.length > 0) {
+                        const first = data.chartData[0];
+                        results.push({
+                            status: 'info',
+                            text: 'First entry fields: ' + Object.keys(first).join(', ')
+                        });
+                        
+                        // Check required fields
+                        const requiredFields = ['timestamp', 'unixTimestamp', 'production', 'power'];
+                        requiredFields.forEach(field => {
+                            if (first[field] !== undefined) {
+                                results.push({
+                                    status: 'good',
+                                    text: `✅ ${field}: ${first[field]}`
+                                });
+                            } else {
+                                results.push({
+                                    status: 'bad',
+                                    text: `❌ ${field} missing`
+                                });
+                            }
+                        });
+                        
+                        results.push({
+                            status: 'info',
+                            text: 'First entry:'
+                        });
+                        results.push({
+                            status: 'info',
+                            text: '<pre>' + JSON.stringify(first, null, 2) + '</pre>'
+                        });
+                    } else {
+                        results.push({
+                            status: 'warning',
+                            text: '⚠️ No chartData entries - check if hourly data exists in database'
+                        });
+                    }
+                } else {
+                    results.push({
+                        status: 'bad',
+                        text: '❌ chartData missing or not an array'
+                    });
+                }
+                
+            } catch (err) {
+                results.push({
+                    status: 'bad',
+                    text: '❌ Error: ' + err.message
+                });
+            }
+            
+            displayResults(container, results);
+        }
+
+        // Test 4: JavaScript Environment
+        function runTest4() {
+            const container = document.getElementById('test4-results');
+            container.innerHTML = '<div class="loading">Running...</div>';
+            
+            const results = [];
+            
+            // Check for required JavaScript files loaded
+            const scripts = Array.from(document.scripts).map(s => s.src);
+            const hasSolarJS = scripts.some(src => src.includes('solar.js'));
+            
+            results.push({
+                status: hasSolarJS ? 'good' : 'bad',
+                text: hasSolarJS ? '✅ solar.js loaded' : '❌ solar.js NOT loaded'
+            });
+            
+            // Check Canvas API support
+            const canvas = document.createElement('canvas');
+            if (canvas.getContext && canvas.getContext('2d')) {
+                results.push({
+                    status: 'good',
+                    text: '✅ Canvas API supported'
+                });
+            } else {
+                results.push({
+                    status: 'bad',
+                    text: '❌ Canvas API NOT supported'
+                });
+            }
+            
+            // Check fetch API
+            if (typeof fetch === 'function') {
+                results.push({
+                    status: 'good',
+                    text: '✅ Fetch API available'
+                });
+            } else {
+                results.push({
+                    status: 'bad',
+                    text: '❌ Fetch API NOT available'
+                });
+            }
+            
+            displayResults(container, results);
+        }
+
+        // Test 5: DOM Elements
+        function runTest5() {
+            const container = document.getElementById('test5-results');
+            container.innerHTML = '<div class="loading">Running...</div>';
+            
+            const results = [];
+            
+            // Required elements for solar dashboard
+            const requiredElements = [
+                'solar-chart',
+                'stat-current-power',
+                'stat-total-energy',
+                'stat-peak-power',
+                'stat-capacity-factor',
+                'stat-sunlight-hours',
+                'toggle-solar-smoothed',
+                'toggle-solar-temp',
+                'zoom-buttons-solar'
+            ];
+            
+            requiredElements.forEach(id => {
+                const el = document.getElementById(id);
+                results.push({
+                    status: el ? 'good' : 'bad',
+                    text: el ? `✅ #${id}` : `❌ #${id} NOT FOUND`
+                });
+            });
+            
+            // Check period tabs
+            const tabs = document.querySelectorAll('.period-tab');
+            results.push({
+                status: tabs.length > 0 ? 'good' : 'bad',
+                text: `${tabs.length > 0 ? '✅' : '❌'} Period tabs: ${tabs.length}`
+            });
+            
+            displayResults(container, results);
+        }
+
+        // Helper function to display results
+        function displayResults(container, results) {
+            let html = '';
+            results.forEach(result => {
+                html += `<div class="result-item ${result.status}">${result.text}</div>`;
+            });
+            container.innerHTML = html;
+        }
+
+        // Run all tests
+        async function runAllTests() {
+            runTest1();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            await runTest2();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            await runTest3();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            runTest4();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            runTest5();
+        }
+
+        // Auto-run Test 1 on load
+        window.addEventListener('load', () => {
+            console.log('Solar Dashboard Diagnostics loaded');
+            console.log('Click "Run All Tests" to check all components');
+        });
+    </script>
+</body>
+</html>

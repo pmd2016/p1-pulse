@@ -2,7 +2,7 @@
     
     <?php includeJS(); ?>
     
-<!-- Dashboard specific script (only loads on dashboard page) -->
+    <!-- Dashboard specific script (only loads on dashboard page) -->
     <?php if ($currentPage === 'dashboard'): ?>
     <script src="<?php echo CUSTOM_BASE_URL; ?>/assets/js/dashboard.js"></script>
     <?php endif; ?>
@@ -17,6 +17,11 @@
     <script src="<?php echo CUSTOM_BASE_URL; ?>/assets/js/gas.js"></script>
     <?php endif; ?>
     
+    <!-- Solar specific script (only loads on solar page) -->
+    <?php if ($currentPage === 'solar'): ?>
+    <script src="<?php echo CUSTOM_BASE_URL; ?>/assets/js/solar.js"></script>
+    <?php endif; ?>
+
     <script>
         // Pass PHP config to JavaScript
         window.P1MonConfig = {
