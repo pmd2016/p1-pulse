@@ -54,7 +54,7 @@ class P1Config {
     public static function getVisibility() {
         return [
             'hide_gas' => self::get(158) == 1,
-            'hide_water' => self::get(157) == 1,
+            'hide_water' => self::get(96) == 0,
             'hide_peak_kw' => self::get(206) == 1,
             'show_phase_info' => self::get(61) == 1
         ];

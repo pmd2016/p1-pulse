@@ -78,7 +78,10 @@
             const interval = (window.P1MonConfig && window.P1MonConfig.updateInterval) || 10000;
             this.countdown = interval / 1000;
             
+            console.log(`[Dashboard] Auto-update initialized: ${interval}ms (${this.countdown}s)`);
+            
             this.updateInterval = setInterval(() => {
+                console.log('[Dashboard] Auto-refresh triggered - loading all data');
                 this.loadAllData();
                 this.countdown = interval / 1000;
             }, interval);
@@ -89,6 +92,9 @@
                 const timerEl = document.getElementById('timer-text');
                 if (timerEl) {
                     timerEl.textContent = `Update over ${this.countdown}s`;
+                }
+                if (this.countdown === 5) {
+                    console.log('[Dashboard] Refresh in 5 seconds...');
                 }
             }, 1000);
         },
@@ -188,22 +194,31 @@
                     this.drawGauge(this.gauges.solar, power, 3780, '#fbbf24', 'Zonneenergie');
                 }
 
-                // Get today's totals
+                // Get today's totals (last 24 hours, but we'll filter to today only)
                 const todayResponse = await fetch('/custom/api/solar.php?period=hours&zoom=24');
                 if (!todayResponse.ok) throw new Error('Solar today API error');
                 const today = await todayResponse.json();
                 
                 if (today && today.chartData) {
-                    const totals = this.calculateSolarTotals(today.chartData);
+                    // Get midnight of today (00:00:00) as Unix timestamp
+                    const now = new Date();
+                    const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                    const midnightTimestamp = Math.floor(todayMidnight.getTime() / 1000);
+                    
+                    // Filter data to only include records from today (after midnight)
+                    const todayData = today.chartData.filter(point => {
+                        const pointTimestamp = point.unixTimestamp || 0;
+                        return pointTimestamp >= midnightTimestamp;
+                    });
+                    
+                    // Calculate totals using today's data only
+                    const totals = this.calculateSolarTotals(todayData);
                     this.updateElement('solar-energy-today', this.formatEnergy(totals.energy));
                     this.updateElement('solar-peak-today', this.formatPower(totals.peak));
                     this.updateElement('solar-capacity-today', this.formatNumber(totals.capacityFactor, 1) + '%');
-                }
-
-                // Update costs card with solar savings
-                if (today && today.chartData) {
-                    const energy = this.calculateSolarTotals(today.chartData).energy;
-                    const savings = energy * 0.30; // €0.30/kWh estimate
+                    
+                    // Update costs card with solar savings (today only)
+                    const savings = totals.energy * 0.30; // €0.30/kWh estimate
                     this.updateElement('costs-solar-savings', '€ ' + this.formatNumber(savings, 2));
                 }
             } catch (err) {
@@ -257,8 +272,10 @@
             });
             
             // Calculate capacity factor: (actual / theoretical) × 100
-            // Theoretical = 3.78 kW × 24 hours = 90.72 kWh/day
-            const theoreticalMax = 3.78 * 24;
+            // Theoretical = 3.78 kW × hours elapsed today
+            const now = new Date();
+            const hoursElapsedToday = now.getHours() + (now.getMinutes() / 60);
+            const theoreticalMax = 3.78 * hoursElapsedToday;
             const capacityFactor = theoreticalMax > 0 ? (totalEnergy / theoreticalMax) * 100 : 0;
             
             return {

@@ -1,153 +1,155 @@
 /**
  * Header Manager
- * Handles weather info and current time display in header
+ * Handles header widgets: time, weather, and solar production
  */
 
 (function() {
     'use strict';
-    
+
     const HeaderManager = {
-        // Update intervals
-        weatherInterval: null,
-        timeInterval: null,
-        
-        /**
-         * Initialize header features
-         */
+        updateInterval: null,
+
         init() {
-            console.log('Initializing header...');
-            
-            // Start time display
+            console.log('[Header] Initialized');
             this.updateTime();
-            this.timeInterval = setInterval(() => {
-                this.updateTime();
-            }, 1000);
+            this.loadWeather();
+            this.loadSolarWidget();
             
-            // Start weather updates
-            this.updateWeather();
-            this.weatherInterval = setInterval(() => {
-                this.updateWeather();
-            }, 300000); // Update every 5 minutes
+            // Update time every second
+            setInterval(() => this.updateTime(), 1000);
             
-            console.log('Header initialized');
+            // Update weather every 5 minutes
+            setInterval(() => {
+                console.log('[Header] Refreshing weather data');
+                this.loadWeather();
+            }, 300000);
+            
+            // Update solar widget every 10 seconds
+            setInterval(() => {
+                console.log('[Header] Refreshing solar widget');
+                this.loadSolarWidget();
+            }, 10000);
         },
-        
-        /**
-         * Update current time display
-         */
+
         updateTime() {
-            const timeEl = document.getElementById('current-time');
-            if (!timeEl) return;
-            
             const now = new Date();
             const hours = String(now.getHours()).padStart(2, '0');
             const minutes = String(now.getMinutes()).padStart(2, '0');
-            
-            timeEl.textContent = `${hours}:${minutes}`;
+            const timeEl = document.getElementById('current-time');
+            if (timeEl) {
+                timeEl.textContent = `${hours}:${minutes}`;
+            }
         },
-        
-/**
-         * Update weather information
-         */
-        async updateWeather() {
+
+        async loadWeather() {
             try {
-                console.log('Fetching weather data...');
-                const weatherData = await window.P1API.getWeather();
+                // Use P1 Monitor weather API
+                const response = await fetch('/api/v1/weather');
+                if (!response.ok) return;
                 
-                console.log('Weather response:', weatherData);
+                const data = await response.json();
+                if (!Array.isArray(data) || data.length === 0) return;
                 
-                if (!weatherData || !Array.isArray(weatherData) || weatherData.length === 0) {
-                    console.warn('No weather data available');
-                    return;
-                }
+                // Get most recent weather record
+                const latest = data[0];
                 
-                // Get the most recent weather record (first in array)
-                const latest = weatherData[0];
-                console.log('Latest weather record:', latest);
-                
-                // Parse the weather data from P1 Monitor format
-                // Format: [timestamp, unix_ts, location_id, location, temp, desc, icon, pressure, humidity, wind_speed, ...]
-                const weather = {
-                    temp: parseFloat(latest[4]),
-                    humidity: parseInt(latest[8]),
-                    pressure: parseInt(latest[7]),
-                    windSpeed: parseFloat(latest[9]),
-                    description: latest[5],
-                    location: latest[3]
-                };
-                
-                console.log('Parsed weather:', weather);
-                
-                // Update temperature
+                // Update weather display
                 const tempEl = document.getElementById('weather-temp');
-                if (tempEl && !isNaN(weather.temp)) {
-                    tempEl.textContent = `${Math.round(weather.temp)}°C`;
-                }
-                
-                // Update humidity
                 const humidityEl = document.getElementById('weather-humidity');
-                if (humidityEl && !isNaN(weather.humidity)) {
-                    humidityEl.textContent = `${weather.humidity}%`;
-                }
-                
-                // Update wind speed
                 const windEl = document.getElementById('weather-wind');
-                if (windEl && !isNaN(weather.windSpeed)) {
-                    windEl.textContent = `${Math.round(weather.windSpeed)} m/s`;
-                }
-                
-                // Update pressure
                 const pressureEl = document.getElementById('weather-pressure');
-                if (pressureEl && !isNaN(weather.pressure)) {
-                    pressureEl.textContent = `${weather.pressure} hPa`;
+                
+                if (tempEl && latest[4] !== undefined) {
+                    tempEl.textContent = `${Math.round(latest[4])}°C`;
+                }
+                if (humidityEl && latest[11] !== undefined) {
+                    humidityEl.textContent = `${Math.round(latest[11])}%`;
+                }
+                if (windEl && latest[14] !== undefined) {
+                    windEl.textContent = `${latest[14].toFixed(1)} m/s`;
+                }
+                if (pressureEl && latest[8] !== undefined) {
+                    pressureEl.textContent = `${Math.round(latest[8])} hPa`;
                 }
                 
-                // Show weather info container
+                // Show weather widget
                 const weatherInfo = document.getElementById('weather-info');
                 if (weatherInfo) {
                     weatherInfo.style.display = 'flex';
                 }
                 
-                console.log('Weather updated successfully');
+            } catch (err) {
+                console.error('Error loading weather:', err);
+            }
+        },
+
+        async loadSolarWidget() {
+            try {
+                // Get current solar production
+                const currentResponse = await fetch('/custom/api/solar.php?action=current');
+                if (!currentResponse.ok) throw new Error('Solar current API error');
+                const current = await currentResponse.json();
                 
-            } catch (error) {
-                console.error('Weather fetch error:', error);
-                // Don't show weather info if not available
-                const weatherInfo = document.getElementById('weather-info');
-                if (weatherInfo) {
-                    weatherInfo.style.display = 'none';
+                // Get today's total (last 24 hours, but we'll filter to today only)
+                const todayResponse = await fetch('/custom/api/solar.php?period=hours&zoom=24');
+                if (!todayResponse.ok) throw new Error('Solar today API error');
+                const today = await todayResponse.json();
+                
+                // Update widget
+                const powerEl = document.getElementById('solar-header-power');
+                const todayEl = document.getElementById('solar-header-today');
+                
+                if (powerEl && current && current.power !== undefined) {
+                    powerEl.textContent = this.formatPower(current.power);
+                }
+                
+                if (todayEl && today && today.chartData) {
+                    // Get midnight of today (00:00:00) as Unix timestamp
+                    const now = new Date();
+                    const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                    const midnightTimestamp = Math.floor(todayMidnight.getTime() / 1000);
+                    
+                    // Filter data to only include records from today (after midnight)
+                    const todayData = today.chartData.filter(point => {
+                        const pointTimestamp = point.unixTimestamp || 0;
+                        return pointTimestamp >= midnightTimestamp;
+                    });
+                    
+                    // Calculate total energy for today only
+                    const totalEnergy = todayData.reduce((sum, point) => {
+                        return sum + (parseFloat(point.production) || 0);
+                    }, 0);
+                    todayEl.textContent = totalEnergy.toFixed(2) + ' kWh';
+                }
+                
+                // Show solar widget
+                const solarWidget = document.getElementById('solar-widget');
+                if (solarWidget) {
+                    solarWidget.style.display = 'flex';
+                }
+                
+            } catch (err) {
+                console.error('Error loading solar widget:', err);
+                // Don't show widget if solar data unavailable
+                const solarWidget = document.getElementById('solar-widget');
+                if (solarWidget) {
+                    solarWidget.style.display = 'none';
                 }
             }
         },
-        
-        /**
-         * Cleanup on page unload
-         */
-        destroy() {
-            if (this.timeInterval) {
-                clearInterval(this.timeInterval);
+
+        formatPower(watts) {
+            const w = parseFloat(watts) || 0;
+            if (w >= 1000) {
+                return (w / 1000).toFixed(2) + ' kW';
             }
-            if (this.weatherInterval) {
-                clearInterval(this.weatherInterval);
-            }
+            return Math.round(w) + ' W';
         }
     };
-    
-    // Auto-initialize when DOM is ready
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => {
-            HeaderManager.init();
-        });
-    } else {
+
+    // Auto-init on DOM ready
+    document.addEventListener('DOMContentLoaded', () => {
         HeaderManager.init();
-    }
-    
-    // Expose globally
-    window.HeaderManager = HeaderManager;
-    
-    // Cleanup on page unload
-    window.addEventListener('beforeunload', () => {
-        HeaderManager.destroy();
     });
-    
+
 })();
