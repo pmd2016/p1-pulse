@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//Users/michiel/Documents/Webprojecten/**)",
+      "Bash(wc:*)",
+      "Bash(tree:*)"
+    ]
+  }
+}
