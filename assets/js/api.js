@@ -549,8 +549,9 @@
                     return null;
                 }
 
-                // API returns sort=desc (newest first), reverse for chronological order
-                historyData.reverse();
+                // API returns sort=desc (newest first), clone and reverse for chronological order
+                // Clone to avoid mutating the fetchCached reference
+                historyData = [...historyData].reverse();
 
                 // Process data into chart-friendly format (oldest first)
                 const chartData = [];

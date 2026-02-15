@@ -115,33 +115,31 @@
 
         async loadElectricityData() {
             try {
-                // Get today's data (use hours period with 24h zoom for today)
+                // Get real-time power from smart meter (CONSUMPTION_W / PRODUCTION_W)
+                const smartMeter = await window.P1API.getSmartMeter(1);
+                if (smartMeter && smartMeter.length > 0) {
+                    const latest = smartMeter[0];
+                    const consumptionW = parseFloat(latest.CONSUMPTION_W) || 0;
+                    const productionW = parseFloat(latest.PRODUCTION_W) || 0;
+                    const netWatts = consumptionW - productionW;
+
+                    this.updateElement('elec-current-power', this.formatPower(netWatts));
+
+                    // Draw gauge (max from P1MonConfig or default 10kW)
+                    const maxPower = (window.P1MonConfig && window.P1MonConfig.maxConsumption) || 10;
+                    const maxWatts = maxPower * 1000;
+                    const gaugeValue = Math.abs(netWatts);
+                    const gaugeColor = netWatts < 0 ? '#22c55e' : '#3b82f6';
+                    this.drawGauge(this.gauges.elec, gaugeValue, maxWatts, gaugeColor, 'Elektriciteit');
+                }
+
+                // Get today's hourly data for energy totals
                 const today = await window.P1API.getElectricityData('hours', 24, false);
                 if (today && today.chartData && today.chartData.length > 0) {
-                    // Calculate totals
                     const totals = this.calculateElectricityTotals(today.chartData);
                     this.updateElement('elec-consumption-today', this.formatEnergy(totals.consumption));
                     this.updateElement('elec-production-today', this.formatEnergy(totals.production));
                     this.updateElement('elec-net-today', this.formatEnergy(totals.net));
-                    
-                    // Get current power from most recent data point
-                    const latest = today.chartData[today.chartData.length - 1];
-                    if (latest) {
-                        // Calculate net power: consumption - production
-                        const consumption = parseFloat(latest.consumption) || 0;
-                        const production = parseFloat(latest.production) || 0;
-                        const netPower = consumption - production;
-                        const netWatts = netPower * 1000; // kWh to W
-                        
-                        this.updateElement('elec-current-power', this.formatPower(netWatts));
-                        
-                        // Draw gauge (max from P1MonConfig or default 10kW)
-                        const maxPower = (window.P1MonConfig && window.P1MonConfig.maxConsumption) || 10;
-                        const maxWatts = maxPower * 1000;
-                        const gaugeValue = Math.abs(netWatts);
-                        const gaugeColor = netWatts < 0 ? '#22c55e' : '#3b82f6'; // Green if producing, blue if consuming
-                        this.drawGauge(this.gauges.elec, gaugeValue, maxWatts, gaugeColor, 'Elektriciteit');
-                    }
                 }
             } catch (err) {
                 P1Logger.error('Error loading electricity data:', err);
