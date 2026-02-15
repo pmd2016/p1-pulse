@@ -312,6 +312,13 @@
             return filled;
         },
 
+        getWeatherEndpoint() {
+            const periodMap = { hours: 'hour', days: 'day', months: 'month', years: 'year' };
+            const endpoint = periodMap[this.currentPeriod];
+            if (!endpoint) return null;
+            return `${window.P1API.BASE_PATH}/v1/weather/${endpoint}?limit=${this.currentZoom}`;
+        },
+
         async fetchDegreeDays() {
             try {
                 if (!this.data || this.data.length === 0) {
@@ -319,16 +326,8 @@
                     return;
                 }
 
-                let weatherEndpoint;
-                if (this.currentPeriod === 'hours') {
-                    weatherEndpoint = `${window.P1API.BASE_PATH}/v1/weather/hour?limit=${this.currentZoom}`;
-                } else if (this.currentPeriod === 'days') {
-                    weatherEndpoint = `${window.P1API.BASE_PATH}/v1/weather/day?limit=${this.currentZoom}`;
-                } else if (this.currentPeriod === 'months') {
-                    weatherEndpoint = `${window.P1API.BASE_PATH}/v1/weather/month?limit=${this.currentZoom}`;
-                } else if (this.currentPeriod === 'years') {
-                    weatherEndpoint = `${window.P1API.BASE_PATH}/v1/weather/year?limit=${this.currentZoom}`;
-                } else {
+                const weatherEndpoint = this.getWeatherEndpoint();
+                if (!weatherEndpoint) {
                     this.degreeDaysData = null;
                     return;
                 }
@@ -339,8 +338,6 @@
                     this.degreeDaysData = null;
                     return;
                 }
-
-                weatherData.reverse();
 
                 const degreeDays = [];
                 const weatherMap = new Map();
@@ -371,16 +368,8 @@
                     return;
                 }
 
-                let weatherEndpoint;
-                if (this.currentPeriod === 'hours') {
-                    weatherEndpoint = `${window.P1API.BASE_PATH}/v1/weather/hour?limit=${this.currentZoom}`;
-                } else if (this.currentPeriod === 'days') {
-                    weatherEndpoint = `${window.P1API.BASE_PATH}/v1/weather/day?limit=${this.currentZoom}`;
-                } else if (this.currentPeriod === 'months') {
-                    weatherEndpoint = `${window.P1API.BASE_PATH}/v1/weather/month?limit=${this.currentZoom}`;
-                } else if (this.currentPeriod === 'years') {
-                    weatherEndpoint = `${window.P1API.BASE_PATH}/v1/weather/year?limit=${this.currentZoom}`;
-                } else {
+                const weatherEndpoint = this.getWeatherEndpoint();
+                if (!weatherEndpoint) {
                     this.temperatureData = null;
                     return;
                 }
@@ -391,8 +380,6 @@
                     this.temperatureData = null;
                     return;
                 }
-
-                weatherData.reverse();
 
                 const tempMap = new Map();
                 weatherData.forEach(record => {

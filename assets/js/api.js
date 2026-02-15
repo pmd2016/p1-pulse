@@ -322,24 +322,27 @@
         },
 
         /**
-         * Get weather history for a specific time range
-         * Uses the current weather endpoint and filters by timestamp.
-         * @param {number} hours - Number of hours to fetch (default: 24)
+         * Get weather history for a specific period
+         * Uses period-specific weather endpoints (hour, day, month, year).
+         * @param {string} period - 'hours', 'days', 'months', 'years'
+         * @param {number} limit - Number of records to fetch
          * @returns {Promise<Array>} Array of weather records (named properties)
          */
-        async getWeatherHistory(hours = 24) {
+        async getWeatherHistory(period = 'hours', limit = 24) {
             try {
-                const data = await this.fetch(`${this.BASE_PATH}/v1/weather`);
-                if (!Array.isArray(data)) return [];
+                const periodMap = {
+                    hours: 'hour',
+                    days: 'day',
+                    months: 'month',
+                    years: 'year'
+                };
+                const endpoint = periodMap[period];
+                if (!endpoint) return [];
 
-                // Filter to requested timeframe
-                const now = Date.now() / 1000;
-                const startTime = now - (hours * 3600);
-
-                return data.filter(record => {
-                    const timestamp = parseInt(record.TIMESTAMP_UTC);
-                    return timestamp >= startTime;
-                });
+                const data = await this.fetch(
+                    `${this.BASE_PATH}/v1/weather/${endpoint}?limit=${limit}`
+                );
+                return Array.isArray(data) ? data : [];
             } catch (error) {
                 P1Logger.warn('Weather history not available:', error);
                 return [];
@@ -347,78 +350,35 @@
         },
 
         /**
-         * Process weather data into temperature stats per time bucket.
-         * Expects records with named properties from /api/v1/weather (TEMPERATURE field).
-         * @param {Array} weatherData - Raw weather records with named properties
+         * Process weather history into a lookup map keyed by period timestamp.
+         * Weather history endpoints return pre-aggregated TEMPERATURE_LOW,
+         * TEMPERATURE_AVERAGE, TEMPERATURE_HIGH per period.
+         * @param {Array} weatherData - Raw weather records from /api/v1/weather/{period}
          * @param {string} period - 'hours', 'days', 'months', 'years'
-         * @param {number} bucketSize - Size of time bucket in seconds
-         * @returns {Object} Mapped temperature data by timestamp
+         * @returns {Object} Map of { [periodKey]: { min, max, avg } }
          */
-        processTemperatureData(weatherData, period = 'hours', bucketSize = 3600) {
+        processTemperatureData(weatherData, period = 'hours') {
             const tempMap = {};
 
-            // For months/years, we need to group by calendar month/year
-            if (period === 'months' || period === 'years') {
-                weatherData.forEach(record => {
-                    const timestamp = parseInt(record.TIMESTAMP_UTC);
-                    const temp = parseFloat(record.TEMPERATURE);
+            weatherData.forEach(record => {
+                const timestamp = parseInt(record.TIMESTAMP_UTC);
+                if (isNaN(timestamp)) return;
 
-                    if (isNaN(temp) || isNaN(timestamp)) return;
+                const key = ChartBase.getPeriodKey
+                    ? ChartBase.getPeriodKey(timestamp, period)
+                    : timestamp;
 
-                    const date = new Date(timestamp * 1000);
-                    const year = date.getFullYear();
-                    const month = date.getMonth();
+                const min = parseFloat(record.TEMPERATURE_LOW);
+                const max = parseFloat(record.TEMPERATURE_HIGH);
+                const avg = parseFloat(record.TEMPERATURE_AVERAGE);
 
-                    // Create key for start of month
-                    const monthStart = new Date(year, month, 1);
-                    const bucketKey = Math.floor(monthStart.getTime() / 1000);
+                if (isNaN(min) && isNaN(max) && isNaN(avg)) return;
 
-                    if (!tempMap[bucketKey]) {
-                        tempMap[bucketKey] = {
-                            temps: [],
-                            min: temp,
-                            max: temp,
-                            sum: 0,
-                            count: 0
-                        };
-                    }
-
-                    tempMap[bucketKey].temps.push(temp);
-                    tempMap[bucketKey].min = Math.min(tempMap[bucketKey].min, temp);
-                    tempMap[bucketKey].max = Math.max(tempMap[bucketKey].max, temp);
-                    tempMap[bucketKey].sum += temp;
-                    tempMap[bucketKey].count++;
-                });
-            } else {
-                // For hours/days, use simple bucketing
-                weatherData.forEach(record => {
-                    const timestamp = parseInt(record.TIMESTAMP_UTC);
-                    const temp = parseFloat(record.TEMPERATURE);
-
-                    if (isNaN(temp) || isNaN(timestamp)) return;
-
-                    const bucketKey = Math.floor(timestamp / bucketSize) * bucketSize;
-
-                    if (!tempMap[bucketKey]) {
-                        tempMap[bucketKey] = {
-                            temps: [],
-                            min: temp,
-                            max: temp,
-                            sum: 0,
-                            count: 0
-                        };
-                    }
-
-                    tempMap[bucketKey].temps.push(temp);
-                    tempMap[bucketKey].min = Math.min(tempMap[bucketKey].min, temp);
-                    tempMap[bucketKey].max = Math.max(tempMap[bucketKey].max, temp);
-                    tempMap[bucketKey].sum += temp;
-                    tempMap[bucketKey].count++;
-                });
-            }
-
-            Object.keys(tempMap).forEach(key => {
-                tempMap[key].avg = tempMap[key].sum / tempMap[key].count;
+                tempMap[key] = {
+                    min: isNaN(min) ? avg : min,
+                    max: isNaN(max) ? avg : max,
+                    avg: isNaN(avg) ? (min + max) / 2 : avg
+                };
             });
 
             return tempMap;
@@ -540,21 +500,8 @@
                 // Fetch temperature data if requested
                 if (includeTemperature) {
                     try {
-                        // Determine time range based on period
-                        let hours = limit;
-                        if (period === 'days') hours = limit * 24;
-                        else if (period === 'months') hours = limit * 24 * 30;
-                        else if (period === 'years') hours = limit * 24 * 365;
-
-                        const weatherData = await this.getWeatherHistory(hours);
-
-                        // Determine bucket size based on period
-                        let bucketSize = 3600; // 1 hour default
-                        if (period === 'days') bucketSize = 86400; // 1 day
-                        else if (period === 'months') bucketSize = 86400; // 1 day
-                        else if (period === 'years') bucketSize = 86400 * 30; // ~1 month
-
-                        temperatureMap = this.processTemperatureData(weatherData, period, bucketSize);
+                        const weatherData = await this.getWeatherHistory(period, limit);
+                        temperatureMap = this.processTemperatureData(weatherData, period);
                     } catch (error) {
                         P1Logger.warn('Could not fetch temperature data:', error);
                         temperatureMap = null;
@@ -602,10 +549,10 @@
                     return null;
                 }
 
-                // Reverse data so oldest is first (left side of chart)
+                // API returns sort=desc (newest first), reverse for chronological order
                 historyData.reverse();
 
-                // Process data into chart-friendly format
+                // Process data into chart-friendly format (oldest first)
                 const chartData = [];
                 let totalConsumption = 0;
                 let totalProduction = 0;
@@ -630,23 +577,10 @@
                     const unixTimestamp = parseInt(row.TIMESTAMP_UTC);
                     let tempData = {};
                     if (temperatureMap && unixTimestamp) {
-                        let bucketKey;
-
-                        // For months/years, match by calendar month
-                        if (period === 'months' || period === 'years') {
-                            const date = new Date(unixTimestamp * 1000);
-                            const year = date.getFullYear();
-                            const month = date.getMonth();
-                            const monthStart = new Date(year, month, 1);
-                            bucketKey = Math.floor(monthStart.getTime() / 1000);
-                        } else {
-                            // For hours/days, use bucket size
-                            let bucketSize = 3600; // 1 hour default
-                            if (period === 'days') bucketSize = 86400; // 1 day
-                            bucketKey = Math.floor(unixTimestamp / bucketSize) * bucketSize;
-                        }
-
-                        const temps = temperatureMap[bucketKey];
+                        const key = ChartBase.getPeriodKey
+                            ? ChartBase.getPeriodKey(unixTimestamp, period)
+                            : unixTimestamp;
+                        const temps = temperatureMap[key];
                         if (temps) {
                             tempData = {
                                 tempMin: temps.min,
