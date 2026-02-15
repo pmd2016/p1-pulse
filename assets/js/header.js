@@ -7,28 +7,28 @@
     'use strict';
 
     const HeaderManager = {
-        updateInterval: null,
+        timers: [],
 
         init() {
             P1Logger.log('[Header] Initialized');
             this.updateTime();
             this.loadWeather();
             this.loadSolarWidget();
-            
+
             // Update time every second
-            setInterval(() => this.updateTime(), 1000);
-            
+            this.timers.push(setInterval(() => this.updateTime(), 1000));
+
             // Update weather every 5 minutes
-            setInterval(() => {
+            this.timers.push(setInterval(() => {
                 P1Logger.log('[Header] Refreshing weather data');
                 this.loadWeather();
-            }, 300000);
-            
+            }, 300000));
+
             // Update solar widget every 10 seconds
-            setInterval(() => {
+            this.timers.push(setInterval(() => {
                 P1Logger.log('[Header] Refreshing solar widget');
                 this.loadSolarWidget();
-            }, 10000);
+            }, 10000));
         },
 
         updateTime() {
@@ -144,12 +144,22 @@
                 return (w / 1000).toFixed(2) + ' kW';
             }
             return Math.round(w) + ' W';
+        },
+
+        destroy() {
+            this.timers.forEach(id => clearInterval(id));
+            this.timers = [];
         }
     };
 
     // Auto-init on DOM ready
     document.addEventListener('DOMContentLoaded', () => {
         HeaderManager.init();
+    });
+
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', () => {
+        HeaderManager.destroy();
     });
 
 })();
