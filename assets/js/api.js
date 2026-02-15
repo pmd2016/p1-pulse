@@ -149,13 +149,25 @@
             // Fetch fresh data
             const data = await this.fetch(endpoint, options);
 
-            // Store in cache
+            // Store in cache and evict expired entries
             this.cache.set(cacheKey, {
                 data: data,
                 timestamp: now
             });
+            this.evictExpired(now);
 
             return data;
+        },
+
+        /**
+         * Remove expired entries from cache
+         */
+        evictExpired(now) {
+            this.cache.forEach((entry, key) => {
+                if (now - entry.timestamp >= this.CACHE_DURATION) {
+                    this.cache.delete(key);
+                }
+            });
         },
 
         /**
@@ -306,22 +318,6 @@
         // ========================================================================
 
         /**
-         * Get current weather data
-         * Response fields: TIMESTAMP_lOCAL, TIMESTAMP_UTC, CITY_ID, CITY_NAME,
-         *   TEMPERATURE, WEATHER_DESCRIPTION, WEATHER_ICON, PRESSURE, HUMIDITY,
-         *   WIND_SPEED, WIND_DEGREES, CLOUDS, WEATHER_ID
-         * @returns {Promise<Object>}
-         */
-        async getWeather() {
-            try {
-                return await this.fetchCached(`${this.BASE_PATH}/v1/weather`);
-            } catch (error) {
-                P1Logger.error('Weather API error:', error);
-                return null;
-            }
-        },
-
-        /**
          * Get weather history for a specific period
          * Uses period-specific weather endpoints (hour, day, month, year).
          * @param {string} period - 'hours', 'days', 'months', 'years'
@@ -420,71 +416,6 @@
         // ========================================================================
         // UTILITY METHODS
         // ========================================================================
-
-        /**
-         * Get current tariff (peak/offpeak)
-         * @returns {Promise<string>} 'P' or 'D'
-         */
-        async getCurrentTariff() {
-            const data = await this.getSmartMeter(1);
-            if (data && data.length > 0) {
-                return data[0].TARIFCODE; // 'P' for peak, 'D' for off-peak
-            }
-            return 'P';
-        },
-
-        /**
-         * Get all data for dashboard (optimized single call)
-         * @returns {Promise<Object>}
-         */
-        async getDashboardData() {
-            try {
-                const [smartMeter, status, historyDay, financial, waterMeter] = await Promise.all([
-                    this.getSmartMeter(60),
-                    this.getStatus(),
-                    this.getHistoryDay(),
-                    this.getFinancial(),
-                    this.getWaterMeter().catch(() => null) // Water meter might not exist
-                ]);
-
-                return {
-                    smartMeter,
-                    status,
-                    historyDay,
-                    financial,
-                    waterMeter
-                };
-            } catch (error) {
-                P1Logger.error('Error fetching dashboard data:', error);
-                throw error;
-            }
-        },
-
-        /**
-         * Format API data for charts
-         * @param {Array} data - Raw API data (named properties)
-         * @param {string} valueKey - Which property to extract
-         * @returns {Object} Formatted chart data
-         */
-        formatChartData(data, valueKey) {
-            return {
-                labels: data.map(item => new Date(item.TIMESTAMP_lOCAL)),
-                values: data.map(item => item[valueKey])
-            };
-        },
-
-        /**
-         * Check if API is available
-         * @returns {Promise<boolean>}
-         */
-        async isAvailable() {
-            try {
-                await this.fetch(`${this.BASE_PATH}/v1/status`);
-                return true;
-            } catch (error) {
-                return false;
-            }
-        },
 
         /**
          * Get electricity data with statistics for a specific period

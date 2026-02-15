@@ -94,7 +94,7 @@ class P1Config {
 // Helper function to render a page
 function renderPage($page, $data = []) {
     // Make data available to included files
-    extract($data);
+    extract($data, EXTR_SKIP);
     
     // Start output buffering
     ob_start();
