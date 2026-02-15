@@ -18,7 +18,7 @@
         },
 
         init() {
-            console.log('Dashboard initialized');
+            P1Logger.log('Dashboard initialized');
             this.initializeGauges();
             this.loadAllData();
             this.setupAutoUpdate();
@@ -78,10 +78,10 @@
             const interval = (window.P1MonConfig && window.P1MonConfig.updateInterval) || 10000;
             this.countdown = interval / 1000;
             
-            console.log(`[Dashboard] Auto-update initialized: ${interval}ms (${this.countdown}s)`);
+            P1Logger.log(`[Dashboard] Auto-update initialized: ${interval}ms (${this.countdown}s)`);
             
             this.updateInterval = setInterval(() => {
-                console.log('[Dashboard] Auto-refresh triggered - loading all data');
+                P1Logger.log('[Dashboard] Auto-refresh triggered - loading all data');
                 this.loadAllData();
                 this.countdown = interval / 1000;
             }, interval);
@@ -94,7 +94,7 @@
                     timerEl.textContent = `Update over ${this.countdown}s`;
                 }
                 if (this.countdown === 5) {
-                    console.log('[Dashboard] Refresh in 5 seconds...');
+                    P1Logger.log('[Dashboard] Refresh in 5 seconds...');
                 }
             }, 1000);
         },
@@ -108,7 +108,7 @@
                 ]);
                 this.hideError();
             } catch (err) {
-                console.error('Error loading dashboard data:', err);
+                P1Logger.error('Error loading dashboard data:', err);
                 this.showError('Fout bij ophalen dashboard gegevens');
             }
         },
@@ -144,7 +144,7 @@
                     }
                 }
             } catch (err) {
-                console.error('Error loading electricity data:', err);
+                P1Logger.error('Error loading electricity data:', err);
             }
         },
 
@@ -156,26 +156,24 @@
                 // Get electricity data which includes gas
                 const data = await window.P1API.getElectricityData('hours', 24, false);
                 if (data && data.chartData && data.chartData.length > 0) {
-                    // Calculate current flow from last two readings
-                    const len = data.chartData.length;
-                    if (len >= 2) {
-                        const prev = parseFloat(data.chartData[len - 2].gas) || 0;
-                        const curr = parseFloat(data.chartData[len - 1].gas) || 0;
-                        const flow = curr - prev; // m³/h (hourly data)
-                        this.updateElement('gas-current-flow', this.formatNumber(flow, 3) + ' m³/h');
-                        
-                        // Draw gauge (max 5 m³/h typical residential)
-                        this.drawGauge(this.gauges.gas, flow, 5, '#fb923c', 'Gas');
-                    }
+                    // Current flow = most recent hourly delta value
+                    const latest = data.chartData[data.chartData.length - 1];
+                    const flow = parseFloat(latest.gas) || 0;
+                    this.updateElement('gas-current-flow', this.formatNumber(flow, 3) + ' m³/h');
+
+                    // Draw gauge (max 5 m³/h typical residential)
+                    this.drawGauge(this.gauges.gas, flow, 5, '#fb923c', 'Gas');
 
                     // Calculate today's total
                     const gasValues = data.chartData.map(d => parseFloat(d.gas) || 0);
                     const total = this.calculateGasTotal(gasValues);
                     this.updateElement('gas-consumption-today', this.formatNumber(total, 3) + ' m³');
-                    this.updateElement('gas-cost-today', '€ ' + this.formatNumber(total * 1.5, 2));
+                    // Gas cost uses config value from config.php (default: €1.50/m³)
+                    const gasCost = window.P1MonConfig?.gasCostPerM3 ?? 1.50;
+                    this.updateElement('gas-cost-today', '€ ' + this.formatNumber(total * gasCost, 2));
                 }
             } catch (err) {
-                console.error('Error loading gas data:', err);
+                P1Logger.error('Error loading gas data:', err);
             }
         },
 
@@ -189,9 +187,10 @@
                 if (current && current.power !== undefined) {
                     const power = parseFloat(current.power) || 0;
                     this.updateElement('solar-current-power', this.formatPower(power));
-                    
-                    // Draw gauge (max 3.78kW system capacity)
-                    this.drawGauge(this.gauges.solar, power, 3780, '#fbbf24', 'Zonneenergie');
+
+                    // Draw gauge using system capacity from config.php
+                    const systemCapacity = window.P1MonConfig?.systemCapacityW ?? 3780;
+                    this.drawGauge(this.gauges.solar, power, systemCapacity, '#fbbf24', 'Zonneenergie');
                 }
 
                 // Get today's totals (last 24 hours, but we'll filter to today only)
@@ -218,11 +217,13 @@
                     this.updateElement('solar-capacity-today', this.formatNumber(totals.capacityFactor, 1) + '%');
                     
                     // Update costs card with solar savings (today only)
-                    const savings = totals.energy * 0.30; // €0.30/kWh estimate
+                    // Uses electricity cost from config.php
+                    const electricityCost = window.P1MonConfig?.electricityCostPerKwh ?? 0.30;
+                    const savings = totals.energy * electricityCost;
                     this.updateElement('costs-solar-savings', '€ ' + this.formatNumber(savings, 2));
                 }
             } catch (err) {
-                console.error('Error loading solar data:', err);
+                P1Logger.error('Error loading solar data:', err);
                 // Don't show error - solar might not be available yet
                 this.updateElement('solar-current-power', '-- W');
                 this.updateElement('solar-energy-today', '-- kWh');
@@ -247,17 +248,9 @@
             };
         },
 
-        calculateGasTotal(rawValues) {
-            // If values are cumulative meter readings, calculate deltas
-            const deltas = [];
-            for (let i = 1; i < rawValues.length; i++) {
-                let delta = rawValues[i] - rawValues[i - 1];
-                if (delta < 0) delta = 0; // protect against meter resets
-                deltas.push(delta);
-            }
-            
-            const sumDeltas = deltas.reduce((s, v) => s + v, 0);
-            return sumDeltas > 0.0001 ? sumDeltas : rawValues.reduce((s, v) => s + v, 0);
+        calculateGasTotal(values) {
+            // API returns per-period deltas (CONSUMPTION_GAS_DELTA_M3), just sum them
+            return values.reduce((sum, v) => sum + v, 0);
         },
 
         calculateSolarTotals(data) {
@@ -272,10 +265,10 @@
             });
             
             // Calculate capacity factor: (actual / theoretical) × 100
-            // Theoretical = 3.78 kW × hours elapsed today
+            const systemCapacityKw = (window.P1MonConfig?.systemCapacityW ?? 3780) / 1000;
             const now = new Date();
             const hoursElapsedToday = now.getHours() + (now.getMinutes() / 60);
-            const theoreticalMax = 3.78 * hoursElapsedToday;
+            const theoreticalMax = systemCapacityKw * hoursElapsedToday;
             const capacityFactor = theoreticalMax > 0 ? (totalEnergy / theoreticalMax) * 100 : 0;
             
             return {
@@ -309,12 +302,17 @@
 
         showError(msg) {
             const el = document.getElementById('error-container');
-            if (el) el.innerHTML = `<div class="error">${msg}</div>`;
+            if (!el) return;
+            el.textContent = '';
+            const div = document.createElement('div');
+            div.className = 'error';
+            div.textContent = msg;
+            el.appendChild(div);
         },
 
         hideError() {
             const el = document.getElementById('error-container');
-            if (el) el.innerHTML = '';
+            if (el) el.textContent = '';
         },
 
         destroy() {

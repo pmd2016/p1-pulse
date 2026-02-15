@@ -1,0 +1,69 @@
+{
+  "api_description": "Power and gas data with a minute interval that is ordered on timestamp",
+  "api_options": "limit {default all, >0 } number of entries returned, sort (on timestamp) {default desc, asc} sort on timestamp, json {default array, object} json output options see https://www.json.org/, round {default off, on} round to the nearest integer, no fractions in the output, starttime {default now, YYYY-MM-DD HH:MM:SS} from which moment in time data should retrieved, range {YYYY-MM-DD HH:MM:SS} all records that fit the timestamp string will be retrieved",
+  "api_status": "production",
+  "api_usage": "<ip>/api/v1/powergas/minute?limit=10&sort=asc&json=object&round=on&starttime=2018-01-03 12:03:55 or range=2020-01-03, <ip>/api/v1/powergas/minute, <ip>/api/v1/powergas/minute/help",
+  "api_version": 1,
+  "fields": [
+    {
+      "description": "Time in format yyyy-mm-dd hh:mm:ss",
+      "name": "TIMESTAMP_lOCAL",
+      "type": "string"
+    },
+    {
+      "description": "UTC timestamp",
+      "name": "TIMESTAMP_UTC",
+      "type": "integer"
+    },
+    {
+      "description": "Consumption of KWH during low (dal) period. Meter code 181.",
+      "name": "CONSUMPTION_KWH_LOW",
+      "type": "number"
+    },
+    {
+      "description": "Consumption of KWH during high (piek) period. Meter code 182.",
+      "name": "CONSUMPTION_KWH_HIGH",
+      "type": "number"
+    },
+    {
+      "description": "Production of KWH during low (dal) period. Meter code 281.",
+      "name": "PRODUCTION_KWH_LOW",
+      "type": "number"
+    },
+    {
+      "description": "Production of KWH during high (piek) period. Meter code 282.",
+      "name": "PRODUCTION_KWH_HIGH",
+      "type": "number"
+    },
+    {
+      "description": "The consumption in kilo Watt hour (kWh) during this period.",
+      "name": "CONSUMPTION_DELTA_KWH",
+      "type": "number"
+    },
+    {
+      "description": "The production in kilo Watt hour (kWh) during this period.",
+      "name": "PRODUCTION_DELTA_KWH",
+      "type": "number"
+    },
+    {
+      "description": "High or low period for production of consumption of kWh. Low = D, High = P",
+      "name": "TARIFCODE",
+      "type": "string"
+    },
+    {
+      "description": "The consumption in kilo Watt at this moment.",
+      "name": "CONSUMPTION_KW",
+      "type": "number"
+    },
+    {
+      "description": "The production in kilo Watt at this moment.",
+      "name": "PRODUCTION_KW",
+      "type": "number"
+    },
+    {
+      "description": "Consumption of gas in M3.",
+      "name": "CONSUMPTION_GAS_M3",
+      "type": "number"
+    }
+  ]
+}
