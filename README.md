@@ -21,10 +21,10 @@ A modern, responsive web dashboard for monitoring real-time energy, gas, water, 
 - **Dashboard** - Overview of all utilities with gauges and peak information
 - **Electricity** - Detailed electricity consumption and production analysis
 - **Gas** - Gas consumption tracking and charts
+- **Solar** - Solar production data and efficiency metrics (Solplanet Cloud integration)
 
 ### 🚧 Work in progress
 - **Water** - Water usage monitoring
-- **Solar** - Solar production data and efficiency metrics
 - **Costs** - Energy cost analysis and savings calculations
 
 ## 🛠️ Technology Stack
@@ -40,18 +40,21 @@ A modern, responsive web dashboard for monitoring real-time energy, gas, water, 
 ```
 ├── p1mon.php                    # Main entry point
 ├── config.php                   # Configuration and helper functions
-├── api/                         # API (currently used for Solplanet Cloud integration)
-|   └── solar.php                #
+├── api/                         # Custom API endpoints
+│   └── solar.php                # Solar data API (Solplanet Cloud integration)
 ├── components/                  # Reusable UI components
 │   ├── header.php               # Top navigation and branding
 │   ├── sidebar.php              # Navigation menu
 │   ├── footer.php               # Page footer
 │   └── theme-toggle.php         # Theme switcher
-├── data/                        # SQLite 3 Database
-|   └── solar.db                 # SQLite 3 Database for solar production data
-├── lib/                         #
-|   ├── SolarConfig.php          #
-|   └── SolplanetAPI.php         #
+├── data/                        # Data storage
+│   └── solar.db                 # SQLite database for solar production data
+├── docs/                        # Documentation
+│   ├── TECHNICAL.md             # Detailed technical documentation
+│   └── ...                      # Phase handover documents
+├── lib/                         # PHP libraries
+│   ├── SolarConfig.php          # Solplanet API configuration manager
+│   └── SolplanetAPI.php         # Solplanet Cloud API client
 ├── pages/                       # Page templates
 │   ├── dashboard.php            # Main dashboard view
 │   ├── electricity.php          # Electricity details
@@ -59,12 +62,11 @@ A modern, responsive web dashboard for monitoring real-time energy, gas, water, 
 │   ├── water.php                # Water usage
 │   ├── solar.php                # Solar production
 │   └── costs.php                # Cost analysis
-├── scripts/                     #
-│   ├── init-solar-database.php  #
-│   ├── solar-collector.php      #
-│   ├── solar-debug.php          #
-│   ├── solar-diagnostics.php    #
-│   └── test-solar.api           #
+├── scripts/                     # Utility scripts (see docs/TECHNICAL.md)
+│   ├── init-solar-database.php  # Initialize SQLite database
+│   ├── solar-collector.php      # Data collection (for cron)
+│   ├── solar-backfill.php       # Historical data import
+│   └── ...                      # Additional debug/diagnostic tools
 └── assets/                      # Static assets
     ├── css/                     # Stylesheets
     │   ├── variables.css        # CSS custom properties for theming
@@ -73,9 +75,11 @@ A modern, responsive web dashboard for monitoring real-time energy, gas, water, 
     │   └── layout.css           # Layout and grid system
     └── js/                      # JavaScript modules
         ├── api.js               # P1 Monitor API wrapper
-        ├── charts.js            # Chart.js initialization
+        ├── charts.js            # Chart utilities
         ├── dashboard.js         # Dashboard functionality
         ├── electricity.js       # Electricity page logic
+        ├── gas.js               # Gas page logic
+        ├── solar.js             # Solar page logic
         ├── theme.js             # Theme switching logic
         ├── sidebar.js           # Sidebar interaction
         └── header.js            # Header functionality
@@ -255,6 +259,16 @@ Charts are powered by Chart.js with support for:
 - Verify PHP sessions are working
 - Check browser cookie settings
 - Clear browser cache and retry
+
+## 📚 Documentation
+
+For detailed technical documentation, see [docs/TECHNICAL.md](docs/TECHNICAL.md), which includes:
+- Complete API reference (P1 Monitor & custom Solar API)
+- Database schema and data flow
+- Solar integration setup (Solplanet Cloud)
+- All utility scripts with usage examples
+- JavaScript module documentation
+- Known issues and troubleshooting
 
 ## 📝 License
 

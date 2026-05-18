@@ -31,7 +31,7 @@
             // Listen for system theme changes
             this.watchSystemTheme();
             
-            console.log('Theme system initialized:', theme);
+            P1Logger.log('Theme system initialized:', theme);
         },
         
         /**
@@ -83,7 +83,7 @@
          */
         setTheme(theme, persist = true) {
             if (!this.isValidTheme(theme)) {
-                console.warn('Invalid theme:', theme);
+                P1Logger.warn('Invalid theme:', theme);
                 return;
             }
             
@@ -109,7 +109,7 @@
             // Dispatch custom event for other scripts to listen to
             this.dispatchThemeChangeEvent(theme, oldTheme);
             
-            console.log('Theme changed:', oldTheme, '->', theme);
+            P1Logger.log('Theme changed:', oldTheme, '->', theme);
         },
         
         /**
@@ -156,11 +156,11 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    console.log('Theme synced to server');
+                    P1Logger.log('Theme synced to server');
                 }
             })
             .catch(error => {
-                console.warn('Failed to sync theme to server:', error);
+                P1Logger.warn('Failed to sync theme to server:', error);
             });
         },
         
@@ -201,7 +201,7 @@
                 if (!hasManualPreference) {
                     const newTheme = e.matches ? this.THEMES.DARK : this.THEMES.LIGHT;
                     this.setTheme(newTheme, false);
-                    console.log('System theme changed, auto-switching to:', newTheme);
+                    P1Logger.log('System theme changed, auto-switching to:', newTheme);
                 }
             });
         },
@@ -227,7 +227,7 @@
             localStorage.removeItem(this.STORAGE_KEY);
             const systemTheme = this.getSystemTheme();
             this.setTheme(systemTheme, false);
-            console.log('Theme reset to system preference:', systemTheme);
+            P1Logger.log('Theme reset to system preference:', systemTheme);
         }
     };
     

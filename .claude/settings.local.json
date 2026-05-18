@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//Users/michiel/Documents/Webprojecten/**)",
+      "Bash(wc:*)",
+      "Bash(tree:*)",
+      "Bash(xargs:*)",
+      "Read(//Users/michiel/Documents/Webprojecten/P1 Monitor/www/custom/**)",
+      "Bash(find:*)"
+    ]
+  }
+}

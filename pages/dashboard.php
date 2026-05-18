@@ -24,9 +24,12 @@
                             <a href="?page=electricity" class="card-link">Details →</a>
                         </div>
                         <div class="card-body">
-                            <div class="current-reading">
-                                <div class="reading-value" id="elec-current-power">-- W</div>
-                                <div class="reading-label">Huidig vermogen</div>
+                            <div class="gauge-container-small">
+                                <canvas id="elec-gauge"></canvas>
+                                <div class="gauge-value">
+                                    <span class="gauge-number" id="elec-current-power">-- W</span>
+                                    <span class="gauge-unit">Actueel</span>
+                                </div>
                             </div>
                             <div class="card-stats">
                                 <div class="stat-item">
@@ -56,9 +59,12 @@
                             <a href="?page=gas" class="card-link">Details →</a>
                         </div>
                         <div class="card-body">
-                            <div class="current-reading">
-                                <div class="reading-value" id="gas-current-flow">-- m³/h</div>
-                                <div class="reading-label">Huidig debiet</div>
+                            <div class="gauge-container-small">
+                                <canvas id="gas-gauge"></canvas>
+                                <div class="gauge-value">
+                                    <span class="gauge-number" id="gas-current-flow">-- m³/h</span>
+                                    <span class="gauge-unit">Debiet</span>
+                                </div>
                             </div>
                             <div class="card-stats">
                                 <div class="stat-item">
@@ -84,9 +90,12 @@
                             <a href="?page=solar" class="card-link">Details →</a>
                         </div>
                         <div class="card-body">
-                            <div class="current-reading">
-                                <div class="reading-value" id="solar-current-power">-- W</div>
-                                <div class="reading-label">Huidige productie</div>
+                            <div class="gauge-container-small">
+                                <canvas id="solar-gauge"></canvas>
+                                <div class="gauge-value">
+                                    <span class="gauge-number" id="solar-current-power">-- W</span>
+                                    <span class="gauge-unit">Productie</span>
+                                </div>
                             </div>
                             <div class="card-stats">
                                 <div class="stat-item">
@@ -116,9 +125,12 @@
                             <a href="?page=water" class="card-link">Details →</a>
                         </div>
                         <div class="card-body">
-                            <div class="current-reading">
-                                <div class="reading-value" id="water-current-flow">-- L/min</div>
-                                <div class="reading-label">Huidig debiet</div>
+                            <div class="gauge-container-small">
+                                <canvas id="water-gauge"></canvas>
+                                <div class="gauge-value">
+                                    <span class="gauge-number" id="water-current-flow">-- L/min</span>
+                                    <span class="gauge-unit">Debiet</span>
+                                </div>
                             </div>
                             <div class="card-stats">
                                 <div class="stat-item">

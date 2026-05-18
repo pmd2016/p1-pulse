@@ -54,7 +54,7 @@ class P1Config {
     public static function getVisibility() {
         return [
             'hide_gas' => self::get(158) == 1,
-            'hide_water' => self::get(157) == 1,
+            'hide_water' => self::get(96) == 0,
             'hide_peak_kw' => self::get(206) == 1,
             'show_phase_info' => self::get(61) == 1
         ];
@@ -72,12 +72,29 @@ class P1Config {
     public static function isFastMode() {
         return self::get(154) == 1;
     }
+
+    // Get energy configuration values
+    // These are used as defaults when P1 Monitor financial data is unavailable
+    public static function getEnergyConfig() {
+        return [
+            // Solar system capacity in Watts (14 × 270Wp panels = 3780W)
+            // Adjust this value to match your installation
+            'system_capacity_w' => 3780,
+
+            // Electricity cost in EUR per kWh (used as fallback when financial API unavailable)
+            // The P1 Monitor financial API uses configured tariffs when available
+            'electricity_cost_per_kwh' => 0.30,
+
+            // Gas cost in EUR per m³ (used as fallback when financial API unavailable)
+            'gas_cost_per_m3' => 1.50
+        ];
+    }
 }
 
 // Helper function to render a page
 function renderPage($page, $data = []) {
     // Make data available to included files
-    extract($data);
+    extract($data, EXTR_SKIP);
     
     // Start output buffering
     ob_start();
@@ -127,7 +144,7 @@ function includeCSS() {
 
 // Helper function to include JS files
 function includeJS() {
-    $jsFiles = ['theme', 'sidebar', 'api', 'header', 'charts'];
+    $jsFiles = ['logger', 'theme', 'sidebar', 'api', 'header', 'charts'];
     foreach ($jsFiles as $file) {
         echo "<script src='" . CUSTOM_BASE_URL . "/assets/js/{$file}.js'></script>\n";
     }

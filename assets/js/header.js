@@ -7,22 +7,28 @@
     'use strict';
 
     const HeaderManager = {
-        updateInterval: null,
+        timers: [],
 
         init() {
-            console.log('Header initialized');
+            P1Logger.log('[Header] Initialized');
             this.updateTime();
             this.loadWeather();
             this.loadSolarWidget();
-            
+
             // Update time every second
-            setInterval(() => this.updateTime(), 1000);
-            
+            this.timers.push(setInterval(() => this.updateTime(), 1000));
+
             // Update weather every 5 minutes
-            setInterval(() => this.loadWeather(), 300000);
-            
+            this.timers.push(setInterval(() => {
+                P1Logger.log('[Header] Refreshing weather data');
+                this.loadWeather();
+            }, 300000));
+
             // Update solar widget every 10 seconds
-            setInterval(() => this.loadSolarWidget(), 10000);
+            this.timers.push(setInterval(() => {
+                P1Logger.log('[Header] Refreshing solar widget');
+                this.loadSolarWidget();
+            }, 10000));
         },
 
         updateTime() {
@@ -38,32 +44,32 @@
         async loadWeather() {
             try {
                 // Use P1 Monitor weather API
-                const response = await fetch('/api/v1/weather');
+                const response = await fetch('/api/v1/weather?json=object');
                 if (!response.ok) return;
-                
+
                 const data = await response.json();
                 if (!Array.isArray(data) || data.length === 0) return;
-                
-                // Get most recent weather record
+
+                // Get most recent weather record (named properties via ?json=object)
                 const latest = data[0];
-                
+
                 // Update weather display
                 const tempEl = document.getElementById('weather-temp');
                 const humidityEl = document.getElementById('weather-humidity');
                 const windEl = document.getElementById('weather-wind');
                 const pressureEl = document.getElementById('weather-pressure');
-                
-                if (tempEl && latest[4] !== undefined) {
-                    tempEl.textContent = `${Math.round(latest[4])}°C`;
+
+                if (tempEl && latest.TEMPERATURE !== undefined) {
+                    tempEl.textContent = `${Math.round(latest.TEMPERATURE)}°C`;
                 }
-                if (humidityEl && latest[11] !== undefined) {
-                    humidityEl.textContent = `${Math.round(latest[11])}%`;
+                if (humidityEl && latest.HUMIDITY !== undefined) {
+                    humidityEl.textContent = `${Math.round(latest.HUMIDITY)}%`;
                 }
-                if (windEl && latest[14] !== undefined) {
-                    windEl.textContent = `${latest[14].toFixed(1)} m/s`;
+                if (windEl && latest.WIND_SPEED !== undefined) {
+                    windEl.textContent = `${latest.WIND_SPEED.toFixed(1)} m/s`;
                 }
-                if (pressureEl && latest[8] !== undefined) {
-                    pressureEl.textContent = `${Math.round(latest[8])} hPa`;
+                if (pressureEl && latest.PRESSURE !== undefined) {
+                    pressureEl.textContent = `${Math.round(latest.PRESSURE)} hPa`;
                 }
                 
                 // Show weather widget
@@ -73,7 +79,7 @@
                 }
                 
             } catch (err) {
-                console.error('Error loading weather:', err);
+                P1Logger.error('Error loading weather:', err);
             }
         },
 
@@ -84,7 +90,7 @@
                 if (!currentResponse.ok) throw new Error('Solar current API error');
                 const current = await currentResponse.json();
                 
-                // Get today's total
+                // Get today's total (last 24 hours, but we'll filter to today only)
                 const todayResponse = await fetch('/custom/api/solar.php?period=hours&zoom=24');
                 if (!todayResponse.ok) throw new Error('Solar today API error');
                 const today = await todayResponse.json();
@@ -98,7 +104,19 @@
                 }
                 
                 if (todayEl && today && today.chartData) {
-                    const totalEnergy = today.chartData.reduce((sum, point) => {
+                    // Get midnight of today (00:00:00) as Unix timestamp
+                    const now = new Date();
+                    const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                    const midnightTimestamp = Math.floor(todayMidnight.getTime() / 1000);
+                    
+                    // Filter data to only include records from today (after midnight)
+                    const todayData = today.chartData.filter(point => {
+                        const pointTimestamp = point.unixTimestamp || 0;
+                        return pointTimestamp >= midnightTimestamp;
+                    });
+                    
+                    // Calculate total energy for today only
+                    const totalEnergy = todayData.reduce((sum, point) => {
                         return sum + (parseFloat(point.production) || 0);
                     }, 0);
                     todayEl.textContent = totalEnergy.toFixed(2) + ' kWh';
@@ -111,7 +129,7 @@
                 }
                 
             } catch (err) {
-                console.error('Error loading solar widget:', err);
+                P1Logger.error('Error loading solar widget:', err);
                 // Don't show widget if solar data unavailable
                 const solarWidget = document.getElementById('solar-widget');
                 if (solarWidget) {
@@ -126,12 +144,22 @@
                 return (w / 1000).toFixed(2) + ' kW';
             }
             return Math.round(w) + ' W';
+        },
+
+        destroy() {
+            this.timers.forEach(id => clearInterval(id));
+            this.timers = [];
         }
     };
 
     // Auto-init on DOM ready
     document.addEventListener('DOMContentLoaded', () => {
         HeaderManager.init();
+    });
+
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', () => {
+        HeaderManager.destroy();
     });
 
 })();

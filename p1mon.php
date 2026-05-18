@@ -23,6 +23,7 @@ if (!in_array($page, $validPages)) {
 $config = P1Config::getUserPrefs();
 $visibility = P1Config::getVisibility();
 $maxValues = P1Config::getMaxValues();
+$energyConfig = P1Config::getEnergyConfig();
 
 // Prepare data to pass to the page
 $pageData = [
@@ -30,6 +31,7 @@ $pageData = [
     'config' => $config,
     'visibility' => $visibility,
     'maxValues' => $maxValues,
+    'energyConfig' => $energyConfig,
     'isFastMode' => P1Config::isFastMode()
 ];
 

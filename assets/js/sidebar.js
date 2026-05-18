@@ -37,7 +37,7 @@
             // Hide nav items based on visibility settings
             this.applyVisibilitySettings();
             
-            console.log('Sidebar system initialized');
+            P1Logger.log('Sidebar system initialized');
         },
         
         /**
@@ -173,13 +173,13 @@
                 document.body.classList.remove('sidebar-open');
                 this.isOpen = false;
                 this.restoreState();
-                console.log('Switched to desktop view');
+                P1Logger.log('Switched to desktop view');
             } else if (!wasMobile && this.isMobile) {
                 // Switching from desktop to mobile
                 document.body.classList.remove('sidebar-collapsed');
                 this.isCollapsed = false;
                 this.close(false);
-                console.log('Switched to mobile view');
+                P1Logger.log('Switched to mobile view');
             }
         },
         
@@ -227,7 +227,7 @@
             this.saveState();
             this.dispatchStateChangeEvent();
             
-            console.log('Sidebar collapsed');
+            P1Logger.log('Sidebar collapsed');
         },
         
         /**
@@ -253,7 +253,7 @@
             this.saveState();
             this.dispatchStateChangeEvent();
             
-            console.log('Sidebar expanded');
+            P1Logger.log('Sidebar expanded');
         },
         
         /**
@@ -286,7 +286,7 @@
             
             this.dispatchStateChangeEvent();
             
-            console.log('Sidebar opened (mobile)');
+            P1Logger.log('Sidebar opened (mobile)');
         },
         
         /**
@@ -319,7 +319,7 @@
             
             this.dispatchStateChangeEvent();
             
-            console.log('Sidebar closed (mobile)');
+            P1Logger.log('Sidebar closed (mobile)');
         },
         
         /**
@@ -361,7 +361,7 @@
                 }
             });
             
-            console.log('Active nav item updated:', page);
+            P1Logger.log('Active nav item updated:', page);
         },
         
         /**
@@ -376,10 +376,14 @@
             item.className = 'nav-item';
             if (config.active) item.classList.add('active');
             
-            item.innerHTML = `
-                <span class="nav-icon">${config.icon || '📄'}</span>
-                <span class="nav-label">${config.label || 'Item'}</span>
-            `;
+            const icon = document.createElement('span');
+            icon.className = 'nav-icon';
+            icon.textContent = config.icon || '';
+            const label = document.createElement('span');
+            label.className = 'nav-label';
+            label.textContent = config.label || 'Item';
+            item.appendChild(icon);
+            item.appendChild(label);
             
             nav.appendChild(item);
             

@@ -25,7 +25,11 @@
             maxConsumption: <?php echo $maxValues['consumption']; ?>,
             maxProduction: <?php echo $maxValues['production']; ?>,
             updateInterval: <?php echo $isFastMode ? 1000 : 10000; ?>,
-            visibility: <?php echo json_encode($visibility); ?>
+            visibility: <?php echo json_encode($visibility); ?>,
+            // Energy configuration (configurable in config.php)
+            systemCapacityW: <?php echo $energyConfig['system_capacity_w'] ?? 3780; ?>,
+            electricityCostPerKwh: <?php echo $energyConfig['electricity_cost_per_kwh'] ?? 0.30; ?>,
+            gasCostPerM3: <?php echo $energyConfig['gas_cost_per_m3'] ?? 1.50; ?>
         };
     </script>
 </body>
