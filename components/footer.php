@@ -2,26 +2,21 @@
     
     <?php includeJS(); ?>
     
-    <!-- Dashboard specific script (only loads on dashboard page) -->
-    <?php if ($currentPage === 'dashboard'): ?>
-    <script src="<?php echo CUSTOM_BASE_URL; ?>/assets/js/dashboard.js"></script>
-    <?php endif; ?>
+    <?php
+    // Load page-specific JavaScript
+    $currentPage = $currentPage ?? 'dashboard';
     
-    <!-- Electricity specific script (only loads on electricity page) -->
-    <?php if ($currentPage === 'electricity'): ?>
-    <script src="<?php echo CUSTOM_BASE_URL; ?>/assets/js/electricity.js"></script>
-    <?php endif; ?>
-
-    <!-- Gas specific script (only loads on gas page) -->
-    <?php if ($currentPage === 'gas'): ?>
-    <script src="<?php echo CUSTOM_BASE_URL; ?>/assets/js/gas.js"></script>
-    <?php endif; ?>
+    if ($currentPage === 'solar') {
+        echo "<script src='" . CUSTOM_BASE_URL . "/assets/js/solar.js'></script>\n";
+    } elseif ($currentPage === 'dashboard') {
+        echo "<script src='" . CUSTOM_BASE_URL . "/assets/js/dashboard.js'></script>\n";
+    } elseif ($currentPage === 'electricity') {
+        echo "<script src='" . CUSTOM_BASE_URL . "/assets/js/electricity.js'></script>\n";
+    } elseif ($currentPage === 'gas') {
+        echo "<script src='" . CUSTOM_BASE_URL . "/assets/js/gas.js'></script>\n";
+    }
+    ?>
     
-    <!-- Solar specific script (only loads on solar page) -->
-    <?php if ($currentPage === 'solar'): ?>
-    <script src="<?php echo CUSTOM_BASE_URL; ?>/assets/js/solar.js"></script>
-    <?php endif; ?>
-
     <script>
         // Pass PHP config to JavaScript
         window.P1MonConfig = {
