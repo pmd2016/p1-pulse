@@ -1,0 +1,13 @@
+# Defence in depth: this directory is inside the web root, and a credentials
+# file placed here must never be served. The supported location is outside the
+# web root (/p1mon/config/solplanet.ini) — see solplanet.ini.example.
+#
+# Requires AllowOverride to be enabled for this directory; do not rely on it
+# alone. Apache 2.4 syntax, with the 2.2 form kept for older installs.
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+</IfModule>

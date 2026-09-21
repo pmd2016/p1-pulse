@@ -27,6 +27,41 @@ try {
     die("ERROR: Could not connect to database: " . $e->getMessage() . "\n");
 }
 
+// An existing file is not necessarily an initialised one. A diagnostic tool
+// should name this rather than die on an uncaught PDOException in whichever
+// report happens to query first.
+$expectedTables = [
+    'solar_realtime', 'solar_hourly', 'solar_daily', 'solar_monthly',
+    'solar_yearly', 'api_cache', 'collection_metadata',
+];
+
+$presentTables = $db->query(
+    "SELECT name FROM sqlite_master WHERE type = 'table'"
+)->fetchAll(PDO::FETCH_COLUMN);
+
+$missingTables = array_diff($expectedTables, $presentTables);
+
+if ($missingTables) {
+    echo "\n";
+    echo str_repeat("=", 80) . "\n";
+    echo "SCHEMA INCOMPLETE\n";
+    echo str_repeat("=", 80) . "\n\n";
+    echo "Database:        " . DB_PATH . "\n";
+    echo "Size:            " . formatBytes(filesize(DB_PATH)) . "\n";
+    echo "Tables present:  " . ($presentTables ? implode(', ', $presentTables) : '(none)') . "\n";
+    echo "Tables missing:  " . implode(', ', $missingTables) . "\n\n";
+
+    if (!$presentTables) {
+        echo "The file exists but contains no tables at all. That is what PDO leaves\n";
+        echo "behind when something connects to a path where no database exists.\n\n";
+    }
+
+    echo "Fix:  php " . __DIR__ . "/init-solar-database.php\n";
+    echo "      It is idempotent: every table is CREATE TABLE IF NOT EXISTS, so it\n";
+    echo "      restores what is missing without touching what is there.\n\n";
+    exit(1);
+}
+
 /**
  * Format bytes to human readable
  */

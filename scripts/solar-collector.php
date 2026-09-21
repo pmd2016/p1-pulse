@@ -64,13 +64,34 @@ function collectData() {
         logMessage("Continuing with --force flag despite config error", 'INFO');
     }
     
-    // Connect to database
+    // Connect to database.
+    //
+    // The file_exists check is load-bearing: PDO creates an empty SQLite file
+    // on connect. Without it, a run against a missing database silently
+    // manufactures a schemaless one, which then satisfies every other
+    // component's existence check while failing every query. Fail loudly here
+    // instead, and say what to do about it.
+    if (!file_exists(DB_PATH)) {
+        logMessage("Database not found at " . DB_PATH, 'ERROR');
+        logMessage("Refusing to create an empty one. Run: php " . __DIR__ . "/init-solar-database.php", 'ERROR');
+        return false;
+    }
+
     try {
         $db = new PDO('sqlite:' . DB_PATH);
         $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         logMessage("Database connected: " . DB_PATH, 'INFO');
     } catch (PDOException $e) {
         logMessage("Database connection failed: " . $e->getMessage(), 'ERROR');
+        return false;
+    }
+
+    // An existing file is not necessarily an initialised one.
+    try {
+        $db->query('SELECT 1 FROM collection_metadata LIMIT 1');
+    } catch (PDOException $e) {
+        logMessage("Database at " . DB_PATH . " has no schema: " . $e->getMessage(), 'ERROR');
+        logMessage("Run: php " . __DIR__ . "/init-solar-database.php (safe on an existing file)", 'ERROR');
         return false;
     }
     

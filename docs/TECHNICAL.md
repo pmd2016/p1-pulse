@@ -140,6 +140,23 @@ Wh stored in the database. `status` is `"normal"` when `inverter_status == 1`, o
 `status: "offline"`. On a database or query failure the response is `{"error": "..."}` — callers
 must handle a payload with no `power` key.
 
+#### Failure reporting
+
+Both routes distinguish three unavailable states, rather than degrading silently to zero:
+
+| `error` | Meaning |
+|---------|---------|
+| `Database not found, or not readable by the web server` | `file_exists()` is false — absent, or the directory is not traversable |
+| `Database exists but is not readable by the web server` | Present, but file permissions deny the web user |
+| `Database schema is missing or incomplete` | Opens, but a required table is absent — typically an empty file left by a PDO connect |
+| `Query failed` | Any other query error; details go to the PHP error log, not the response |
+
+On the history routes the key is **additive**: `chartData` and `stats` are still present and
+still empty, so a client that ignores `error` behaves exactly as before. An initialised database
+with no rows yet returns **no** `error` key — that is a normal state, not a fault.
+`assets/js/solar.js` surfaces it as a message instead of an empty chart; the dashboard card and
+header widget blank themselves rather than claim zero production.
+
 #### Historical data
 
 ```
@@ -695,18 +712,22 @@ energy integration rather than the fetch.
 history as unreliable until the integration is re-derived and validated against the Solplanet
 dashboard.
 
-### A missing database is indistinguishable from a quiet night
+### Device-only state is not in this repository
 
-Over the history API, an absent `solar.db` and an empty one produce byte-identical
-responses: `chartData: []` with zeroed statistics. A broken installation therefore renders
-as a flat chart rather than an error, and can go unnoticed indefinitely. Only
-`?action=current` distinguishes them, returning `{"error": "Database not available"}`.
+Three things live only on the P1 Monitor host and are restored by no deployment:
+`data/solar.db`, `/p1mon/config/solplanet.ini`, and the collector's cron entry. Losing the
+SD card or reinstalling P1 Monitor loses all three at once. `.gitignore` keeps the first two
+out of this public repository; the README documents restoring all three.
 
-`getSolarDB()` reaches that state through `file_exists()`, which also returns false when the
-web server user cannot traverse the containing directory — so "not there" and "not readable"
-are likewise indistinguishable from the response alone.
+### `file_exists()` cannot distinguish absent from unreadable
 
-Both behaviours are pinned by `tests/run-solar-api-tests.php`.
+`getSolarDB()` and the collector both gate on `file_exists()`, which returns false when the
+file is missing *and* when the web server user cannot traverse the containing directory. The
+API therefore reports "Database not found, or not readable by the web server" rather than
+asserting which. Diagnosing it needs `ls -la` on the device.
+
+This bit in practice: the web server reported the database as unavailable while the same
+file opened fine from a CLI shell.
 
 ### Theme is never persisted server-side
 

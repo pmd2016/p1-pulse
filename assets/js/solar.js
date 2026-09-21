@@ -64,6 +64,15 @@
                     return;
                 }
 
+                // An unavailable database returns empty chartData, which would
+                // otherwise render as a flat chart indistinguishable from a
+                // night with no production.
+                if (payload.error) {
+                    P1Logger.error('Solar API unavailable:', payload.error);
+                    ChartBase.showError('Zonnedata niet beschikbaar — controleer de solar database op de server.');
+                    return;
+                }
+
                 this.data = payload.chartData;
                 this.updateStatistics(payload.stats);
 
