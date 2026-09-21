@@ -1,0 +1,24 @@
+[
+    {
+        "CITY_ID": 2749611,
+        "CITY_NAME": "Ommen",
+        "DEGREE_DAYS": 111.02199999999999,
+        "HUMIDITY_AVERAGE": 45,
+        "HUMIDITY_HIGH": 96,
+        "HUMIDITY_LOW": 24,
+        "PRESSURE_AVERAGE": 1018,
+        "PRESSURE_HIGH": 1030,
+        "PRESSURE_LOW": 999,
+        "TEMPERATURE_AVERAGE": 18.103845726873185,
+        "TEMPERATURE_HIGH": 36.44,
+        "TEMPERATURE_LOW": 5.53,
+        "TIMESTAMP_UTC": 1745708400,
+        "TIMESTAMP_lOCAL": "2025-04-27 00:00:00",
+        "WIND_DEGREES_HIGH": 360,
+        "WIND_DEGREES_HUMIDITY_AVERAGE": 205,
+        "WIND_DEGREES_LOW": 0,
+        "WIND_SPEED_AVERAGE": 4.2,
+        "WIND_SPEED_HIGH": 11.1,
+        "WIND_SPEED_LOW": 0.08
+    }
+]

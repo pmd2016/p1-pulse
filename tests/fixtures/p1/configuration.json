@@ -1,0 +1,1147 @@
+[
+    {
+        "CONFIGURATION_ID": 0,
+        "LABEL": "Versie:",
+        "PARAMETER": "3.3.0"
+    },
+    {
+        "CONFIGURATION_ID": 1,
+        "LABEL": "Verbruik tarief elektriciteit dal/nacht in euro.",
+        "PARAMETER": "0.22644"
+    },
+    {
+        "CONFIGURATION_ID": 2,
+        "LABEL": "Verbruik tarief elektriciteit piek/dag in euro.",
+        "PARAMETER": "0.24079"
+    },
+    {
+        "CONFIGURATION_ID": 3,
+        "LABEL": "Geleverd tarief elektriciteit dal/nacht in euro.",
+        "PARAMETER": "0.22644"
+    },
+    {
+        "CONFIGURATION_ID": 4,
+        "LABEL": "Geleverd tarief elektriciteit piek/dag in euro.",
+        "PARAMETER": "0.24079"
+    },
+    {
+        "CONFIGURATION_ID": 5,
+        "LABEL": "Vastrecht tarief elektriciteit per maand in euro.",
+        "PARAMETER": "6.25"
+    },
+    {
+        "CONFIGURATION_ID": 6,
+        "LABEL": "Bestanden delen mode.",
+        "PARAMETER": "uit"
+    },
+    {
+        "CONFIGURATION_ID": 7,
+        "LABEL": "P1 poort baudrate:",
+        "PARAMETER": "115200"
+    },
+    {
+        "CONFIGURATION_ID": 8,
+        "LABEL": "P1 poort bytesize:",
+        "PARAMETER": "8"
+    },
+    {
+        "CONFIGURATION_ID": 9,
+        "LABEL": "P1 poort pariteit:",
+        "PARAMETER": "N"
+    },
+    {
+        "CONFIGURATION_ID": 10,
+        "LABEL": "P1 poort stopbits:",
+        "PARAMETER": "1"
+    },
+    {
+        "CONFIGURATION_ID": 11,
+        "LABEL": "Wifi ESSID:",
+        "PARAMETER": ""
+    },
+    {
+        "CONFIGURATION_ID": 12,
+        "LABEL": "Wifi password (crypto)",
+        "PARAMETER": ""
+    },
+    {
+        "CONFIGURATION_ID": 13,
+        "LABEL": "Weather API key",
+        "PARAMETER": "VxA2eybjz2C0+qk/a7Rg/pQnjg1nBtrFSfcw1glWmf5NExNFBkdTOncsxcWeUlJUfzisvyiq3rOeXfg15poEeQ=="
+    },
+    {
+        "CONFIGURATION_ID": 14,
+        "LABEL": "Weather locatie",
+        "PARAMETER": "Ommen"
+    },
+    {
+        "CONFIGURATION_ID": 15,
+        "LABEL": "Verbruik tarief gas in euro.",
+        "PARAMETER": "0.85868"
+    },
+    {
+        "CONFIGURATION_ID": 16,
+        "LABEL": "Vastrecht tarief gas per maand in euro.",
+        "PARAMETER": "6.25"
+    },
+    {
+        "CONFIGURATION_ID": 17,
+        "LABEL": "basic API aan of uit (1/0)",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 18,
+        "LABEL": "UI actueel levering/verbruik(1/0)",
+        "PARAMETER": "1"
+    },
+    {
+        "CONFIGURATION_ID": 19,
+        "LABEL": "UI e-historie(1/0)",
+        "PARAMETER": "1"
+    },
+    {
+        "CONFIGURATION_ID": 20,
+        "LABEL": "UI gas-historie(1/0)",
+        "PARAMETER": "1"
+    },
+    {
+        "CONFIGURATION_ID": 21,
+        "LABEL": "UI financieel(1/0)",
+        "PARAMETER": "1"
+    },
+    {
+        "CONFIGURATION_ID": 22,
+        "LABEL": "UI informatie(1/0)",
+        "PARAMETER": "1"
+    },
+    {
+        "CONFIGURATION_ID": 23,
+        "LABEL": "UI e-levering maximaal W",
+        "PARAMETER": "5000"
+    },
+    {
+        "CONFIGURATION_ID": 24,
+        "LABEL": "UI e-verbruik maximaal W",
+        "PARAMETER": "5000"
+    },
+    {
+        "CONFIGURATION_ID": 25,
+        "LABEL": "Weather API ID",
+        "PARAMETER": "2749611"
+    },
+    {
+        "CONFIGURATION_ID": 26,
+        "LABEL": "weer API aan of uit (1/0)",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 27,
+        "LABEL": "historie API aan of uit (1/0)",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 28,
+        "LABEL": "FTP user name.",
+        "PARAMETER": "michiel"
+    },
+    {
+        "CONFIGURATION_ID": 29,
+        "LABEL": "FTP wachtwoord.",
+        "PARAMETER": "VGhlTel67X0SpewtA6Ot6FqxED0SL+w7JGIXpF7RjIw="
+    },
+    {
+        "CONFIGURATION_ID": 30,
+        "LABEL": "FTP remote directory/folder.",
+        "PARAMETER": "/media/drv01/backup/p1mon"
+    },
+    {
+        "CONFIGURATION_ID": 31,
+        "LABEL": "FTP server IP/URL",
+        "PARAMETER": "192.168.1.37"
+    },
+    {
+        "CONFIGURATION_ID": 32,
+        "LABEL": "FTP port",
+        "PARAMETER": "22"
+    },
+    {
+        "CONFIGURATION_ID": 33,
+        "LABEL": "FTP Filenaam + path om te kopieren",
+        "PARAMETER": "/p1mon/www/download/p1mon-sql-export1789941902-0590-F968-C88E-48F1-0A93.zip"
+    },
+    {
+        "CONFIGURATION_ID": 34,
+        "LABEL": "FTP maximaal aantal backup bestanden",
+        "PARAMETER": "10"
+    },
+    {
+        "CONFIGURATION_ID": 35,
+        "LABEL": "FTPS secure connection(1/0).",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 36,
+        "LABEL": "FTP back-up aan/uit (1/0).",
+        "PARAMETER": "1"
+    },
+    {
+        "CONFIGURATION_ID": 37,
+        "LABEL": "Backup schedule format min:hour:day:month:weekday",
+        "PARAMETER": "5:0:*:*:*"
+    },
+    {
+        "CONFIGURATION_ID": 38,
+        "LABEL": "gas waarde telegram prefix 1-96.",
+        "PARAMETER": "1"
+    },
+    {
+        "CONFIGURATION_ID": 39,
+        "LABEL": "financiele max. grens waarde",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 40,
+        "LABEL": "counter value API aan of uit (1/0)",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 41,
+        "LABEL": "UI gas-levering maximaal",
+        "PARAMETER": "10"
+    },
+    {
+        "CONFIGURATION_ID": 42,
+        "LABEL": "p1data API aan of uit (1/0)",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 43,
+        "LABEL": "eigen user interface gebruiken.",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 44,
+        "LABEL": "verwarmingstemperatuur gebruiken.",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 45,
+        "LABEL": "CRC controle p1 telegram actief.",
+        "PARAMETER": "1"
+    },
+    {
+        "CONFIGURATION_ID": 46,
+        "LABEL": "UI verwarming1/0)",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 47,
+        "LABEL": "Dropbox access token",
+        "PARAMETER": ""
+    },
+    {
+        "CONFIGURATION_ID": 48,
+        "LABEL": "Dropbox maximaal aantal backup bestanden.",
+        "PARAMETER": "10"
+    },
+    {
+        "CONFIGURATION_ID": 49,
+        "LABEL": "Dropbox back-up aan/uit (1/0).",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 50,
+        "LABEL": "Dropbox data delen aan/uit (1/0).",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 51,
+        "LABEL": "Controleren op nieuwe p1 monitor versie (1/0).",
+        "PARAMETER": "1"
+    },
+    {
+        "CONFIGURATION_ID": 52,
+        "LABEL": "UI e-verbruik main maximaal",
+        "PARAMETER": "10"
+    },
+    {
+        "CONFIGURATION_ID": 53,
+        "LABEL": "UI e-levering main maximaal",
+        "PARAMETER": "5"
+    },
+    {
+        "CONFIGURATION_ID": 54,
+        "LABEL": "UI gas verbruik main maximaal",
+        "PARAMETER": "1"
+    },
+    {
+        "CONFIGURATION_ID": 55,
+        "LABEL": "UDP broadcast aan/uit (1/0).",
+        "PARAMETER": "1"
+    },
+    {
+        "CONFIGURATION_ID": 56,
+        "LABEL": "UI e-levering maximaal kWh",
+        "PARAMETER": "20"
+    },
+    {
+        "CONFIGURATION_ID": 57,
+        "LABEL": "UI e-verbruik maximaal kWh",
+        "PARAMETER": "20"
+    },
+    {
+        "CONFIGURATION_ID": 58,
+        "LABEL": "Systeem ID",
+        "PARAMETER": "noOehE0EVAEL780X+IUU0xHBd0X0aVgO+SWcUcbHIqusSSuErhSzepk2l+jh1Hwa"
+    },
+    {
+        "CONFIGURATION_ID": 59,
+        "LABEL": "voorspelling in UI aan (1/0).",
+        "PARAMETER": "1"
+    },
+    {
+        "CONFIGURATION_ID": 60,
+        "LABEL": "RFC1918 filtering aan/uit (1/0).",
+        "PARAMETER": "1"
+    },
+    {
+        "CONFIGURATION_ID": 61,
+        "LABEL": "drie fasen informatie in ui aan/uit (1/0).",
+        "PARAMETER": "1"
+    },
+    {
+        "CONFIGURATION_ID": 62,
+        "LABEL": "UI meterstanden historie(1/0)",
+        "PARAMETER": "1"
+    },
+    {
+        "CONFIGURATION_ID": 63,
+        "LABEL": "mail user account",
+        "PARAMETER": "p1mon"
+    },
+    {
+        "CONFIGURATION_ID": 64,
+        "LABEL": "mail user wachtwoord(crypto)",
+        "PARAMETER": "Wlitj7qOBlwjyM88W4C5jT/kGVPVNSimr1X+T1o1OSkUx+fItis3/dG1NTrct3Hu"
+    },
+    {
+        "CONFIGURATION_ID": 65,
+        "LABEL": "mail server hostname",
+        "PARAMETER": "mail.smtp2go.com"
+    },
+    {
+        "CONFIGURATION_ID": 66,
+        "LABEL": "mail server SSL/TLS tcp poort",
+        "PARAMETER": "465"
+    },
+    {
+        "CONFIGURATION_ID": 67,
+        "LABEL": "mail server STARTTLS tcp poort",
+        "PARAMETER": "8025"
+    },
+    {
+        "CONFIGURATION_ID": 68,
+        "LABEL": "mail server plaintext tcp poort",
+        "PARAMETER": "8025"
+    },
+    {
+        "CONFIGURATION_ID": 69,
+        "LABEL": "mail onderwerp voor notificaties",
+        "PARAMETER": "P1 monitor mailer"
+    },
+    {
+        "CONFIGURATION_ID": 70,
+        "LABEL": "mail TO voor notificaties (list)",
+        "PARAMETER": "p.m.doetjes@gmail.com"
+    },
+    {
+        "CONFIGURATION_ID": 71,
+        "LABEL": "mail FROM alias voor notificaties",
+        "PARAMETER": "michiel@michieldoetjes.nl"
+    },
+    {
+        "CONFIGURATION_ID": 72,
+        "LABEL": "timeout voor de aflevering van email in seconden.",
+        "PARAMETER": "60"
+    },
+    {
+        "CONFIGURATION_ID": 73,
+        "LABEL": "notificatie alarm als er geen P1 data meer wordt ontvangen(1/0).",
+        "PARAMETER": "1"
+    },
+    {
+        "CONFIGURATION_ID": 74,
+        "LABEL": "mail CC voor notificaties (list)",
+        "PARAMETER": ""
+    },
+    {
+        "CONFIGURATION_ID": 75,
+        "LABEL": "mail BCC voor notificaties (list)",
+        "PARAMETER": ""
+    },
+    {
+        "CONFIGURATION_ID": 76,
+        "LABEL": "FTP no secure connection(1/0).",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 77,
+        "LABEL": "SFTP secure connection(1/0).",
+        "PARAMETER": "1"
+    },
+    {
+        "CONFIGURATION_ID": 78,
+        "LABEL": "Dag/Nacht mode voor E verwerking.",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 79,
+        "LABEL": "seconden voordat de screensaver actief wordt. 0 is niet actief.",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 80,
+        "LABEL": "seconden nadat de screensaver automatisch uitgeschakeld wordt.",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 81,
+        "LABEL": "gemiddele watt waarde om in te schakelen.",
+        "PARAMETER": "1000"
+    },
+    {
+        "CONFIGURATION_ID": 82,
+        "LABEL": "gemiddele watt waarde om uit te schakelen.",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 83,
+        "LABEL": "aantal minuten voor de gemiddele watt waarde voordat wordt ingeschakeld.",
+        "PARAMETER": "2"
+    },
+    {
+        "CONFIGURATION_ID": 84,
+        "LABEL": "aantal minuten voor de gemiddele watt waarde voordat wordt uitgeschakeld.",
+        "PARAMETER": "2"
+    },
+    {
+        "CONFIGURATION_ID": 85,
+        "LABEL": "ingestelde GPIO pin, voor schakelen van terug geleverde vermogen.",
+        "PARAMETER": "27"
+    },
+    {
+        "CONFIGURATION_ID": 86,
+        "LABEL": "vermogen schakelaar aan of uit (0/1).",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 87,
+        "LABEL": "vermogen schakelaar geforceerd aan of uit (0/1), 0 is automatisch.",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 88,
+        "LABEL": "vermogen schakelaar aantal minuten dat aan minimaal actief blijft.",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 89,
+        "LABEL": "vermogen schakelaar aantal minuten dat uit minimaal inactief blijft.",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 90,
+        "LABEL": "tarief schakelaar aan of uit (0/1).",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 91,
+        "LABEL": "tarief schakelaar piek of dal tarief (P/D).",
+        "PARAMETER": "D"
+    },
+    {
+        "CONFIGURATION_ID": 92,
+        "LABEL": "tarief schakelaar geforceerd aan of uit (0/1), 0 is automatisch.",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 93,
+        "LABEL": "tarief schakelaar timeslot(1) format hh.mm.hh.mm.ma.di.wo.do.vr.za.zo (weekdagen 1 is aan)",
+        "PARAMETER": "0.0.0.0.0.0.0.0.0.0.0"
+    },
+    {
+        "CONFIGURATION_ID": 94,
+        "LABEL": "tarief schakelaar timeslot(2) format hh.mm.hh.mm.ma.di.wo.do.vr.za.zo (weekdagen 1 is aan)",
+        "PARAMETER": "0.0.0.0.0.0.0.0.0.0.0"
+    },
+    {
+        "CONFIGURATION_ID": 95,
+        "LABEL": "ingestelde GPIO pin, voor schakelen op basis van tarief.",
+        "PARAMETER": "22"
+    },
+    {
+        "CONFIGURATION_ID": 96,
+        "LABEL": "watermeter meting actief (0/1).",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 97,
+        "LABEL": "ingestelde GPIO pin, voor het inlezen van watermeter puls.",
+        "PARAMETER": "17"
+    },
+    {
+        "CONFIGURATION_ID": 98,
+        "LABEL": "aantal liter per watermeter puls.",
+        "PARAMETER": "1.0"
+    },
+    {
+        "CONFIGURATION_ID": 99,
+        "LABEL": "aantal M3 water op de watermeter",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 100,
+        "LABEL": "aantal M3 water op de watermeter timestamp.",
+        "PARAMETER": ""
+    },
+    {
+        "CONFIGURATION_ID": 101,
+        "LABEL": "reset de watermeter stand,  1 is uitvoeren, 0 is inactief.",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 102,
+        "LABEL": "UI watermeter zichtbaar 1/0)",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 103,
+        "LABEL": "Vastrecht tarief drinkwater per maand in euro.",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 104,
+        "LABEL": "Tarief drinkwater per m3 in euro.",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 105,
+        "LABEL": "MQTT client name.",
+        "PARAMETER": "p1monitor"
+    },
+    {
+        "CONFIGURATION_ID": 106,
+        "LABEL": "MQTT topic name prefix.",
+        "PARAMETER": "p1monitor"
+    },
+    {
+        "CONFIGURATION_ID": 107,
+        "LABEL": "MQTT broker user name (account).",
+        "PARAMETER": ""
+    },
+    {
+        "CONFIGURATION_ID": 108,
+        "LABEL": "MQTT broker password.",
+        "PARAMETER": ""
+    },
+    {
+        "CONFIGURATION_ID": 109,
+        "LABEL": "MQTT broker host (IP or dns name).",
+        "PARAMETER": ""
+    },
+    {
+        "CONFIGURATION_ID": 110,
+        "LABEL": "MQTT broker host port.",
+        "PARAMETER": "1883"
+    },
+    {
+        "CONFIGURATION_ID": 111,
+        "LABEL": "MQTT TCP/IP session alive in seconds.",
+        "PARAMETER": "60"
+    },
+    {
+        "CONFIGURATION_ID": 112,
+        "LABEL": "MQTT protocol version.",
+        "PARAMETER": "4"
+    },
+    {
+        "CONFIGURATION_ID": 113,
+        "LABEL": "MQTT QoS 0,1 of 2",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 114,
+        "LABEL": "MQTT smartmeter publish aan/uit (1/0).",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 115,
+        "LABEL": "MQTT watermeter publish aan/uit (1/0).",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 116,
+        "LABEL": "MQTT weer publish aan/uit (1/0).",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 117,
+        "LABEL": "MQTT kamertemperatuur publish aan/uit (1/0).",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 118,
+        "LABEL": "MQTT connectie aanpassen trigger (1 is aanpassen).",
+        "PARAMETER": "1"
+    },
+    {
+        "CONFIGURATION_ID": 119,
+        "LABEL": "Bewaar historische 3 fase informatie in de database (1=ja, 0=nee).",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 120,
+        "LABEL": "MQTT fase publish aan/uit (1/0).",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 121,
+        "LABEL": "verwarming temperatuur in label (leeg wil zeggen dat IN wordt gebruikt).",
+        "PARAMETER": ""
+    },
+    {
+        "CONFIGURATION_ID": 122,
+        "LABEL": "verwarming temperatuur uit label (leeg wil zeggen dat UIT wordt gebruikt).",
+        "PARAMETER": ""
+    },
+    {
+        "CONFIGURATION_ID": 123,
+        "LABEL": "UI Amperage voor drie fase metingen (opties 16, 32 of 64).",
+        "PARAMETER": "16"
+    },
+    {
+        "CONFIGURATION_ID": 124,
+        "LABEL": "UI Watt voor drie fase metingen (opties 4000, 6000, 8000 of 1000).",
+        "PARAMETER": "4000"
+    },
+    {
+        "CONFIGURATION_ID": 125,
+        "LABEL": "KWh meter productie(S0) meting actief (0/1).",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 126,
+        "LABEL": "ingestelde GPIO pin, voor het inlezen van KWh meter productie(S0) puls.",
+        "PARAMETER": "26"
+    },
+    {
+        "CONFIGURATION_ID": 127,
+        "LABEL": "aantal kWh per KWh meter productie(S0) puls.",
+        "PARAMETER": "0.0005"
+    },
+    {
+        "CONFIGURATION_ID": 128,
+        "LABEL": "Software patch:",
+        "PARAMETER": "6"
+    },
+    {
+        "CONFIGURATION_ID": 129,
+        "LABEL": "UI KWh meter productie(S0) zichtbaar 1/0)",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 130,
+        "LABEL": "aantal kWh op de meter hoog tarief",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 131,
+        "LABEL": "aantal kWh op de meter laag tarief",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 132,
+        "LABEL": "aantal kWh meter timestamp.",
+        "PARAMETER": ""
+    },
+    {
+        "CONFIGURATION_ID": 133,
+        "LABEL": "Versie nummer:",
+        "PARAMETER": "20260413"
+    },
+    {
+        "CONFIGURATION_ID": 134,
+        "LABEL": "Verberg de P1 header in de UI:",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 135,
+        "LABEL": "MQTT programma aan/uit (1/0).",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 136,
+        "LABEL": "MQTT powerproduction publish aan/uit (1/0).",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 137,
+        "LABEL": "P1Sqlimport programma aan/uit (0 is uit >0 is status id en uitvoeren).",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 138,
+        "LABEL": "P1Sqlimport import bestand.",
+        "PARAMETER": ""
+    },
+    {
+        "CONFIGURATION_ID": 139,
+        "LABEL": "SolarEdge API key",
+        "PARAMETER": ""
+    },
+    {
+        "CONFIGURATION_ID": 140,
+        "LABEL": "SolarEdge config json",
+        "PARAMETER": ""
+    },
+    {
+        "CONFIGURATION_ID": 141,
+        "LABEL": "SolarEdge API meting actief (0/1).",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 142,
+        "LABEL": "SolarEdge API alle data herladen actief (0/1).",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 143,
+        "LABEL": "SolarEdge bereken hoog/piek of laag/piek 0 is uit, anders > 0",
+        "PARAMETER": "1"
+    },
+    {
+        "CONFIGURATION_ID": 144,
+        "LABEL": "SolarEdge lees alle beschikbare sites van een API key in (1/0).",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 145,
+        "LABEL": "SolarEdge reset de configuratie (1/0).",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 146,
+        "LABEL": "SolarEdge API slimme update frequentie. (1/0)",
+        "PARAMETER": "1"
+    },
+    {
+        "CONFIGURATION_ID": 147,
+        "LABEL": "UI Solar Edge kWh productie zichtbaar (1/0)",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 148,
+        "LABEL": "UI taal selectie 0....n",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 149,
+        "LABEL": "Solar Edge config/DB naar fabrieks instellingen 1/0)",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 150,
+        "LABEL": "Publieke dynamische DNS naam (FQDN).",
+        "PARAMETER": "p1mon.micdo.nl"
+    },
+    {
+        "CONFIGURATION_ID": 151,
+        "LABEL": "DuckDNS token.",
+        "PARAMETER": ""
+    },
+    {
+        "CONFIGURATION_ID": 152,
+        "LABEL": "DuckDNS is aan(1) of uit(0).",
+        "PARAMETER": "1"
+    },
+    {
+        "CONFIGURATION_ID": 153,
+        "LABEL": "Forceer een DuckDNS update.",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 154,
+        "LABEL": "P1 data zo snel als mogelijk verwerken(1 max snelheid).",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 155,
+        "LABEL": "vermogen schakelaar GPIO geinverteerd normaal(0), geinverteerd(1)",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 156,
+        "LABEL": "tarief schakelaar GPIO geinverteerd is normaal(0), geinverteerd(1).",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 157,
+        "LABEL": "UI waterverbruik verbergen (1/0)",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 158,
+        "LABEL": "UI gasverbruik verbergen (1/0)",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 159,
+        "LABEL": "LetsEncrypt email adres",
+        "PARAMETER": ""
+    },
+    {
+        "CONFIGURATION_ID": 160,
+        "LABEL": "P1 API authenticatie tokens.",
+        "PARAMETER": ""
+    },
+    {
+        "CONFIGURATION_ID": 161,
+        "LABEL": "P1 API authenticatie tokens verwerken (1/0).",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 162,
+        "LABEL": "Internet API vlag processing (1/0).",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 163,
+        "LABEL": "Internet API is active(1), niet active(0).",
+        "PARAMETER": "1"
+    },
+    {
+        "CONFIGURATION_ID": 164,
+        "LABEL": "eth0 static IP adres.",
+        "PARAMETER": ""
+    },
+    {
+        "CONFIGURATION_ID": 165,
+        "LABEL": "wlan0 static IP adres.",
+        "PARAMETER": ""
+    },
+    {
+        "CONFIGURATION_ID": 166,
+        "LABEL": "default gateway static IP adres.",
+        "PARAMETER": ""
+    },
+    {
+        "CONFIGURATION_ID": 167,
+        "LABEL": "domain name server static IP adres.",
+        "PARAMETER": ""
+    },
+    {
+        "CONFIGURATION_ID": 168,
+        "LABEL": "vlag voor static IP adressen, default gateway en DNS.",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 169,
+        "LABEL": "vlag voor het aanvragen van een Dropbox authenticatie token.",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 170,
+        "LABEL": "Dropbox refresh token",
+        "PARAMETER": ""
+    },
+    {
+        "CONFIGURATION_ID": 171,
+        "LABEL": "UpgradeAide run in save modus (1 is run).",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 172,
+        "LABEL": "Bestandsnaam van de DB om naar Excel te exporteren. (normaal leeg)",
+        "PARAMETER": ""
+    },
+    {
+        "CONFIGURATION_ID": 173,
+        "LABEL": "maximale netspanning in Volt",
+        "PARAMETER": "253"
+    },
+    {
+        "CONFIGURATION_ID": 174,
+        "LABEL": "minimale netspanning in Volt",
+        "PARAMETER": "207"
+    },
+    {
+        "CONFIGURATION_ID": 175,
+        "LABEL": "notificatie alarm als de maximale/minimale fase spanning wordt overschreden (0/1).",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 176,
+        "LABEL": "MQTT E en gas day publish aan/uit (1/0).",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 177,
+        "LABEL": "MQTT financiele dag publish aan/uit (1/0).",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 178,
+        "LABEL": "P1 telegram mode groot verbruik aan/uit (1/0).",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 179,
+        "LABEL": "Bereken missende waarden uit V/A/W indien mogelijk (1/0).",
+        "PARAMETER": "1"
+    },
+    {
+        "CONFIGURATION_ID": 180,
+        "LABEL": "Laat (Kw) waarde zien in de UI ipv Watt(1/0).",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 181,
+        "LABEL": "vlag voor het aanpassen van de crontab voor backup(1/0).",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 182,
+        "LABEL": "vlag voor het aanpassen van de SAMBA fileshare mode (1/0).",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 183,
+        "LABEL": "vlag voor het aanpassen van de Wifi configuratie (1/0).",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 184,
+        "LABEL": "vlag voor het triggeren van een back-up (1/0).",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 185,
+        "LABEL": "vlag voor resetten van de watermeter stand.",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 186,
+        "LABEL": "vlag voor resetten van de Kwh(S0) puls teller.",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 187,
+        "LABEL": "vlag voor sturen van een test email.",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 188,
+        "LABEL": "vlag voor het wissen van de database, gevaarlijk!.",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 189,
+        "LABEL": "vlag voor een systeem reboot",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 190,
+        "LABEL": "vlag voor een systeem halt.",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 191,
+        "LABEL": "vlag voor systeem dump",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 192,
+        "LABEL": "vlag voor systeem dump ID",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 193,
+        "LABEL": "data patches",
+        "PARAMETER": ""
+    },
+    {
+        "CONFIGURATION_ID": 194,
+        "LABEL": "run status patches",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 195,
+        "LABEL": "vlag voor custom www export",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 196,
+        "LABEL": "vlag voor custom www export ID",
+        "PARAMETER": "1789941902-0590-F968-C88E-48F1-0A93"
+    },
+    {
+        "CONFIGURATION_ID": 197,
+        "LABEL": "Niet standaard P1 poort devices",
+        "PARAMETER": ""
+    },
+    {
+        "CONFIGURATION_ID": 198,
+        "LABEL": "socat remote IP adres",
+        "PARAMETER": ""
+    },
+    {
+        "CONFIGURATION_ID": 199,
+        "LABEL": "socat remote poort nummer",
+        "PARAMETER": ""
+    },
+    {
+        "CONFIGURATION_ID": 200,
+        "LABEL": "socat is aan/uit (1/0)",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 201,
+        "LABEL": "vlag voor het triggeren van socat aanpassingen",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 202,
+        "LABEL": "kamertemperatuur graaddagen berekening",
+        "PARAMETER": "18"
+    },
+    {
+        "CONFIGURATION_ID": 203,
+        "LABEL": "vlag voor recover van graaddagen",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 204,
+        "LABEL": "gebruik van vaste tarieven of dynamische tarieven.",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 205,
+        "LABEL": "flexible kosten per kWh inkoop.",
+        "PARAMETER": "0.0212"
+    },
+    {
+        "CONFIGURATION_ID": 206,
+        "LABEL": "UI piek kw verbergen (1/0)",
+        "PARAMETER": "1"
+    },
+    {
+        "CONFIGURATION_ID": 207,
+        "LABEL": "UI gas-verbruik dag maximaal",
+        "PARAMETER": "6"
+    },
+    {
+        "CONFIGURATION_ID": 208,
+        "LABEL": "flexible kosten per gas inkoop.",
+        "PARAMETER": "0.851"
+    },
+    {
+        "CONFIGURATION_ID": 209,
+        "LABEL": "notificatie alarm levering bovengrenswaarde Watt format hh.mm.hh.mm.ma.di.wo.do.vr.za.zo (weekdagen 1 is aan)",
+        "PARAMETER": "0.0.23.59.0.0.0.0.0.0.0"
+    },
+    {
+        "CONFIGURATION_ID": 210,
+        "LABEL": "notificatie alarm levering ondergrenswaarde Watt format hh.mm.hh.mm.ma.di.wo.do.vr.za.zo (weekdagen 1 is aan)",
+        "PARAMETER": "0.0.23.59.0.0.0.0.0.0.0"
+    },
+    {
+        "CONFIGURATION_ID": 211,
+        "LABEL": "notificatie alarm verbruik bovengrenswaarde Watt format hh.mm.hh.mm.ma.di.wo.do.vr.za.zo (weekdagen 1 is aan)",
+        "PARAMETER": "0.0.23.59.0.0.0.0.0.0.0"
+    },
+    {
+        "CONFIGURATION_ID": 212,
+        "LABEL": "notificatie alarm verbruik ondergrenswaarde Watt format hh.mm.hh.mm.ma.di.wo.do.vr.za.zo (weekdagen 1 is aan)",
+        "PARAMETER": "0.0.23.59.0.0.0.0.0.0.0"
+    },
+    {
+        "CONFIGURATION_ID": 213,
+        "LABEL": "notificatie alarm levering bovengrenswaarde Watt is actief (0/1).",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 214,
+        "LABEL": "notificatie alarm levering ondergrenswaarde Watt is actief (0/1).",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 215,
+        "LABEL": "notificatie alarm verbruik bovengrenswaarde Watt is actief (0/1).",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 216,
+        "LABEL": "notificatie alarm verbruik ondergrenswaarde Watt is actief (0/1).",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 217,
+        "LABEL": "notificatie Watt levering bovengrenswaarde.",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 218,
+        "LABEL": "notificatie Watt levering ondergrenswaarde.",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 219,
+        "LABEL": "notificatie Watt verbruik bovengrenswaarde.",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 220,
+        "LABEL": "notificatie Watt verbruik ondergrenswaarde.",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 221,
+        "LABEL": "vlag voor het triggeren van het aanpassen van de tijd via het internet.",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 222,
+        "LABEL": "vlag voor forceren van software en patch versies.",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 223,
+        "LABEL": "wlan0 default gateway static IP adres.",
+        "PARAMETER": ""
+    },
+    {
+        "CONFIGURATION_ID": 224,
+        "LABEL": "wlan0 domain name server static IP adres.",
+        "PARAMETER": ""
+    },
+    {
+        "CONFIGURATION_ID": 225,
+        "LABEL": "vlag voor het verwijderen van de wifi instellingen.",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 226,
+        "LABEL": "MQTT miscellaneous dag publish aan/uit (1/0).",
+        "PARAMETER": "0"
+    },
+    {
+        "CONFIGURATION_ID": 227,
+        "LABEL": "Code van watermeter in het P1 telegram.",
+        "PARAMETER": "0-2:24.2.1"
+    },
+    {
+        "CONFIGURATION_ID": 228,
+        "LABEL": "statistiek zichtbaar 1/0)",
+        "PARAMETER": "1"
+    }
+]

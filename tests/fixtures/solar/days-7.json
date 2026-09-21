@@ -1,0 +1,14 @@
+{
+    "period": "days",
+    "zoom": 7,
+    "chartData": [],
+    "stats": {
+        "totalEnergy": 0,
+        "avgPower": 0,
+        "peakPower": {
+            "value": 0,
+            "time": null
+        },
+        "capacityFactor": 0
+    }
+}

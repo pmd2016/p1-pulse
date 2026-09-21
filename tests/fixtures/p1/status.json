@@ -1,0 +1,830 @@
+[
+    {
+        "LABEL": "Max dagwaarde Kw verbruik",
+        "SECURITY": 0,
+        "STATUS": "4.031",
+        "STATUS_ID": 1
+    },
+    {
+        "LABEL": "Max dagwaarde Kw verbruik (timestamp)",
+        "SECURITY": 0,
+        "STATUS": "2026-09-21 10:26:43",
+        "STATUS_ID": 2
+    },
+    {
+        "LABEL": "Max dagwaarde Kw geleverd",
+        "SECURITY": 0,
+        "STATUS": "2.917",
+        "STATUS_ID": 3
+    },
+    {
+        "LABEL": "Max dagwaarde Kw geleverd (timestamp)",
+        "SECURITY": 0,
+        "STATUS": "2026-09-21 11:00:19",
+        "STATUS_ID": 4
+    },
+    {
+        "LABEL": "Tijdstip start van P1 interface(elektrisch):",
+        "SECURITY": 0,
+        "STATUS": "2026-05-27 16:47:49",
+        "STATUS_ID": 5
+    },
+    {
+        "LABEL": "Tijdstip start database:",
+        "SECURITY": 0,
+        "STATUS": "2026-05-27 16:47:56",
+        "STATUS_ID": 6
+    },
+    {
+        "LABEL": "Tijdstip laatste verwerkte minuten gegevens:",
+        "SECURITY": 0,
+        "STATUS": "2026-09-21 12:00:12",
+        "STATUS_ID": 7
+    },
+    {
+        "LABEL": "Huidige dag KWh verbruik dal/nacht dag (1.8.1)",
+        "SECURITY": 0,
+        "STATUS": "1.8460000000000036",
+        "STATUS_ID": 8
+    },
+    {
+        "LABEL": "Huidige dag KWh verbruik piek/dag (1.8.2)",
+        "SECURITY": 0,
+        "STATUS": "0.6829999999999927",
+        "STATUS_ID": 9
+    },
+    {
+        "LABEL": "Huidige dag KWh geleverd dal/nacht dag (2.8.1)",
+        "SECURITY": 0,
+        "STATUS": "0.0",
+        "STATUS_ID": 10
+    },
+    {
+        "LABEL": "Huidige dag KWh geleverd piek/dag (2.8.2)",
+        "SECURITY": 0,
+        "STATUS": "5.177999999999997",
+        "STATUS_ID": 11
+    },
+    {
+        "LABEL": "Tijdstip laatste verwerkte uren gegevens:",
+        "SECURITY": 0,
+        "STATUS": "2026-09-21 12:00:12",
+        "STATUS_ID": 12
+    },
+    {
+        "LABEL": "Tijdstip laatste verwerkte dagen gegevens:",
+        "SECURITY": 0,
+        "STATUS": "2026-09-21 12:00:12",
+        "STATUS_ID": 13
+    },
+    {
+        "LABEL": "Tijdstip laatste verwerkte maand gegevens:",
+        "SECURITY": 0,
+        "STATUS": "2026-09-21 12:00:12",
+        "STATUS_ID": 14
+    },
+    {
+        "LABEL": "Tijdstip laatste verwerkte jaar gegevens:",
+        "SECURITY": 0,
+        "STATUS": "2026-09-21 12:00:12",
+        "STATUS_ID": 15
+    },
+    {
+        "LABEL": "Tijdstip laatste verwerkte bericht uit de slimme meter:",
+        "SECURITY": 0,
+        "STATUS": "2026-09-21 12:00:55",
+        "STATUS_ID": 16
+    },
+    {
+        "LABEL": "Tijdstip start watchdog:",
+        "SECURITY": 0,
+        "STATUS": "2026-05-27 16:48:00",
+        "STATUS_ID": 17
+    },
+    {
+        "LABEL": "Processor belasting",
+        "SECURITY": 0,
+        "STATUS": "7.8",
+        "STATUS_ID": 18
+    },
+    {
+        "LABEL": "Tijd verstreken sinds de laatste herstart:",
+        "SECURITY": 0,
+        "STATUS": "116 dagen 19:13:15",
+        "STATUS_ID": 19
+    },
+    {
+        "LABEL": "Netwerk LAN IP adres:",
+        "SECURITY": 10,
+        "STATUS": "192.168.16.2",
+        "STATUS_ID": 20
+    },
+    {
+        "LABEL": "Ramdisk gebruik.",
+        "SECURITY": 0,
+        "STATUS": "0.3",
+        "STATUS_ID": 21
+    },
+    {
+        "LABEL": "Besturingssysteem versie:",
+        "SECURITY": 10,
+        "STATUS": "Linux-6.8.0-117-generic-x86_64-with-glibc2.36",
+        "STATUS_ID": 22
+    },
+    {
+        "LABEL": "Internet bereikbaar op:",
+        "SECURITY": 10,
+        "STATUS": "2026-09-21 11:23:39",
+        "STATUS_ID": 23
+    },
+    {
+        "LABEL": "Internet bereikbaar:",
+        "SECURITY": 10,
+        "STATUS": "ja",
+        "STATUS_ID": 24
+    },
+    {
+        "LABEL": "Python versie:",
+        "SECURITY": 10,
+        "STATUS": "3.11.2",
+        "STATUS_ID": 25
+    },
+    {
+        "LABEL": "Internet IP adres:",
+        "SECURITY": 0,
+        "STATUS": "85.145.12.108",
+        "STATUS_ID": 26
+    },
+    {
+        "LABEL": "Internet hostnaam:",
+        "SECURITY": 0,
+        "STATUS": "108-12-145-85.ftth.glasoperator.nl",
+        "STATUS_ID": 27
+    },
+    {
+        "LABEL": "Netwerk hostnaam:",
+        "SECURITY": 10,
+        "STATUS": "p1mon",
+        "STATUS_ID": 28
+    },
+    {
+        "LABEL": "Tijdstip laatste ram naar disk back-up:",
+        "SECURITY": 0,
+        "STATUS": "2026-09-21 11:46:06",
+        "STATUS_ID": 29
+    },
+    {
+        "LABEL": "",
+        "SECURITY": 0,
+        "STATUS": "0",
+        "STATUS_ID": 30
+    },
+    {
+        "LABEL": "RAM geheugen belasting:",
+        "SECURITY": 0,
+        "STATUS": "40.7",
+        "STATUS_ID": 31
+    },
+    {
+        "LABEL": "Kw waarde 1.4.0 P1 telegram:",
+        "SECURITY": 0,
+        "STATUS": "",
+        "STATUS_ID": 32
+    },
+    {
+        "LABEL": "Tijdstip laatste update 1.4.0 P1 telegram:",
+        "SECURITY": 0,
+        "STATUS": "",
+        "STATUS_ID": 33
+    },
+    {
+        "LABEL": "Kw waarde 1.6.0 P1 telegram:",
+        "SECURITY": 0,
+        "STATUS": "",
+        "STATUS_ID": 34
+    },
+    {
+        "LABEL": "Tijdstip laatste update 1.6.0 P1 telegram:",
+        "SECURITY": 0,
+        "STATUS": "",
+        "STATUS_ID": 35
+    },
+    {
+        "LABEL": "",
+        "SECURITY": 0,
+        "STATUS": "",
+        "STATUS_ID": 36
+    },
+    {
+        "LABEL": "",
+        "SECURITY": 0,
+        "STATUS": "",
+        "STATUS_ID": 37
+    },
+    {
+        "LABEL": "",
+        "SECURITY": 0,
+        "STATUS": "",
+        "STATUS_ID": 38
+    },
+    {
+        "LABEL": "",
+        "SECURITY": 0,
+        "STATUS": "",
+        "STATUS_ID": 39
+    },
+    {
+        "LABEL": "",
+        "SECURITY": 0,
+        "STATUS": "",
+        "STATUS_ID": 40
+    },
+    {
+        "LABEL": "Tijdstip laatste ram naar disk back-up(serial):",
+        "SECURITY": 0,
+        "STATUS": "2026-09-21 12:00:25",
+        "STATUS_ID": 41
+    },
+    {
+        "LABEL": "Netwerk WifI IP adres:",
+        "SECURITY": 10,
+        "STATUS": "onbekend",
+        "STATUS_ID": 42
+    },
+    {
+        "LABEL": "M3 GAS verbruikt:",
+        "SECURITY": 0,
+        "STATUS": "37.553",
+        "STATUS_ID": 43
+    },
+    {
+        "LABEL": "M3 GAS huidige dag verbruikt:",
+        "SECURITY": 0,
+        "STATUS": "0.17999999999999972",
+        "STATUS_ID": 44
+    },
+    {
+        "LABEL": "Tijdstip laatste verwerkte weer gegevens:",
+        "SECURITY": 0,
+        "STATUS": "2026-09-21 11:54:30",
+        "STATUS_ID": 45
+    },
+    {
+        "LABEL": "P1 data is ok:",
+        "SECURITY": 0,
+        "STATUS": "1",
+        "STATUS_ID": 46
+    },
+    {
+        "LABEL": "Tijdstip laatste FTP back-up:",
+        "SECURITY": 0,
+        "STATUS": "2026-09-21 00:05:06",
+        "STATUS_ID": 47
+    },
+    {
+        "LABEL": "FTP back-up start:",
+        "SECURITY": 0,
+        "STATUS": "SFTP transfer is succesvol gestopt.",
+        "STATUS_ID": 48
+    },
+    {
+        "LABEL": "Tijdstip laatste succesvol FTP back-up:",
+        "SECURITY": 0,
+        "STATUS": "2026-09-21 00:05:08",
+        "STATUS_ID": 49
+    },
+    {
+        "LABEL": "Gas verbruik per uur:",
+        "SECURITY": 0,
+        "STATUS": "0.1212121212120971",
+        "STATUS_ID": 50
+    },
+    {
+        "LABEL": "CPU model:",
+        "SECURITY": 0,
+        "STATUS": "Intel(R) Core(TM) i5-4590T CPU @ 2.00GHz",
+        "STATUS_ID": 51
+    },
+    {
+        "LABEL": "CPU hardware:",
+        "SECURITY": 0,
+        "STATUS": "Intel(R) Core(TM) i5-4590T CPU @ 2.00GHz",
+        "STATUS_ID": 52
+    },
+    {
+        "LABEL": "CPU revision:",
+        "SECURITY": 0,
+        "STATUS": "6",
+        "STATUS_ID": 53
+    },
+    {
+        "LABEL": "",
+        "SECURITY": 0,
+        "STATUS": "",
+        "STATUS_ID": 54
+    },
+    {
+        "LABEL": "Raspberry Pi model:",
+        "SECURITY": 0,
+        "STATUS": "Container",
+        "STATUS_ID": 55
+    },
+    {
+        "LABEL": "Tijdstip start UDP daemon:",
+        "SECURITY": 0,
+        "STATUS": "2026-05-27 16:48:02",
+        "STATUS_ID": 56
+    },
+    {
+        "LABEL": "Tijdstip laatste ram naar disk back-up(verwarming):",
+        "SECURITY": 0,
+        "STATUS": "onbekend",
+        "STATUS_ID": 57
+    },
+    {
+        "LABEL": "Tijdstip laatste verwerkte verwarming gegevens:",
+        "SECURITY": 0,
+        "STATUS": "onbekend",
+        "STATUS_ID": 58
+    },
+    {
+        "LABEL": "Tijdstip laatste dropbox succesvolle authenticatie:",
+        "SECURITY": 0,
+        "STATUS": "onbekend",
+        "STATUS_ID": 59
+    },
+    {
+        "LABEL": "Tijdstip laatste Dropbox back-up:",
+        "SECURITY": 0,
+        "STATUS": "onbekend",
+        "STATUS_ID": 60
+    },
+    {
+        "LABEL": "Dropbox back-up start:",
+        "SECURITY": 0,
+        "STATUS": "onbekend",
+        "STATUS_ID": 61
+    },
+    {
+        "LABEL": "Dropbox backup status:",
+        "SECURITY": 0,
+        "STATUS": "authenticatie gefaald",
+        "STATUS_ID": 62
+    },
+    {
+        "LABEL": "Tijdstip laatste Dropbox data:",
+        "SECURITY": 0,
+        "STATUS": "onbekend",
+        "STATUS_ID": 63
+    },
+    {
+        "LABEL": "Dropbox data status:",
+        "SECURITY": 0,
+        "STATUS": "",
+        "STATUS_ID": 64
+    },
+    {
+        "LABEL": "Tijdstip start Dropbox daemon:",
+        "SECURITY": 0,
+        "STATUS": "2026-05-27 16:48:00",
+        "STATUS_ID": 65
+    },
+    {
+        "LABEL": "Laatste P1 monitor versie:",
+        "SECURITY": 0,
+        "STATUS": "4.1.0",
+        "STATUS_ID": 66
+    },
+    {
+        "LABEL": "Laatste P1 monitor versie datum:",
+        "SECURITY": 0,
+        "STATUS": "2026-06-21 13:27:02",
+        "STATUS_ID": 67
+    },
+    {
+        "LABEL": "Laatste P1 monitor versie tekst:",
+        "SECURITY": 0,
+        "STATUS": "Juni 2026",
+        "STATUS_ID": 68
+    },
+    {
+        "LABEL": "CPU temperatuur:",
+        "SECURITY": 0,
+        "STATUS": "27.8",
+        "STATUS_ID": 69
+    },
+    {
+        "LABEL": "Tijdstip start UDP broadcast daemon:",
+        "SECURITY": 0,
+        "STATUS": "2026-05-27 16:48:02",
+        "STATUS_ID": 70
+    },
+    {
+        "LABEL": "Tijdstip laatste UDP broadcast:",
+        "SECURITY": 0,
+        "STATUS": "2026-09-21 12:00:56",
+        "STATUS_ID": 71
+    },
+    {
+        "LABEL": "Netwerk LAN MAC adres:",
+        "SECURITY": 10,
+        "STATUS": "EA:4E:D8:16:7B:CC",
+        "STATUS_ID": 72
+    },
+    {
+        "LABEL": "Netwerk Wifi MAC adres:",
+        "SECURITY": 10,
+        "STATUS": "onbekend",
+        "STATUS_ID": 73
+    },
+    {
+        "LABEL": "Huidige KW verbruik L1 (21.7.0)",
+        "SECURITY": 0,
+        "STATUS": "0.036",
+        "STATUS_ID": 74
+    },
+    {
+        "LABEL": "Huidige KW verbruik L2 (41.7.0)",
+        "SECURITY": 0,
+        "STATUS": "0.0",
+        "STATUS_ID": 75
+    },
+    {
+        "LABEL": "Huidige KW verbruik L3 (61.7.0)",
+        "SECURITY": 0,
+        "STATUS": "0.271",
+        "STATUS_ID": 76
+    },
+    {
+        "LABEL": "Huidige KW levering L1 (22.7.0)",
+        "SECURITY": 0,
+        "STATUS": "0.0",
+        "STATUS_ID": 77
+    },
+    {
+        "LABEL": "Huidige KW levering L2 (42.7.0)",
+        "SECURITY": 0,
+        "STATUS": "2.807",
+        "STATUS_ID": 78
+    },
+    {
+        "LABEL": "Huidige KW levering L3 (62.7.0)",
+        "SECURITY": 0,
+        "STATUS": "0.0",
+        "STATUS_ID": 79
+    },
+    {
+        "LABEL": "weer API status",
+        "SECURITY": 0,
+        "STATUS": "API data succesvol verwerkt.",
+        "STATUS_ID": 80
+    },
+    {
+        "LABEL": "weer API status timestamp",
+        "SECURITY": 0,
+        "STATUS": "2026-09-21 11:54:30",
+        "STATUS_ID": 81
+    },
+    {
+        "LABEL": "Tijdstip laatste succesvolle email:",
+        "SECURITY": 0,
+        "STATUS": "onbekend",
+        "STATUS_ID": 82
+    },
+    {
+        "LABEL": "gemiddelde watt waarde voor terug levering schakeling, 0 betekent niet actief.",
+        "SECURITY": 0,
+        "STATUS": "0",
+        "STATUS_ID": 83
+    },
+    {
+        "LABEL": "Tijdstip terug levering, laatste schakeling:",
+        "SECURITY": 0,
+        "STATUS": "onbekend",
+        "STATUS_ID": 84
+    },
+    {
+        "LABEL": "Dal of Piek tarief:",
+        "SECURITY": 0,
+        "STATUS": "P",
+        "STATUS_ID": 85
+    },
+    {
+        "LABEL": "Laatste P1 monitor versie URL:",
+        "SECURITY": 0,
+        "STATUS": "https://www.p1-monitor.nl/blog/2026/06/21/p1-monitor-download-202606-v4-1-0/",
+        "STATUS_ID": 86
+    },
+    {
+        "LABEL": "Tijdstip laatste verwerkte bericht uit de slimme meter (UTC):",
+        "SECURITY": 0,
+        "STATUS": "1789984855",
+        "STATUS_ID": 87
+    },
+    {
+        "LABEL": "Tijdstip tarief schakeling, laatste schakeling:",
+        "SECURITY": 0,
+        "STATUS": "onbekend",
+        "STATUS_ID": 88
+    },
+    {
+        "LABEL": "tarief schakeling is actief, 0 betekent niet actief.",
+        "SECURITY": 0,
+        "STATUS": "0",
+        "STATUS_ID": 89
+    },
+    {
+        "LABEL": "Tijdstip laatste verwerkte watermeter puls:",
+        "SECURITY": 0,
+        "STATUS": "onbekend",
+        "STATUS_ID": 90
+    },
+    {
+        "LABEL": "Tijdstip laatste verwerkte watermeterstand reset:",
+        "SECURITY": 0,
+        "STATUS": "onbekend",
+        "STATUS_ID": 91
+    },
+    {
+        "LABEL": "Serial device dat gebruikt wordt:",
+        "SECURITY": 0,
+        "STATUS": "/dev/ttyUSB0",
+        "STATUS_ID": 92
+    },
+    {
+        "LABEL": "",
+        "SECURITY": 0,
+        "STATUS": "onbekend",
+        "STATUS_ID": 93
+    },
+    {
+        "LABEL": "",
+        "SECURITY": 0,
+        "STATUS": "onbekend",
+        "STATUS_ID": 94
+    },
+    {
+        "LABEL": "Tijdstip start MQTT client:",
+        "SECURITY": 0,
+        "STATUS": "onbekend",
+        "STATUS_ID": 95
+    },
+    {
+        "LABEL": "Tijdstip laatste MQTT client bericht:",
+        "SECURITY": 0,
+        "STATUS": "onbekend",
+        "STATUS_ID": 96
+    },
+    {
+        "LABEL": "MQTT client status:",
+        "SECURITY": 0,
+        "STATUS": "onbekend",
+        "STATUS_ID": 97
+    },
+    {
+        "LABEL": "Tijdstip start watermeter:",
+        "SECURITY": 0,
+        "STATUS": "onbekend",
+        "STATUS_ID": 98
+    },
+    {
+        "LABEL": "Tijdstip start GPIO daemon:",
+        "SECURITY": 0,
+        "STATUS": "2026-05-27 16:48:02",
+        "STATUS_ID": 99
+    },
+    {
+        "LABEL": "Huidige Amperage L1 (31.7.0)",
+        "SECURITY": 0,
+        "STATUS": "0.0",
+        "STATUS_ID": 100
+    },
+    {
+        "LABEL": "Huidige Amperage L2 (51.7.0)",
+        "SECURITY": 0,
+        "STATUS": "11.0",
+        "STATUS_ID": 101
+    },
+    {
+        "LABEL": "Huidige Amperage L3 (71.7.0)",
+        "SECURITY": 0,
+        "STATUS": "1.0",
+        "STATUS_ID": 102
+    },
+    {
+        "LABEL": "Huidige Voltage L1 (32.7.0)",
+        "SECURITY": 0,
+        "STATUS": "232.0",
+        "STATUS_ID": 103
+    },
+    {
+        "LABEL": "Huidige Voltage L2 (52.7.0)",
+        "SECURITY": 0,
+        "STATUS": "241.0",
+        "STATUS_ID": 104
+    },
+    {
+        "LABEL": "Huidige Voltage L3 (72.7.0)",
+        "SECURITY": 0,
+        "STATUS": "234.0",
+        "STATUS_ID": 105
+    },
+    {
+        "LABEL": "Tijdstip laatste fase waarde wijziging:",
+        "SECURITY": 0,
+        "STATUS": "2026-09-21 12:00:55",
+        "STATUS_ID": 106
+    },
+    {
+        "LABEL": "Status van watermeter totaal stand:",
+        "SECURITY": 0,
+        "STATUS": "onbekend",
+        "STATUS_ID": 107
+    },
+    {
+        "LABEL": "Tijdstip start KWh meter productie(S0):",
+        "SECURITY": 0,
+        "STATUS": "onbekend",
+        "STATUS_ID": 108
+    },
+    {
+        "LABEL": "Tijdstip laatste verwerkte KWh meter productie(S0) puls:",
+        "SECURITY": 0,
+        "STATUS": "onbekend",
+        "STATUS_ID": 109
+    },
+    {
+        "LABEL": "Laatste P1 monitor versie nummer:",
+        "SECURITY": 0,
+        "STATUS": "20260621",
+        "STATUS_ID": 110
+    },
+    {
+        "LABEL": "Tijdstip laatste verwerkte bericht Solar Edge API:",
+        "SECURITY": 0,
+        "STATUS": "onbekend",
+        "STATUS_ID": 111
+    },
+    {
+        "LABEL": "Tijdstip laatste gefaalde Solar Edge API aanvraag:",
+        "SECURITY": 0,
+        "STATUS": "onbekend",
+        "STATUS_ID": 112
+    },
+    {
+        "LABEL": "Min dagwaarde Kw verbruik",
+        "SECURITY": 0,
+        "STATUS": "0.13",
+        "STATUS_ID": 113
+    },
+    {
+        "LABEL": "Min dagwaarde Kw verbruik (timestamp)",
+        "SECURITY": 0,
+        "STATUS": "2026-09-21 07:59:16",
+        "STATUS_ID": 114
+    },
+    {
+        "LABEL": "Min dagwaarde Kw geleverd",
+        "SECURITY": 0,
+        "STATUS": "0.0",
+        "STATUS_ID": 115
+    },
+    {
+        "LABEL": "Min dagwaarde Kw geleverd (timestamp)",
+        "SECURITY": 0,
+        "STATUS": "2026-09-21 00:00:01",
+        "STATUS_ID": 116
+    },
+    {
+        "LABEL": "HTTPS certificaat",
+        "SECURITY": 0,
+        "STATUS": "1",
+        "STATUS_ID": 117
+    },
+    {
+        "LABEL": "HTTPS certificaat vernieuwen certificaat",
+        "SECURITY": 0,
+        "STATUS": "1",
+        "STATUS_ID": 118
+    },
+    {
+        "LABEL": "Webserver configuratie",
+        "SECURITY": 0,
+        "STATUS": "1",
+        "STATUS_ID": 119
+    },
+    {
+        "LABEL": "Tijdstip laatste succesvolle certificaat vernieuwing:",
+        "SECURITY": 0,
+        "STATUS": "onbekend",
+        "STATUS_ID": 120
+    },
+    {
+        "LABEL": "Certificaat geldig tot:",
+        "SECURITY": 0,
+        "STATUS": "onbekend",
+        "STATUS_ID": 121
+    },
+    {
+        "LABEL": "Default gateway/router:",
+        "SECURITY": 0,
+        "STATUS": "192.168.16.1",
+        "STATUS_ID": 122
+    },
+    {
+        "LABEL": "P1 data is actief(timeout)",
+        "SECURITY": 0,
+        "STATUS": "1",
+        "STATUS_ID": 123
+    },
+    {
+        "LABEL": "JSON status van NTP netwerktijd",
+        "SECURITY": 0,
+        "STATUS": "{\"timezone\": \"\", \"ntp_synchronized\": false, \"ntp\": false, \"ntp_server_name\": \"\", \"ntp_server_ip\": \"\", \"ntp_last_timestamp\": \"\"}",
+        "STATUS_ID": 124
+    },
+    {
+        "LABEL": "P1 telegram tijd delta",
+        "SECURITY": 0,
+        "STATUS": "5",
+        "STATUS_ID": 125
+    },
+    {
+        "LABEL": "Tijdstip start notificatie:",
+        "SECURITY": 0,
+        "STATUS": "2026-05-27 16:48:02",
+        "STATUS_ID": 126
+    },
+    {
+        "LABEL": "Tijdstip laatste verwerkte financiële dag gegevens:",
+        "SECURITY": 0,
+        "STATUS": "2026-09-21 12:00:12",
+        "STATUS_ID": 127
+    },
+    {
+        "LABEL": "Tijdstip SOCAT start:",
+        "SECURITY": 0,
+        "STATUS": "onbekend",
+        "STATUS_ID": 128
+    },
+    {
+        "LABEL": "Tijdstip laaste update dynamische tarieven:",
+        "SECURITY": 0,
+        "STATUS": "onbekend",
+        "STATUS_ID": 129
+    },
+    {
+        "LABEL": "Huidige KW verbruik L1,L2,L3 totaal",
+        "SECURITY": 0,
+        "STATUS": "0.307",
+        "STATUS_ID": 130
+    },
+    {
+        "LABEL": "Huidige KW levering L1,L2,L3 totaal",
+        "SECURITY": 0,
+        "STATUS": "2.807",
+        "STATUS_ID": 131
+    },
+    {
+        "LABEL": "Netto levering/verbruik L1,L2,L3 totaal",
+        "SECURITY": 0,
+        "STATUS": "-2.5",
+        "STATUS_ID": 132
+    },
+    {
+        "LABEL": "Laatste P1 monitor patch nummer:",
+        "SECURITY": 0,
+        "STATUS": "0",
+        "STATUS_ID": 133
+    },
+    {
+        "LABEL": "Laatste P1 monitor patch URL:",
+        "SECURITY": 0,
+        "STATUS": "",
+        "STATUS_ID": 134
+    },
+    {
+        "LABEL": "Laatste P1 monitor version comment:",
+        "SECURITY": 0,
+        "STATUS": "zie onder aan de download pagina, see on the bottom of the download page.",
+        "STATUS_ID": 135
+    },
+    {
+        "LABEL": "Nieuwe versie van P1 monitor software beschikbaar:",
+        "SECURITY": 0,
+        "STATUS": "1",
+        "STATUS_ID": 136
+    },
+    {
+        "LABEL": "Nieuwe versie van P1 monitor software patch beschikbaar:",
+        "SECURITY": 0,
+        "STATUS": "1",
+        "STATUS_ID": 137
+    },
+    {
+        "LABEL": "JSON formaat statistiek instellingen:",
+        "SECURITY": 0,
+        "STATUS": "",
+        "STATUS_ID": 138
+    }
+]

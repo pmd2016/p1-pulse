@@ -1,0 +1,203 @@
+{
+    "generated_at": "2026-09-21T10:00:57+00:00",
+    "script_version": "1.0.0",
+    "php_version": "8.2.30",
+    "base_url": null,
+    "anonymised": true,
+    "scale_factor": 0.8317,
+    "date_offset_s": -21513600,
+    "fixtures": {
+        "p1/smartmeter": {
+            "endpoint": "/api/v1/smartmeter?limit=60&json=object",
+            "status": 200,
+            "ok": true,
+            "records": 60,
+            "bytes": 20931,
+            "error": null
+        },
+        "p1/status": {
+            "endpoint": "/api/v1/status?json=object",
+            "status": 200,
+            "ok": true,
+            "records": 138,
+            "bytes": 14280,
+            "error": null
+        },
+        "p1/configuration": {
+            "endpoint": "/api/v1/configuration?json=object",
+            "status": 200,
+            "ok": true,
+            "records": 229,
+            "bytes": 22737,
+            "error": null
+        },
+        "p1/powergas-hour": {
+            "endpoint": "/api/v1/powergas/hour?limit=24&json=object",
+            "status": 200,
+            "ok": true,
+            "records": 24,
+            "bytes": 8752,
+            "error": null
+        },
+        "p1/powergas-day": {
+            "endpoint": "/api/v1/powergas/day?limit=7&json=object",
+            "status": 200,
+            "ok": true,
+            "records": 7,
+            "bytes": 2574,
+            "error": null
+        },
+        "p1/powergas-month": {
+            "endpoint": "/api/v1/powergas/month?limit=12&json=object",
+            "status": 200,
+            "ok": true,
+            "records": 12,
+            "bytes": 4409,
+            "error": null
+        },
+        "p1/powergas-year": {
+            "endpoint": "/api/v1/powergas/year?limit=5&json=object",
+            "status": 200,
+            "ok": true,
+            "records": 4,
+            "bytes": 1495,
+            "error": null
+        },
+        "p1/financial-day": {
+            "endpoint": "/api/v1/financial/day?limit=7&json=object",
+            "status": 200,
+            "ok": true,
+            "records": 7,
+            "bytes": 2522,
+            "error": null
+        },
+        "p1/financial-month": {
+            "endpoint": "/api/v1/financial/month?limit=12&json=object",
+            "status": 200,
+            "ok": true,
+            "records": 12,
+            "bytes": 4483,
+            "error": null
+        },
+        "p1/financial-year": {
+            "endpoint": "/api/v1/financial/year?limit=5&json=object",
+            "status": 200,
+            "ok": true,
+            "records": 4,
+            "bytes": 1509,
+            "error": null
+        },
+        "p1/weather-current": {
+            "endpoint": "/api/v1/weather?json=object",
+            "status": 200,
+            "ok": true,
+            "records": 2999,
+            "bytes": 927217,
+            "error": null
+        },
+        "p1/weather-hour": {
+            "endpoint": "/api/v1/weather/hour?limit=24&json=object",
+            "status": 200,
+            "ok": true,
+            "records": 24,
+            "bytes": 12740,
+            "error": null
+        },
+        "p1/weather-day": {
+            "endpoint": "/api/v1/weather/day?limit=7&json=object",
+            "status": 200,
+            "ok": true,
+            "records": 7,
+            "bytes": 3763,
+            "error": null
+        },
+        "p1/weather-month": {
+            "endpoint": "/api/v1/weather/month?limit=12&json=object",
+            "status": 200,
+            "ok": true,
+            "records": 5,
+            "bytes": 2708,
+            "error": null
+        },
+        "p1/weather-year": {
+            "endpoint": "/api/v1/weather/year?limit=5&json=object",
+            "status": 200,
+            "ok": true,
+            "records": 1,
+            "bytes": 549,
+            "error": null
+        },
+        "p1/watermeter-day": {
+            "endpoint": "/api/v2/watermeter/day?limit=7&json=object",
+            "status": 200,
+            "ok": true,
+            "records": 0,
+            "bytes": 2,
+            "error": null
+        },
+        "p1/watermeter-month": {
+            "endpoint": "/api/v2/watermeter/month?limit=12&json=object",
+            "status": 200,
+            "ok": true,
+            "records": 0,
+            "bytes": 2,
+            "error": null
+        },
+        "solar/current": {
+            "endpoint": "/custom/api/solar.php?action=current",
+            "status": 200,
+            "ok": true,
+            "records": null,
+            "bytes": 34,
+            "error": null
+        },
+        "solar/hours-24": {
+            "endpoint": "/custom/api/solar.php?period=hours&zoom=24",
+            "status": 200,
+            "ok": true,
+            "records": 0,
+            "bytes": 137,
+            "error": null
+        },
+        "solar/hours-72": {
+            "endpoint": "/custom/api/solar.php?period=hours&zoom=72",
+            "status": 200,
+            "ok": true,
+            "records": 0,
+            "bytes": 137,
+            "error": null
+        },
+        "solar/days-7": {
+            "endpoint": "/custom/api/solar.php?period=days&zoom=7",
+            "status": 200,
+            "ok": true,
+            "records": 0,
+            "bytes": 135,
+            "error": null
+        },
+        "solar/days-30": {
+            "endpoint": "/custom/api/solar.php?period=days&zoom=30",
+            "status": 200,
+            "ok": true,
+            "records": 0,
+            "bytes": 136,
+            "error": null
+        },
+        "solar/months-12": {
+            "endpoint": "/custom/api/solar.php?period=months&zoom=12",
+            "status": 200,
+            "ok": true,
+            "records": 0,
+            "bytes": 138,
+            "error": null
+        },
+        "solar/years-5": {
+            "endpoint": "/custom/api/solar.php?period=years&zoom=5",
+            "status": 200,
+            "ok": true,
+            "records": 0,
+            "bytes": 136,
+            "error": null
+        }
+    }
+}
