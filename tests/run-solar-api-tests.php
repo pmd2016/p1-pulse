@@ -15,8 +15,9 @@
  * Exits 0 when everything passes, 1 otherwise.
  */
 
+require_once __DIR__ . '/assert.php';
+
 define('CAPACITY_W', 3780);
-define('EPSILON', 0.0001);
 
 // A fixed hour boundary, so every expectation is deterministic.
 define('T0', 1768471200); // 2026-01-15 10:00:00 UTC
@@ -33,70 +34,9 @@ if (isset($options['help'])) {
 $verbose = isset($options['verbose']);
 $keep    = isset($options['keep']);
 
-$passed = 0;
-$failed = 0;
-$failures = [];
-$currentTest = '(none)';
-
 // ----------------------------------------------------------------------------
 // Harness
 // ----------------------------------------------------------------------------
-
-function test($name, callable $body) {
-    global $currentTest;
-    $currentTest = $name;
-    echo "  $name\n";
-
-    try {
-        $body();
-    } catch (Throwable $e) {
-        fail('threw ' . get_class($e) . ': ' . $e->getMessage());
-    }
-}
-
-function pass($detail) {
-    global $passed;
-    $passed++;
-    echo "    ok    $detail\n";
-}
-
-function fail($detail) {
-    global $failed, $failures, $currentTest;
-    $failed++;
-    $failures[] = "$currentTest: $detail";
-    echo "    FAIL  $detail\n";
-}
-
-function assertSame($expected, $actual, $what) {
-    if ($expected === $actual) {
-        pass($what);
-        return;
-    }
-    fail(sprintf('%s — expected %s, got %s', $what, render($expected), render($actual)));
-}
-
-function assertClose($expected, $actual, $what) {
-    if (is_numeric($actual) && abs((float)$expected - (float)$actual) < EPSILON) {
-        pass($what . ' = ' . render($actual));
-        return;
-    }
-    fail(sprintf('%s — expected %s, got %s', $what, render($expected), render($actual)));
-}
-
-function assertEquals($expected, $actual, $what) {
-    if ($expected == $actual) {
-        pass($what);
-        return;
-    }
-    fail(sprintf('%s — expected %s, got %s', $what, render($expected), render($actual)));
-}
-
-function render($value) {
-    if (is_array($value)) {
-        return json_encode($value, JSON_UNESCAPED_SLASHES);
-    }
-    return var_export($value, true);
-}
 
 /**
  * Run one request against api/solar.php and decode the response.
@@ -494,15 +434,7 @@ test('the committed fixture is reproduced, plus the error it was missing', funct
 // Summary
 // ----------------------------------------------------------------------------
 
-echo "\n" . str_repeat('-', 78) . "\n";
-printf("%d passed, %d failed\n", $passed, $failed);
-
-if ($failures) {
-    echo "\nFailures:\n";
-    foreach ($failures as $f) {
-        echo "  - $f\n";
-    }
-}
+$exitCode = testSummary();
 
 if ($keep) {
     echo "\nDatabases kept in $tmpDir\n";
@@ -512,4 +444,4 @@ if ($keep) {
     }
 }
 
-exit($failed === 0 ? 0 : 1);
+exit($exitCode);

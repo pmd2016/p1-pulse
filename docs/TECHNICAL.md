@@ -321,9 +321,29 @@ Key/value bookkeeping (`key` TEXT PRIMARY KEY, `value` TEXT, `updated_at` INTEGE
 ### Energy units
 
 **Everything in the database is stored in Wh and Watts.** Conversion to kWh happens once, at the
-`api/solar.php` boundary. Values coming out of the Solplanet API need converting on the way in:
-`E-Today` and `E-Month` arrive in kWh (×1000), `E-Total` arrives in MWh (×1,000,000), and `Power`
-is already in Watts.
+`api/solar.php` boundary.
+
+On the way in, every Solplanet measurement declares its own unit, and the units differ between
+fields of the same kind:
+
+```json
+"Power":   { "unit": "KW",  "value": 1.22  }
+"E-Today": { "unit": "KWh", "value": 12    }
+"E-Month": { "unit": "KWh", "value": 239.78 }
+"E-Total": { "unit": "MWh", "value": 39.09 }
+```
+
+Note the non-SI spellings — `KW` and `KWh` with a capital K, and `KWh` with a capital W.
+
+`lib/SolarUnits.php` converts from the declared unit rather than from a per-field assumption.
+`SolarUnits::toWatts()` and `SolarUnits::toWattHours()` match case-insensitively and return `null`
+for anything they do not recognise, including a power unit passed where an energy unit belongs.
+The collector treats a `null` as fatal for that collection rather than storing a partial reading:
+a gap can be backfilled, but a wrong value silently corrupts every aggregate derived from it.
+
+This replaced four hardcoded multipliers, one per field. `Power` was assumed to already be in
+Watts when it is in kW, so every stored power reading was 1000× low and `(int)` truncation threw
+away the fraction on top — `1.22 kW` became `1 W`.
 
 ---
 
@@ -803,10 +823,17 @@ directly.
 ### Running the tests
 
 ```bash
-php tests/run-solar-api-tests.php              # exit 0 on success, 1 on any failure
+php tests/run-all.php                          # every suite; exit 0 on success, 1 on any failure
+
+php tests/run-solar-units-tests.php            # unit conversion only
+php tests/run-solar-api-tests.php              # the solar API only
 php tests/run-solar-api-tests.php --verbose    # also print every response body
 php tests/run-solar-api-tests.php --keep       # leave the temporary databases for inspection
 ```
+
+`tests/assert.php` holds the shared assertion helpers. `tests/run-solar-units-tests.php` pins
+`SolarUnits` against a real `getPlantOverview` response recorded in the file, so the expectations
+are measured against something that actually happened rather than an invented example.
 
 The harness builds a temporary SQLite database from `scripts/solar-schema.sql`, seeds it with
 known values, and checks `api/solar.php` against them: unit conversion, chronological ordering,
