@@ -2,6 +2,10 @@
 
 This document provides detailed technical information for developers and advanced users of P1 Pulse.
 
+> Scope note: this file documents what the code in this repository actually does. Where behaviour is
+> known to be wrong or unfinished, it is listed under [Known Issues](#known-issues) rather than
+> described as if it worked.
+
 ## Table of Contents
 
 - [Architecture Overview](#architecture-overview)
@@ -18,23 +22,52 @@ This document provides detailed technical information for developers and advance
 
 ## Architecture Overview
 
-P1 Pulse is a PHP/JavaScript web application that provides a modern dashboard for P1 Monitor. It uses no build tools or package managers - files are served directly.
+P1 Pulse is a PHP/JavaScript web application that provides a modern dashboard for P1 Monitor. It uses
+no build tools, package managers or third-party runtime libraries — files are served directly.
+Charts are drawn by hand on a `<canvas>` element; there is no charting library.
 
 ### Code Statistics
 
 | Language   | Lines of Code | Files |
 |------------|---------------|-------|
-| PHP        | ~5,600        | 23    |
-| JavaScript | ~4,900        | 11    |
-| CSS        | ~1,900        | 4     |
-| **Total**  | **~12,400**   | **38**|
+| PHP        | ~5,200        | 30    |
+| JavaScript | ~3,900        | 10    |
+| CSS        | ~2,400        | 4     |
+| **Total**  | **~11,500**   | **44**|
+
+### Request Lifecycle
+
+```
+p1mon.php
+  ├── requires config.php (session start, P1 Monitor util include, P1Config)
+  ├── sanitises ?page= and validates against $validPages
+  ├── collects config/visibility/maxValues/energyConfig into $pageData
+  └── renderPage($page, $pageData)
+        ├── extract($data)              → variables visible to all includes
+        ├── components/header.php       → <!DOCTYPE> … opens <html>, <body>, .app-container
+        ├── components/sidebar.php      → navigation
+        ├── pages/{page}.php            → page body (a fragment, not a full document)
+        └── components/footer.php       → includeJS(), page-specific script, window.P1MonConfig,
+                                          closes </body></html>
+```
+
+Pages are **fragments**. `header.php` opens the document and `footer.php` closes it, so no file in
+`pages/` can be rendered standalone.
 
 ### Key Design Patterns
 
-- **MVC-like separation**: Pages as views, api.js as model, components as layout
-- **Modular JavaScript**: Object-based managers with `init()` / `setupEventListeners()` pattern
-- **CSS Custom Properties**: Theme variables for dark/light mode switching
-- **Configuration-driven UI**: Visibility settings read from P1 Monitor config
+- **PHP→JS config bridge**: `components/footer.php` emits `window.P1MonConfig`. This is the only
+  channel by which server-side configuration reaches the browser.
+- **Module managers**: each JS file is an IIFE exposing one object with `init()` /
+  `setupEventListeners()` / `destroy()`, auto-initialising on `DOMContentLoaded` when
+  `window.P1MonConfig.currentPage` matches.
+- **ChartBase factory**: `assets/js/charts.js` exposes `ChartBase.createManager(config)`. The
+  electricity, gas and solar pages are all built from it and supply behaviour through hooks
+  (`onInit`, `onSetupEventListeners`, `onLoadData`, `onUpdateStatistics`, `onDrawChart`,
+  `onDrawTooltipContent`). New chart pages should go through this factory.
+- **CSS custom properties**: `--x-light` / `--x-dark` pairs defined on `:root`, remapped to semantic
+  names under the `.light-theme` / `.dark-theme` body classes.
+- **Configuration-driven UI**: visibility flags read from P1 Monitor via `config_read()`.
 
 ---
 
@@ -42,169 +75,315 @@ P1 Pulse is a PHP/JavaScript web application that provides a modern dashboard fo
 
 ### P1 Monitor Native API
 
-The dashboard communicates with P1 Monitor's built-in API endpoints:
+These are the endpoints `assets/js/api.js` actually calls. `P1API.fetch()` automatically appends
+`json=object` to any URL beginning with `/api`, so responses arrive as objects with named fields
+rather than positional arrays.
 
-| Endpoint | Description |
-|----------|-------------|
-| `GET /api/v1/smartmeter` | Current electricity data |
-| `GET /api/v1/gas` | Current gas data |
-| `GET /api/v1/water` | Current water data |
-| `GET /api/v1/weather` | Weather information |
+| Endpoint | Wrapper | Notes |
+|----------|---------|-------|
+| `GET /api/v1/smartmeter?limit=N` | `getSmartMeter(limit)` | Real-time readings; `CONSUMPTION_W`, `PRODUCTION_W` |
+| `GET /api/v1/status` | `getStatus()` | Status rows keyed by `STATUS_ID`; source for `getPhases()` |
+| `GET /api/v1/configuration` | `getConfiguration()` | Cached |
+| `GET /api/v1/powergas/hour?limit=N` | `getHistoryHour(limit)` | Cached |
+| `GET /api/v1/powergas/day?limit=N` | `getHistoryDay(limit)` | |
+| `GET /api/v1/powergas/month?limit=N` | `getHistoryMonth(limit)` | |
+| `GET /api/v1/powergas/year?limit=N` | `getHistoryYear(limit)` | |
+| `GET /api/v1/financial/day?limit=N` | `getFinancial(limit)` | |
+| `GET /api/v1/financial/month?limit=N` | `getFinancialMonth(limit)` | |
+| `GET /api/v1/financial/year?limit=N` | `getFinancialYear(limit)` | |
+| `GET /api/v2/watermeter/day?limit=N` | `getWaterMeter(limit)` | Not called by any page yet |
+| `GET /api/v2/watermeter/month?limit=N` | `getWaterMeterMonth(limit)` | Not called by any page yet |
+| `GET /api/v1/weather/{hour,day,month,year}?limit=N` | `getWeatherHistory(period, limit)` | Pre-aggregated `TEMPERATURE_LOW/AVERAGE/HIGH` |
+| `GET /api/v1/weather` | — | Called directly by `header.js` for the current conditions widget |
+
+History endpoints return newest-first; `getElectricityData()` clones and reverses into chronological
+order before building chart data.
+
+Field-name quirk: P1 Monitor spells the local timestamp `TIMESTAMP_lOCAL` (lower-case `l`). The code
+matches the API, so do not "correct" it.
+
+### P1API behaviour
+
+- **Caching**: `fetchCached()` only. 5-second TTL, `Map`-backed, expired entries evicted on write.
+  Plain `fetch()` is uncached — most calls use it.
+- **Connection monitoring**: three consecutive failures flips `connectionStatus.isOnline` to false
+  and dispatches a `p1connection` CustomEvent on `document`.
+- **No retry logic.** A failed request logs, updates the failure counter, and rethrows. The caller
+  decides what to do.
 
 ### Custom Solar API
 
-**Base URL**: `/custom/api/solar.php`
+**Location**: `api/solar.php`. **URL**: `/custom/api/solar.php` (hard-coded in the JS callers).
+Read-only, unauthenticated, SQLite-backed. Output passes through `JSON_NUMERIC_CHECK`, so numeric
+strings are emitted as JSON numbers.
 
-#### Current/Realtime Data
+#### Current/realtime data
 
 ```
-GET /api/solar.php?action=current
+GET /custom/api/solar.php?action=current
 ```
 
-Returns current power, today's energy, peak power, monthly totals, and system info.
-
-**Response:**
 ```json
 {
-  "success": true,
-  "data": {
-    "current_power": 1250,
-    "today_energy": 8500,
-    "peak_power": 2800,
-    "monthly_energy": 285000,
-    "system_capacity": 3780
+  "power": 1250,
+  "energy": 4821.35,
+  "energyToday": 8.5,
+  "energyMonth": 285.0,
+  "status": "normal",
+  "timestamp": "2026-01-16 12:40:00"
+}
+```
+
+`power` is Watts; `energy` (lifetime), `energyToday` and `energyMonth` are kWh, converted from the
+Wh stored in the database. `status` is `"normal"` when `inverter_status == 1`, otherwise
+`"offline"`. When the table is empty the same shape is returned with zeroes, no `timestamp`, and
+`status: "offline"`. On a database or query failure the response is `{"error": "..."}` — callers
+must handle a payload with no `power` key.
+
+#### Historical data
+
+```
+GET /custom/api/solar.php?period={hours|days|months|years}&zoom={N}
+```
+
+`zoom` is clamped server-side: below 1 → 24; hours ≤ 168, days ≤ 365, months ≤ 24, years ≤ 10.
+
+```json
+{
+  "period": "hours",
+  "zoom": 24,
+  "chartData": [
+    { "timestamp": "2026-01-16 12:00:00", "unixTimestamp": 1768564800,
+      "production": 1.234, "power": 820, "powerMax": 1430 }
+  ],
+  "stats": {
+    "totalEnergy": 8.5,
+    "avgPower": 640,
+    "peakPower": { "value": 2800, "time": "2026-01-16 12:00:00" },
+    "capacityFactor": 9.37
   }
 }
 ```
 
-#### Historical Data
+`production` is kWh per bucket; `power` and `powerMax` are Watts; `capacityFactor` is a percentage.
 
-```
-GET /api/solar.php?period={period}&zoom={zoom}
-```
+Per-period differences:
 
-**Parameters:**
+| Period | Extra `chartData` fields | `stats` shape |
+|--------|--------------------------|---------------|
+| `hours` | — | `totalEnergy`, `avgPower`, `peakPower`, `capacityFactor` |
+| `days` | `sunlightHours`, `capacityFactor` | `totalEnergy`, `avgDaily`, `peakPower`, `capacityFactor` (mean of stored daily values) |
+| `months` | `avgDaily`, `daysWithData` | `totalEnergy`, `avgMonthly`, `peakPower` (no `capacityFactor`) |
+| `years` | `avgMonthly`, `monthsWithData` | `totalEnergy`, `avgYearly`, `peakPower` (no `capacityFactor`) |
 
-| Period | Zoom Options | Description |
-|--------|--------------|-------------|
-| `hours` | 24, 48, 72 | Hourly production data |
-| `days` | 7, 14, 30 | Daily production data |
-| `months` | 12, 24 | Monthly production data |
-| `years` | 5, 10 | Yearly production data |
+`timestamp` is a datetime string for `hours`, `YYYY-MM-DD` for `days`, `YYYY-MM` for `months`, and
+the year for `years`. Use `unixTimestamp` for anything date-arithmetic-related.
 
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "records": [...],
-    "statistics": {
-      "total_energy": 125000,
-      "average_power": 1500,
-      "peak_power": 2800,
-      "capacity_factor": 0.42
-    }
-  }
-}
-```
-
-### API Features
-
-- **Caching**: 5-second response cache for efficiency
-- **Connection monitoring**: Automatic detection of API failures
-- **Retry logic**: Automatic retry on transient failures
-- **Error handling**: Consistent error response format
+Callers use raw `fetch()` against this endpoint, **not** `P1API`, so none of the caching or
+connection monitoring above applies to solar data.
 
 ---
 
 ## Database Schema
 
-Solar data is stored in SQLite (`data/solar.db`).
+Solar data is stored in SQLite at `/p1mon/www/custom/data/solar.db`. The path is a constant in
+`api/solar.php` and in every script; the `data/` directory is not part of this repository.
 
-### Tables
+`scripts/init-solar-database.php` is the authoritative schema definition. Seven tables:
 
-#### solar_realtime
-Short-term storage for recent readings (7-day retention).
+### solar_realtime
+
+One row per collector run (nominally every 10 minutes), pruned to 7 days by the collector.
 
 ```sql
 CREATE TABLE solar_realtime (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    timestamp DATETIME NOT NULL,
-    power_w INTEGER,
-    energy_wh INTEGER,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    timestamp INTEGER NOT NULL,
+    power_current INTEGER NOT NULL,           -- Current power in W
+    energy_today INTEGER NOT NULL,            -- Today's production in Wh
+    energy_month INTEGER NOT NULL,            -- Month's production in Wh
+    energy_total INTEGER NOT NULL,            -- Lifetime production in Wh
+    inverter_status INTEGER DEFAULT 1,        -- 0=offline, 1=normal, 2=warning, 3=error
+    collected_at INTEGER NOT NULL,
+    UNIQUE(timestamp)
 );
 ```
 
-#### solar_hourly
-Permanent hourly aggregations.
+### solar_hourly
 
 ```sql
 CREATE TABLE solar_hourly (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    timestamp DATETIME NOT NULL UNIQUE,
-    energy_wh INTEGER,
-    power_avg_w INTEGER,
-    power_max_w INTEGER,
-    capacity_factor REAL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    timestamp INTEGER NOT NULL,               -- Start of hour (unix)
+    energy_produced INTEGER NOT NULL,         -- Wh for this hour
+    power_avg INTEGER DEFAULT 0,              -- W
+    power_max INTEGER DEFAULT 0,              -- W
+    power_min INTEGER DEFAULT 0,              -- W
+    samples INTEGER DEFAULT 0,                -- realtime rows aggregated
+    aggregated_at INTEGER NOT NULL,
+    UNIQUE(timestamp)
 );
 ```
 
-#### solar_daily
-Permanent daily aggregations.
+Hourly energy is derived as the **delta of `energy_today`** between the first and last realtime
+sample in the hour, not integrated from power readings.
+
+### solar_daily
 
 ```sql
 CREATE TABLE solar_daily (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    date DATE NOT NULL UNIQUE,
-    energy_wh INTEGER,
-    power_max_w INTEGER,
-    capacity_factor REAL,
-    sunlight_hours REAL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    date TEXT NOT NULL,                       -- YYYY-MM-DD
+    timestamp INTEGER NOT NULL,               -- Start of day (unix)
+    energy_produced INTEGER NOT NULL,         -- Wh
+    power_peak INTEGER DEFAULT 0,             -- W
+    power_peak_time INTEGER DEFAULT 0,        -- unix
+    hours_sunlight REAL DEFAULT 0,            -- hours with production > 10W
+    capacity_factor REAL DEFAULT 0,           -- percent of rated capacity
+    aggregated_at INTEGER NOT NULL,
+    UNIQUE(date)
 );
 ```
 
-#### solar_monthly / solar_yearly
-Similar structure for monthly and yearly aggregations.
-
-### Indexes
+### solar_monthly
 
 ```sql
-CREATE INDEX idx_realtime_timestamp ON solar_realtime(timestamp);
-CREATE INDEX idx_hourly_timestamp ON solar_hourly(timestamp);
-CREATE INDEX idx_daily_date ON solar_daily(date);
+CREATE TABLE solar_monthly (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    year INTEGER NOT NULL,
+    month INTEGER NOT NULL,                   -- 1-12
+    timestamp INTEGER NOT NULL,
+    energy_produced INTEGER NOT NULL,         -- Wh
+    power_peak INTEGER DEFAULT 0,
+    days_with_data INTEGER DEFAULT 0,
+    avg_daily_production INTEGER DEFAULT 0,   -- Wh/day
+    capacity_factor REAL DEFAULT 0,
+    aggregated_at INTEGER NOT NULL,
+    UNIQUE(year, month)
+);
 ```
+
+### solar_yearly
+
+```sql
+CREATE TABLE solar_yearly (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    year INTEGER NOT NULL,
+    timestamp INTEGER NOT NULL,
+    energy_produced INTEGER NOT NULL,         -- Wh
+    power_peak INTEGER DEFAULT 0,
+    months_with_data INTEGER DEFAULT 0,
+    avg_monthly_production INTEGER DEFAULT 0, -- Wh/month
+    capacity_factor REAL DEFAULT 0,
+    aggregated_at INTEGER NOT NULL,
+    UNIQUE(year)
+);
+```
+
+### api_cache
+
+Declared for caching Solplanet responses (`endpoint`, `params`, `response`, `cached_at`,
+`expires_at`, `UNIQUE(endpoint, params)`). **Currently unused** — nothing reads or writes it.
+
+### collection_metadata
+
+Key/value bookkeeping (`key` TEXT PRIMARY KEY, `value` TEXT, `updated_at` INTEGER). Seeded keys:
+
+| Key | Purpose |
+|-----|---------|
+| `last_collection_timestamp` | Throttles the collector to one run per 300s unless `--force` |
+| `last_hourly_aggregation` | Watermark for hourly rollup |
+| `last_daily_aggregation` | Watermark for daily rollup |
+| `last_monthly_aggregation` | Watermark for monthly rollup |
+| `last_yearly_aggregation` | Watermark for yearly rollup |
+| `backfill_status` | `pending` / set by the backfill script |
+| `backfill_oldest_date` | Earliest backfilled date |
+
+### Energy units
+
+**Everything in the database is stored in Wh and Watts.** Conversion to kWh happens once, at the
+`api/solar.php` boundary. Values coming out of the Solplanet API need converting on the way in:
+`E-Today` and `E-Month` arrive in kWh (×1000), `E-Total` arrives in MWh (×1,000,000), and `Power`
+is already in Watts.
 
 ---
 
 ## Solar Integration (Solplanet Cloud)
 
-P1 Pulse integrates with the Solplanet Cloud API to collect solar production data.
+P1 Monitor has no inverter integration, so solar production is collected separately from the
+Solplanet Cloud "End User API" (`https://eu-api-genergal.aisweicloud.com`).
 
-### Configuration
+### Authentication
 
-Create a configuration file at one of these locations (checked in order):
+`lib/SolplanetAPI.php` signs each request with HMAC-SHA256 over a canonical string built from the
+method, `Accept`, `Content-Type`, the `X-Ca-Key` header and the query string (parameters sorted
+alphabetically). Two details are load-bearing and must not be "tidied":
 
-1. `/p1mon/config/solplanet.ini` (recommended for P1 Monitor)
-2. `/etc/p1mon/solplanet.ini` (system-wide)
-3. Environment variables (highest priority)
+- there is **no space** after the colon in the `X-Ca-Key:` line of the string to sign;
+- query parameters are sorted alphabetically before signing *and* before sending.
+
+### Credentials
+
+`lib/SolarConfig.php` resolves credentials in this order:
+
+1. **Environment variables** (highest priority — all five must be present or the whole set is skipped)
+2. `/p1mon/config/solplanet.ini` (recommended: outside the web root)
+3. `/etc/p1mon/solplanet.ini`
+4. `/home/claude/solplanet.ini`
+5. `<repo>/config/solplanet.ini`
 
 **solplanet.ini format:**
+
 ```ini
 [solplanet]
-email = your-email@example.com
-password = your-password
-plant_id = your-plant-id
+enabled = 1
+app_key = your-app-key
+app_secret = your-app-secret
+api_key = your-plant-api-key
+token = your-token
+sn = your-inverter-serial
+system_capacity_wp = 3780
+collection_interval = 10
+retention_days = 7
+cache_enabled = 1
+cache_ttl = 300
+log_enabled = 1
+log_level = INFO
 ```
 
+`app_key`, `app_secret`, `api_key` and `sn` are required; the collector aborts without them.
+`token` is accepted, stored and then ignored — the End User API does not use it.
+Values are rejected if they still start with `YOUR_` or contain `HERE`.
+
 **Environment variables (alternative):**
+
 ```bash
-export SOLPLANET_EMAIL="your-email@example.com"
-export SOLPLANET_PASSWORD="your-password"
-export SOLPLANET_PLANT_ID="your-plant-id"
+export SOLPLANET_APP_KEY="..."       # required
+export SOLPLANET_APP_SECRET="..."    # required
+export SOLPLANET_API_KEY="..."       # required
+export SOLPLANET_TOKEN="..."         # required to be present, otherwise unused
+export SOLPLANET_SN="..."            # required
+export SOLPLANET_ENABLED="true"      # "false" disables collection
+export SOLPLANET_CAPACITY="3780"
+export SOLPLANET_INTERVAL="10"
+export SOLPLANET_RETENTION="7"
+export SOLPLANET_CACHE="true"
+export SOLPLANET_CACHE_TTL="300"
+export SOLPLANET_LOG="true"
+export SOLPLANET_LOG_LEVEL="INFO"
 ```
+
+### Endpoints used
+
+| Method | Solplanet endpoint | Used by |
+|--------|--------------------|---------|
+| `getPlantOverview()` | `/getPlantOverview` | `solar-collector.php` — current power and totals |
+| `getPlantOutput($period, $date)` | `/getPlantOutput` | `solar-backfill.php` — 72 × 20-minute readings per day |
+| `getDeviceList()` | `/devicelist` | connectivity tests |
+| `getPlantEvent()` | `/getPlantEvent` | diagnostics |
+| `getInverterOverview()` | `/getInverterOverview` | diagnostics |
+| `getInverterData()` | `/getInverterData` | diagnostics |
+| `testConnection()` | — | runs the first three and summarises |
 
 ### Setup Steps
 
@@ -218,174 +397,157 @@ export SOLPLANET_PLANT_ID="your-plant-id"
    php scripts/test-solar-api.php
    ```
 
-3. **Set up cron job for data collection:**
+3. **Set up cron for data collection (every 10 minutes):**
    ```bash
-   # Add to crontab (every 10 minutes)
-   */10 * * * * php /var/www/html/custom/scripts/solar-collector.php
+   */10 * * * * /usr/bin/php /p1mon/www/custom/scripts/solar-collector.php >> /tmp/solar-collector.log 2>&1
    ```
+   The collector self-throttles to one run per 300 seconds regardless of how often cron fires.
 
 4. **Backfill historical data (optional):**
    ```bash
    php scripts/solar-backfill.php --days=30
    ```
+   See [Known Issues](#known-issues) before trusting backfilled totals.
 
-### System Specifications
+### System Capacity
 
-The current configuration assumes:
-- **Panels**: 14 x 270Wp = 3,780W total capacity
-- **Inverter**: Zeversolar 3000TL
+Rated capacity is currently **3,780 W** (14 × 270 Wp panels). It is declared in four places and
+they must be kept in step:
 
-To change these values, edit `lib/SolarConfig.php`.
+| Location | Form |
+|----------|------|
+| `config.php` → `P1Config::getEnergyConfig()` | `system_capacity_w` — reaches the browser as `P1MonConfig.systemCapacityW` |
+| `api/solar.php` | `SYSTEM_CAPACITY_W` constant |
+| `solplanet.ini` / `SOLPLANET_CAPACITY` | `system_capacity_wp` |
+| `dashboard.js`, `solar.js` | `?? 3780` fallbacks if `P1MonConfig` is absent |
 
 ---
 
 ## Utility Scripts
 
-All scripts are located in the `scripts/` directory.
+All scripts live in `scripts/`, are CLI-only (`#!/usr/bin/env php`), and use hard-coded absolute
+paths under `/p1mon/www/custom`. They will not run from an arbitrary checkout.
 
 ### Core Scripts
 
 | Script | Purpose | Usage |
 |--------|---------|-------|
-| `init-solar-database.php` | Create SQLite database schema | `php init-solar-database.php` |
-| `solar-collector.php` | Collect current data from API | `php solar-collector.php` (run via cron) |
-| `solar-backfill.php` | Import historical data | `php solar-backfill.php [--days=N] [--force]` |
-| `validate-solar-data.php` | Check data quality | `php validate-solar-data.php` |
+| `init-solar-database.php` | Create the SQLite schema (idempotent) | `php init-solar-database.php` |
+| `solar-collector.php` | Fetch current data, store, aggregate, prune | `php solar-collector.php [--force] [--verbose]` |
+| `solar-backfill.php` | Import historical data from Solplanet | `php solar-backfill.php [--days=N \| --start=DATE --end=DATE] [--verbose] [--dry-run] [--force] [--help]` |
+| `validate-solar-data.php` | Check record counts, gaps, aggregation consistency | `php validate-solar-data.php` |
+
+`--force` on the collector bypasses both the `enabled` config check and the 300-second throttle.
+The backfill defaults to a window ending *yesterday*, to avoid racing the live collector.
 
 ### Diagnostic Scripts
 
 | Script | Purpose |
 |--------|---------|
-| `solar-diagnostics.php` | Comprehensive system diagnostics |
-| `test-solar-api.php` | Test Solplanet API connectivity |
-| `diagnose-solar-api.php` | Diagnose API issues |
-| `check-api-units.php` | Verify API unit formats |
-| `check-db-values.php` | Check database integrity |
-| `check-schema.php` | Verify schema correctness |
+| `solar-diagnostics.php` | Table-by-table database status (`--table=NAME`, `--limit=N`) |
+| `test-solar-api.php` | Solplanet connectivity check |
+| `diagnose-solar-api.php` | Deeper API failure diagnosis |
+| `check-api-units.php` | Verify API unit formats against expectations |
+| `check-db-values.php` | Spot-check stored values |
+| `check-schema.php` | Verify the live schema matches `init-solar-database.php` |
 
 ### Development Scripts
 
 | Script | Purpose |
 |--------|---------|
-| `solar-debug.php` | Development debugging tool |
-| `debug-solar-dashboard.php` | Dashboard debugging |
-| `quick-api-test.php` | Quick API testing |
-| `discover-historical-api.php` | Explore API endpoints |
+| `solar-debug.php` | Ad-hoc debugging |
+| `debug-solar-dashboard.php` | Reproduce what the dashboard sees |
+| `quick-api-test.php` | Minimal API smoke test |
+| `discover-historical-api.php` | Explore Solplanet endpoint shapes |
+| `test-getopt.php` | Argument-parsing scratch file |
 
-### Usage Examples
-
-```bash
-# Initialize database (safe to run multiple times)
-php scripts/init-solar-database.php
-
-# Test API connection
-php scripts/test-solar-api.php
-
-# Backfill last 30 days of data
-php scripts/solar-backfill.php --days=30
-
-# Force re-import (overwrites existing data)
-php scripts/solar-backfill.php --days=7 --force
-
-# Validate data quality
-php scripts/validate-solar-data.php
-
-# Run full diagnostics
-php scripts/solar-diagnostics.php
-```
+There is also `solar-diagnostics.html` in the repository root — a standalone browser-side diagnostic
+page that calls the solar API directly.
 
 ---
 
 ## JavaScript Modules
 
-### api.js (725 lines)
+Load order is fixed by `config.php::includeJS()`: `logger`, `theme`, `sidebar`, `api`, `header`,
+`charts` — then the page-specific module appended by `components/footer.php`.
 
-Central API wrapper with error handling and caching.
+### logger.js (62 lines)
 
-**Key features:**
-- Request caching (5-second TTL)
-- Connection status monitoring
-- Automatic retry logic
-- Custom events for connection state changes
+`P1Logger`. Use this instead of `console` throughout.
 
-**Methods:**
+- `log()` / `warn()` output only in debug mode; `error()` always outputs.
+- Enable with `?debug` in the URL or `P1Logger.enable()`; disable with `P1Logger.disable()`.
+- State persists in `localStorage` under `p1mon_debug`.
+
+### api.js (582 lines)
+
+`P1API`. See [API Reference](#api-reference) for the full method list. The one method doing real
+work is `getElectricityData(period, limit, includeTemperature)`, which fetches power/gas history plus
+optional financial and weather data and returns:
+
 ```javascript
-P1API.getElectricityData()
-P1API.getGasData()
-P1API.getSolarData(period, zoom)
-P1API.getWeatherData()
-P1API.isConnected()
+{
+  period, limit,
+  chartData: [{ timestamp, unixTimestamp, consumption, production, net, gas, tempMin?, tempMax?, tempAvg? }],
+  stats: { totalConsumption, totalProduction, netConsumption, totalCost, average, peakConsumption: { value, time } }
+}
 ```
 
-### dashboard.js (337 lines)
+It is used by the electricity page, the gas page (for `chartData[].gas`) and the dashboard.
+When financial data is unavailable, `totalCost` falls back to
+`net × P1MonConfig.electricityCostPerKwh`.
 
-Main dashboard functionality.
+### charts.js (845 lines)
 
-**Features:**
-- Real-time data updates (configurable interval)
-- Canvas-based gauge drawing
-- Card statistics updates
-- Auto-refresh with countdown timer
+`ChartBase` — shared chart machinery and the `createManager()` factory.
 
-### electricity.js (1,048 lines)
+Provides: canvas sizing, theme colour resolution, nice-tick calculation, Y/X axis drawing, Dutch
+date/label formatting, tooltips with hover tracking, rounded rects, bars, smooth lines, temperature
+overlays and a secondary temperature axis, plus `showError()` / `hideError()` /
+`showLoading()` / `hideLoading()` / `updateElement()` helpers.
 
-Electricity page with interactive charts.
+Managers created by the factory get `currentPeriod`, `currentZoom`, `data`, `canvas`, `ctx`,
+`hoverState` and the methods `init()`, `setupEventListeners()`, `updateZoomButtons()`,
+`changePeriod()`, `changeZoom()`, `loadData()`, `updateStatistics()`, `redrawChart()`.
 
-**Features:**
-- Period selection (hours/days/months/years)
-- Zoom controls per period
-- Consumption/production toggle
-- Net energy display
-- Cost calculations
-- Hover tooltips
+### dashboard.js (333 lines)
 
-### gas.js (1,181 lines)
+Overview cards for electricity, gas and solar, each with a hand-drawn arc gauge. Refreshes on
+`P1MonConfig.updateInterval` with a visible countdown. Solar figures are filtered to
+today-since-midnight client-side.
 
-Gas consumption tracking.
+### electricity.js (255 lines)
 
-**Features:**
-- Consumption charts with degree-days overlay
-- Temperature correlation display
-- Missing data interpolation
-- Dynamic zoom buttons
+Electricity page: period tabs, zoom controls, net-line and temperature toggles, statistics cards,
+tooltips. Built on `ChartBase.createManager`.
 
-### solar.js (823 lines)
+### gas.js (530 lines)
 
-Solar production visualization.
+Gas page: consumption bars, degree-days overlay, temperature overlay, gap-filling for missing
+periods, dynamic legend. Sources its data from `P1API.getElectricityData()` and reads the `gas`
+field.
 
-**Features:**
-- Production charts for all periods
-- Capacity factor calculation
-- Peak power tracking
-- Smoothed data option
+### solar.js (450 lines)
+
+Solar page: production bars, power line, capacity factor, peak power, estimated sunlight hours,
+optional temperature overlay. Fetches `/custom/api/solar.php` directly rather than through `P1API`.
+
+### header.js (164 lines)
+
+Clock (1s), weather widget (5 min) and solar production widget (10s). Interval IDs are collected in
+`this.timers` and cleared on `beforeunload`.
 
 ### theme.js (245 lines)
 
-Theme management.
+Dark/light switching via `.light-theme` / `.dark-theme` on `<body>`, persisted to `localStorage`
+(`p1mon_theme`), falling back to `prefers-color-scheme`. Also updates `<meta name="theme-color">`,
+dispatches a `themechange` event, and binds Ctrl/Cmd+Shift+L. See
+[Known Issues](#known-issues) regarding the server-side sync.
 
-**Features:**
-- Dark/light mode switching
-- localStorage persistence
-- System theme detection
-- Real-time switching without reload
-- Server sync via AJAX
+### sidebar.js (412 lines)
 
-### sidebar.js (408 lines)
-
-Sidebar navigation.
-
-**Features:**
-- Toggle collapse/expand
-- Smooth animations
-- State persistence
-
-### header.js (154 lines)
-
-Header functionality.
-
-**Features:**
-- Weather information display
-- Real-time clock updates
+Collapse/expand with `localStorage` persistence (`p1mon_sidebar_collapsed`), mobile drawer behaviour
+below 1024px, click-outside-to-close, and hiding of nav items per `P1MonConfig.visibility`.
 
 ---
 
@@ -393,123 +555,197 @@ Header functionality.
 
 ### P1 Monitor Config Values
 
-The dashboard reads these configuration values via `config_read()`:
+Read via `config_read()` in `P1Config`. When P1 Monitor's `util/p1mon-util.php` is not present,
+`config_read()` does not exist, `P1Config::get()` returns `null`, and every flag falls back to its
+default.
 
-| Config ID | Purpose | Values |
-|-----------|---------|--------|
-| 52 | Max consumption for gauge | Watts |
-| 53 | Max production for gauge | Watts |
-| 61 | Enable three-phase info | 0/1 |
-| 154 | Fast telegram mode | 0/1 |
-| 157 | Hide water utility | 0/1 |
-| 158 | Hide gas utility | 0/1 |
-| 206 | Hide peak kW info | 0/1 |
+| Config ID | Read as | Purpose |
+|-----------|---------|---------|
+| 52 | `maxValues['consumption']` (default 10) | Gauge maximum, kW |
+| 53 | `maxValues['production']` (default 10) | Gauge maximum, kW |
+| 61 | `show_phase_info` = `(61 == 1)` | Three-phase info — **computed but never consumed** |
+| 96 | `hide_water` = `(96 == 0)` | Hides the water utility when the value is 0 |
+| 154 | `isFastMode` = `(154 == 1)` | Fast telegram mode → 1s refresh instead of 10s |
+| 158 | `hide_gas` = `(158 == 1)` | Hides the gas utility |
+| 206 | `hide_peak_kw` = `(206 == 1)` | Peak kW info — **computed but never consumed** |
+
+Note on 96: earlier documentation claimed water visibility was config 157. The code reads **96**,
+inverted (hidden when 0, i.e. when no water meter is configured). Config 157 is not read anywhere.
+
+### window.P1MonConfig
+
+Emitted by `components/footer.php`; the only server→client configuration channel.
+
+```javascript
+{
+  currentPage,              // routes JS module auto-init
+  isFastMode,
+  maxConsumption,           // kW
+  maxProduction,            // kW — currently unused by any module
+  updateInterval,           // ms: 1000 in fast mode, else 10000
+  visibility,               // { hide_gas, hide_water, hide_peak_kw, show_phase_info }
+  systemCapacityW,          // 3780
+  electricityCostPerKwh,    // 0.30
+  gasCostPerM3              // 1.50
+}
+```
+
+Cost and capacity values come from `P1Config::getEnergyConfig()` in `config.php`; edit them there.
+They are fallbacks used when P1 Monitor's financial API is unavailable.
 
 ### User Preferences
 
-Stored in PHP sessions:
+`P1Config::getUserPrefs()` seeds a PHP session array:
 
 ```php
 [
-    'theme' => 'dark',              // 'dark' or 'light'
-    'sidebar_collapsed' => false,   // Sidebar state
-    'default_page' => 'dashboard',  // Landing page
-    'update_interval' => 10         // Seconds between updates
+    'theme' => 'dark',
+    'sidebar_collapsed' => false,
+    'default_page' => 'dashboard',
+    'update_interval' => 10
 ]
 ```
 
+Only `theme` is read (by `header.php`, for the initial `<body>` class). `sidebar_collapsed`,
+`default_page` and `update_interval` are never read, and `P1Config::setUserPref()` is never called —
+see [Known Issues](#known-issues). Client-side state lives in `localStorage` instead.
+
 ### CSS Variables
 
-Theme colors defined in `assets/css/variables.css`:
+Defined in `assets/css/variables.css` as light/dark pairs on `:root`, remapped under the theme body
+classes. Also defines spacing (`--space-1` … `--space-12`), radii, transitions, layout dimensions
+(`--sidebar-width`, `--header-height`) and a z-index scale.
 
 ```css
-/* Background colors */
---bg-primary-dark / --bg-primary-light
---bg-secondary-dark / --bg-secondary-light
+/* Paired, remapped by .light-theme / .dark-theme */
+--bg-primary, --bg-secondary, --bg-card, --bg-hover
+--text-primary, --text-secondary
+--border-color, --shadow, --shadow-hover
 
-/* Text colors */
---text-primary-dark / --text-primary-light
---text-secondary-dark / --text-secondary-light
-
-/* Accent colors (same for both themes) */
---accent-consumption: #f97316;  /* Orange */
---accent-production: #22c55e;   /* Green */
---accent-gas: #3b82f6;          /* Blue */
---accent-water: #06b6d4;        /* Cyan */
---accent-solar: #eab308;        /* Amber */
+/* Accents (identical in both themes) */
+--accent-consumption: #f59e0b;
+--accent-production:  #10b981;
+--accent-gas:         #3b82f6;
+--accent-water:       #06b6d4;
+--accent-solar:       #f59e0b;
+--accent-cost:        #8b5cf6;
 ```
+
+Chart code does not read these variables; `ChartBase.getThemeColors()` hard-codes its palette based
+on the presence of `.dark-theme`.
 
 ---
 
 ## Data Flow
 
+### P1 Monitor data (live, not stored)
+
 ```
-User Browser
-    |
-    v
-HTML Page (p1mon.php)
-    |
-    v
-JavaScript loads (api.js, dashboard.js, etc.)
-    |
-    v
-P1API.fetch() --> P1 Monitor APIs / custom solar.php
-    |
-    v
-Live Data / SQLite Database
-    |
-    v
-JSON Response
-    |
-    v
-DOM Updates + Chart Rendering
-    |
-    v
-Auto-refresh (configurable interval)
+Browser
+  └── P1API.fetch('/api/v1/...?json=object')
+        └── P1 Monitor API  →  JSON  →  DOM + canvas
+              └── re-poll every 10s (1s in fast mode)
+```
+
+### Solar data (collected and stored)
+
+```
+cron (10 min)
+  └── solar-collector.php
+        ├── SolarConfig  →  credentials
+        ├── SolplanetAPI.getPlantOverview()  →  Solplanet Cloud
+        ├── INSERT solar_realtime           (Wh / W)
+        ├── aggregate → solar_hourly / _daily / _monthly / _yearly
+        └── DELETE solar_realtime older than 7 days
+
+Browser
+  └── fetch('/custom/api/solar.php?...')
+        └── api/solar.php  →  SQLite  →  JSON (Wh→kWh)  →  DOM + canvas
 ```
 
 ### Data Storage Summary
 
 | Data Type | Storage | Retention |
 |-----------|---------|-----------|
-| User preferences | PHP session | Session lifetime |
-| Theme choice | localStorage + session | Permanent |
+| Theme choice | `localStorage` (`p1mon_theme`) | Permanent |
+| Sidebar state | `localStorage` (`p1mon_sidebar_collapsed`) | Permanent |
+| Debug flag | `localStorage` (`p1mon_debug`) | Permanent |
+| Session prefs | PHP session | Session lifetime (largely unused) |
 | Solar realtime | SQLite | 7 days |
 | Solar aggregated | SQLite | Permanent |
-| Live P1 Monitor data | API (not stored) | Real-time |
+| P1 Monitor data | API only | Not stored |
 
 ---
 
 ## Known Issues
 
-### Solar Unit Conversion (Phase 6A)
+### Solar backfill values are too low
 
-**Issue**: Solar energy values may be approximately 3x too low in some historical data.
+**Issue**: energy imported by `solar-backfill.php` is substantially lower than what the Solplanet
+dashboard reports — roughly 3× in some samples, far worse in others.
 
-**Root cause**: Possible unit conversion error during backfill process. The Solplanet API returns power (W) vs energy (Wh) in different fields, and the conversion logic may have incorrect multipliers.
+**Observed** (see `docs/PHASE6A_HANDOVER.md`): for 2026-01-16 the database held 2,896 Wh where the
+API data implied ~7.3 kWh. Peak power for the same day was correct (730 W), which points at the
+energy integration rather than the fetch.
 
-**Workaround**:
-1. Run `php scripts/validate-solar-data.php` to check data quality
-2. Compare database values against Solplanet Cloud dashboard
-3. If values are incorrect, re-run backfill with `--force` flag after fixing the conversion
+**Status**: open, never resolved. Live collector data (which derives hourly energy from
+`energy_today` deltas rather than integrating power) is not affected by this path. Treat backfilled
+history as unreliable until the integration is re-derived and validated against the Solplanet
+dashboard.
 
-**Status**: Under investigation. See `docs/PHASE6A_HANDOVER.md` for details.
+### Theme is never persisted server-side
 
-### Placeholder Pages
+`theme.js::syncThemeToServer()` POSTs to `?action=set_theme`, but `p1mon.php` has no action handling
+at all. The request returns the dashboard HTML, `response.json()` throws, and the `.catch()` swallows
+it silently. Consequences:
 
-The following pages are not yet implemented:
-- **Water** (`pages/water.php`) - Placeholder only
-- **Costs** (`pages/costs.php`) - Placeholder only
+- `P1Config::setUserPref()` is dead code;
+- the PHP-rendered `<body>` class always reflects the session default rather than the user's choice;
+- the theme is re-applied by JS after first paint, so there is a visible flash on load.
+
+### Capacity factor is calculated three different ways
+
+For the same underlying data:
+
+- `api/solar.php` divides by `zoom` hours (and approximates months as 30 days, years as 365);
+- `solar.js::calculateCapacityFactor()` divides by the zoom window, same approximations;
+- `dashboard.js::calculateSolarTotals()` divides by *hours elapsed so far today*.
+
+The dashboard card and the solar page will therefore disagree about the same day. There is no single
+agreed definition in the codebase.
+
+### Hard-coded absolute paths
+
+`api/solar.php` and every script hard-code `/p1mon/www/custom/...`, and the JS callers hard-code
+`/custom/api/solar.php`, while `config.php` defines an unused `CUSTOM_BASE_URL`. The installation is
+not relocatable, despite the README suggesting `/var/www/html/custom`.
+
+### Unimplemented pages and unused surface
+
+- `pages/water.php` and `pages/costs.php` are placeholders.
+- Peak kW display and three-phase info are read from config and passed to the browser but never
+  rendered; `P1API.getPhases()`, `getStatus()` and both watermeter methods have no callers.
+- The `api_cache` table is created but never used.
+- `P1MonConfig.maxProduction` is emitted but never read.
+
+### Duplicated solar polling
+
+`header.js` and `dashboard.js` each poll both solar endpoints on independent 10-second timers, using
+raw `fetch()` outside `P1API`. On the dashboard that is four uncached requests per 10 seconds, and
+the "filter to today since midnight" logic is duplicated in both files.
 
 ---
 
 ## Security Considerations
 
-- Page routing uses alphanumeric validation only
-- URL parameters are sanitized
-- X-Robots header prevents search engine indexing
-- Session-based preferences (no sensitive data in client)
-- API credentials stored in config files outside web root (when properly configured)
+- Page routing validates against an explicit whitelist after stripping everything but `[a-z0-9_]`.
+- `api/solar.php` is read-only and uses prepared statements; `zoom` is cast to `int` and clamped.
+- The solar API is **unauthenticated** — anyone who can reach the P1 Monitor host can read solar
+  production history. Consider this when exposing the host beyond the LAN.
+- `<meta name="robots" content="noindex">` on every page.
+- Solplanet credentials belong in a file outside the web root (`/p1mon/config/solplanet.ini`) or in
+  environment variables. `SolarConfig::getAll()` masks them by default.
+- No CSRF protection exists; there are currently no state-changing endpoints to protect.
 
 ---
 
@@ -517,19 +753,28 @@ The following pages are not yet implemented:
 
 ### Adding a New Page
 
-1. Create a new file in `pages/` directory
-2. Add page name to `$validPages` array in `p1mon.php`
-3. Create corresponding JavaScript file in `assets/js/`
-4. Add navigation link in `components/sidebar.php`
-5. Link JavaScript in `config.php` `includeJS()` function
+1. Create `pages/newpage.php` as a fragment (no `<html>`/`<body>`; 8-space base indent to match).
+2. Add the page name to `$validPages` in `p1mon.php`.
+3. Add a navigation link in `components/sidebar.php`.
+4. Create `assets/js/newpage.js` as an IIFE exposing a manager that auto-inits when
+   `P1MonConfig.currentPage` matches.
+5. Register the script in the page-specific block in `components/footer.php`
+   (**not** in `config.php::includeJS()`, which is for globally loaded modules only).
+
+For a chart page, build the manager with `ChartBase.createManager()` rather than driving the canvas
+directly.
 
 ### Code Conventions
 
-- **PHP**: Extract variables in includes, use P1Config static class
-- **JavaScript**: Object-based managers with init/setupEventListeners pattern
-- **CSS**: Organized by purpose (variables, base, layout, components)
-- **HTML**: Semantic structure with conditional PHP rendering
+- **PHP**: static `P1Config`, no instantiation. Includes read variables placed in scope by
+  `extract()` inside `renderPage()`.
+- **JavaScript**: one IIFE per file, `'use strict'`, a single `XManager` object literal with
+  `init()` / `setupEventListeners()` / `destroy()`. Timers tracked and cleared on `beforeunload`.
+- **Logging**: `P1Logger` only, never bare `console`.
+- **DOM**: `textContent` and `replaceChildren()`; never `innerHTML` with data.
+- **CSS**: organised by purpose — `variables`, `base`, `layout`, `components`.
+- **Language**: UI strings in Dutch, code and comments in English.
 
 ---
 
-*Last updated: January 2026*
+*Last updated: September 2026*
