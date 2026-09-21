@@ -1,15 +1,30 @@
 <?php
 /**
- * Solar Data API Endpoint - FIXED VERSION
- * Gets most recent N records instead of filtering by time range
- * This works correctly with backfilled historical data
+ * Solar Data API Endpoint
+ *
+ * Serves solar production data from the local SQLite database to the dashboard,
+ * the solar page and the header widget. Read-only.
+ *
+ * Selects the most recent N records per period rather than filtering by a time
+ * range, so backfilled history is served correctly.
+ *
+ * Both constants below are guarded so the test harness can point this file at a
+ * temporary database and a known capacity. In normal use nothing defines them
+ * first and the production values apply.
  */
 
-header('Content-Type: application/json');
-header('Cache-Control: no-cache, must-revalidate');
+if (PHP_SAPI !== 'cli') {
+    header('Content-Type: application/json');
+    header('Cache-Control: no-cache, must-revalidate');
+}
 
-define('SOLAR_DB_PATH', '/p1mon/www/custom/data/solar.db');
-define('SYSTEM_CAPACITY_W', 3780); // 14 × 270Wp panels
+if (!defined('SOLAR_DB_PATH')) {
+    define('SOLAR_DB_PATH', '/p1mon/www/custom/data/solar.db');
+}
+
+if (!defined('SYSTEM_CAPACITY_W')) {
+    define('SYSTEM_CAPACITY_W', 3780); // 14 x 270Wp panels
+}
 
 /**
  * Connect to solar database
