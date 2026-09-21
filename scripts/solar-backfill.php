@@ -21,7 +21,7 @@ require_once LIB_DIR . '/SolplanetAPI.php';
 require_once LIB_DIR . '/SolarUnits.php';
 
 // Parse command line arguments
-$options = getopt('', ['days:', 'start:', 'end:', 'delay:', 'verbose', 'dry-run', 'force', 'help']);
+$options = getopt('', ['days:', 'start:', 'end:', 'delay:', 'survey', 'verbose', 'dry-run', 'force', 'help']);
 
 if (isset($options['help'])) {
     echo <<<HELP
@@ -35,6 +35,10 @@ Options:
   --start=DATE      Start date (YYYY-MM-DD)
   --end=DATE        End date (YYYY-MM-DD)
   --delay=N         Seconds to wait between API calls (default: 10)
+  --survey          Ask the API which years hold data and stop, without
+                    importing anything. One call per year instead of one per
+                    day, so it finishes in seconds and tells you the range
+                    actually worth importing.
   --verbose         Show detailed progress
   --dry-run         Show what would be done without inserting
   --force           Overwrite existing data
@@ -44,6 +48,11 @@ Examples:
   php solar-backfill.php --days=7
   php solar-backfill.php --start=2025-12-15 --end=2026-01-16
   php solar-backfill.php --days=30 --verbose --force
+
+Finding the real range:
+  Solplanet answers for a date it has no data with a full day of zero-valued
+  points rather than an error, so a range that starts too early imports
+  thousands of empty days. Run --survey first.
 
 Long ranges:
   One API call per day, so a multi-year range takes hours. The run is
@@ -138,6 +147,92 @@ if (!$appKey || !$appSecret || !$apiKey || !$sn) {
 
 // Create API client
 $api = new SolplanetAPI($appKey, $appSecret, $apiKey, $token, $sn);
+
+// Survey mode: ask per year rather than per day, to find where data actually
+// starts. Solplanet returns a well-formed day of zeros for dates it has nothing
+// for, so the range cannot be discovered by importing and watching for errors.
+if (isset($options['survey'])) {
+    echo "================================================================================\n";
+    echo "SURVEY (no data will be imported)\n";
+    echo "================================================================================\n\n";
+
+    $firstYearWithData = null;
+
+    for ($year = (int)date('Y', $start); $year <= (int)date('Y', $end); $year++) {
+        printf("%d... ", $year);
+
+        $response = $api->getPlantOutput('byyear', (string)$year);
+
+        if (!isset($response['success']) || !$response['success']) {
+            echo "API error\n";
+            if ($verbose) {
+                echo "  " . json_encode($response) . "\n";
+            }
+            sleep($delay);
+            continue;
+        }
+
+        $payload = $response['data'] ?? [];
+        $points  = $payload['data'] ?? [];
+        $unit    = $payload['dataunit'] ?? '(no unit)';
+
+        // Printed raw in verbose because the shape of a 'byyear' response is
+        // not documented anywhere and may not match the daily one.
+        if ($verbose) {
+            echo "\n  " . json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n  ";
+        }
+
+        if (!is_array($points) || !$points) {
+            echo "no data\n";
+            sleep($delay);
+            continue;
+        }
+
+        $nonZero = [];
+        $total = 0.0;
+
+        foreach ($points as $point) {
+            $value = (float)($point['value'] ?? 0);
+            $total += $value;
+
+            if ($value > 0) {
+                $nonZero[] = $point['time'] ?? '?';
+            }
+        }
+
+        if (!$nonZero) {
+            printf("%d periods, all zero\n", count($points));
+        } else {
+            printf("%s %s across %d of %d periods, from %s\n",
+                rtrim(rtrim(number_format($total, 2, '.', ''), '0'), '.'),
+                $unit,
+                count($nonZero),
+                count($points),
+                $nonZero[0]
+            );
+
+            if ($firstYearWithData === null) {
+                $firstYearWithData = $year;
+            }
+        }
+
+        sleep($delay);
+    }
+
+    echo "\n";
+
+    if ($firstYearWithData === null) {
+        echo "No year in this range reported any production.\n";
+        echo "Widen --start/--end, or check the credentials against the Solplanet app.\n";
+    } else {
+        echo "Earliest year with data: $firstYearWithData\n";
+        echo "Import from there:\n";
+        printf("  php %s --start=%d-01-01 --end=%s\n",
+            basename(__FILE__), $firstYearWithData, date('Y-m-d', $end));
+    }
+
+    exit(0);
+}
 
 // Open database
 $dbPath = '/p1mon/www/custom/data/solar.db';
@@ -305,6 +400,28 @@ while ($currentDate <= $end) {
         }
         
         $dailyTotalKwh = $dailyTotalWh / 1000;
+
+        // A day that reports no production at all is, in practice, a day the
+        // API has no data for: Solplanet answers with a full skeleton of
+        // zero-valued points rather than an error or an empty array.
+        //
+        // Importing it is worse than useless. It writes 24 empty hourly rows,
+        // and the solar_daily row it creates marks the day as already imported
+        // -- so a later run skips it, and the emptiness becomes permanent
+        // without --force. Run --survey to find where data actually begins.
+        if (round($dailyTotalWh) <= 0) {
+            echo "⊘ No production reported (treated as no data)\n";
+            $stats['days_skipped']++;
+
+            // The API call was still made, so the rate limit still applies.
+            if ($delay > 0 && $processedDays < $totalDays) {
+                sleep($delay);
+            }
+
+            $currentDate = strtotime('+1 day', $currentDate);
+            continue;
+        }
+
         $stats['total_energy_kwh'] += $dailyTotalKwh;
         
         if ($verbose) {
