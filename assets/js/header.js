@@ -43,8 +43,11 @@
 
         async loadWeather() {
             try {
-                // Use P1 Monitor weather API
-                const response = await fetch('/api/v1/weather?json=object');
+                // Use P1 Monitor weather API.
+                // limit=1 matters: without it this endpoint returns the entire
+                // weather history (~3000 records, ~900KB) and we use only the
+                // newest one. Records come back newest first.
+                const response = await fetch('/api/v1/weather?limit=1&json=object');
                 if (!response.ok) return;
 
                 const data = await response.json();

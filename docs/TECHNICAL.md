@@ -94,7 +94,7 @@ rather than positional arrays.
 | `GET /api/v2/watermeter/day?limit=N` | `getWaterMeter(limit)` | Not called by any page yet |
 | `GET /api/v2/watermeter/month?limit=N` | `getWaterMeterMonth(limit)` | Not called by any page yet |
 | `GET /api/v1/weather/{hour,day,month,year}?limit=N` | `getWeatherHistory(period, limit)` | Pre-aggregated `TEMPERATURE_LOW/AVERAGE/HIGH` |
-| `GET /api/v1/weather` | — | Called directly by `header.js` for the current conditions widget |
+| `GET /api/v1/weather?limit=1` | — | Called directly by `header.js` for the current conditions widget. `limit=1` is required: without it the endpoint returns the entire weather history (~3,000 records, ~900KB) for the sake of one record |
 
 History endpoints return newest-first; `getElectricityData()` clones and reverses into chronological
 order before building chart data.
@@ -189,7 +189,9 @@ connection monitoring above applies to solar data.
 Solar data is stored in SQLite at `/p1mon/www/custom/data/solar.db`. The path is a constant in
 `api/solar.php` and in every script; the `data/` directory is not part of this repository.
 
-`scripts/init-solar-database.php` is the authoritative schema definition. Seven tables:
+`scripts/solar-schema.sql` is the authoritative schema definition. It is read by
+`scripts/init-solar-database.php` at install time and by the test harness when building a
+temporary database, so the two cannot drift apart. Seven tables:
 
 ### solar_realtime
 
@@ -693,6 +695,19 @@ energy integration rather than the fetch.
 history as unreliable until the integration is re-derived and validated against the Solplanet
 dashboard.
 
+### A missing database is indistinguishable from a quiet night
+
+Over the history API, an absent `solar.db` and an empty one produce byte-identical
+responses: `chartData: []` with zeroed statistics. A broken installation therefore renders
+as a flat chart rather than an error, and can go unnoticed indefinitely. Only
+`?action=current` distinguishes them, returning `{"error": "Database not available"}`.
+
+`getSolarDB()` reaches that state through `file_exists()`, which also returns false when the
+web server user cannot traverse the containing directory — so "not there" and "not readable"
+are likewise indistinguishable from the response alone.
+
+Both behaviours are pinned by `tests/run-solar-api-tests.php`.
+
 ### Theme is never persisted server-side
 
 `theme.js::syncThemeToServer()` POSTs to `?action=set_theme`, but `p1mon.php` has no action handling
@@ -763,6 +778,27 @@ the "filter to today since midnight" logic is duplicated in both files.
 
 For a chart page, build the manager with `ChartBase.createManager()` rather than driving the canvas
 directly.
+
+### Running the tests
+
+```bash
+php tests/run-solar-api-tests.php              # exit 0 on success, 1 on any failure
+php tests/run-solar-api-tests.php --verbose    # also print every response body
+php tests/run-solar-api-tests.php --keep       # leave the temporary databases for inspection
+```
+
+The harness builds a temporary SQLite database from `scripts/solar-schema.sql`, seeds it with
+known values, and checks `api/solar.php` against them: unit conversion, chronological ordering,
+statistics, zoom clamping, per-period response shapes, and the empty and missing database cases.
+
+Each request runs in its own process via `tests/solar-api-request.php`, because `api/solar.php`
+declares functions and constants at file scope and can only be included once per process. That
+shim pre-defines `SOLAR_DB_PATH` and `SYSTEM_CAPACITY_W`, which `api/solar.php` honours through
+`if (!defined(...))` guards; nothing defines them in normal use, so production behaviour is
+unchanged.
+
+There is no test framework — the project has no package manager and no dependencies, and the
+harness keeps it that way.
 
 ### Code Conventions
 

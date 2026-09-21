@@ -510,8 +510,9 @@ echo "\n------------------------------------------------------------------------
 echo sprintf("Captured %d of %d fixtures (%d failed)\n", $ok, count($targets), $failed);
 
 if ($failed > 0) {
-    echo "\nFailures are recorded in manifest.json. An empty or 404 watermeter fixture is\n";
-    echo "expected when no water meter is installed; treat other failures as real.\n";
+    echo "\nFailures are recorded in manifest.json. Note that an installation without a\n";
+    echo "water meter answers 200 with an empty array rather than failing, so a captured\n";
+    echo "but empty watermeter fixture is expected; treat listed failures as real.\n";
 }
 
 if (!$dryRun) {

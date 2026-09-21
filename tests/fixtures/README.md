@@ -50,10 +50,11 @@ tests/fixtures/
 Always check the manifest before trusting a fixture's absence or emptiness. Each entry
 records the HTTP status, record count, byte size and any error.
 
-A missing or 404 `watermeter-*` fixture is expected on an installation without a water
-meter, and is not a failure. Any other non-`ok` entry is a real problem worth chasing —
-an empty fixture and a failed fetch look identical once written to disk, which is
-exactly what the manifest is there to disambiguate.
+An empty `watermeter-*` fixture is expected on an installation without a water meter:
+P1 Monitor answers 200 with `[]` rather than 404, so the entry is `ok` with
+`records: 0`. Any non-`ok` entry is a real problem worth chasing — an empty fixture and
+a failed fetch look identical once written to disk, which is exactly what the manifest
+is there to disambiguate.
 
 `anonymised`, `scale_factor` and `date_offset_s` record how the data was transformed.
 `base_url` is redacted in anonymised runs.
