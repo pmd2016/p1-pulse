@@ -21,7 +21,8 @@ require_once LIB_DIR . '/SolplanetAPI.php';
 require_once LIB_DIR . '/SolarUnits.php';
 
 // Parse command line arguments
-$options = getopt('', ['days:', 'start:', 'end:', 'delay:', 'survey', 'verbose', 'dry-run', 'force', 'help']);
+$options = getopt('', ['days:', 'start:', 'end:', 'delay:', 'survey', 'probe-daily',
+                       'import-months', 'verbose', 'dry-run', 'force', 'help']);
 
 if (isset($options['help'])) {
     echo <<<HELP
@@ -39,6 +40,14 @@ Options:
                     importing anything. One call per year instead of one per
                     day, so it finishes in seconds and tells you the range
                     actually worth importing.
+  --probe-daily     Find where per-day detail begins. Monthly history reaches
+                    further back than daily history, so a range chosen from
+                    --survey alone will import empty days. Samples one day per
+                    year, then narrows by month.
+  --import-months   Import monthly totals straight from the API into
+                    solar_monthly, one call per year, and rebuild solar_yearly.
+                    Covers the period where only monthly history survives.
+                    Existing months are kept unless --force is given.
   --verbose         Show detailed progress
   --dry-run         Show what would be done without inserting
   --force           Overwrite existing data
@@ -234,6 +243,98 @@ if (isset($options['survey'])) {
     exit(0);
 }
 
+/**
+ * Ask whether a single date has per-day detail.
+ *
+ * Solplanet answers a date it has no detail for with a full day of zero-valued
+ * points rather than an error, so "has data" means "reports any production".
+ */
+function dayHasDetail($api, $dateStr, $verbose) {
+    $response = $api->getPlantOutput('bydays', $dateStr);
+
+    if (!isset($response['success']) || !$response['success']) {
+        return null;
+    }
+
+    $points = $response['data']['data'] ?? [];
+    $unit   = $response['data']['dataunit'] ?? null;
+
+    if (!is_array($points) || !$points || $unit === null) {
+        return false;
+    }
+
+    foreach ($points as $point) {
+        if ((float)($point['value'] ?? 0) > 0) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+if (isset($options['probe-daily'])) {
+    echo "================================================================================\n";
+    echo "PROBING FOR PER-DAY DETAIL (no data will be imported)\n";
+    echo "================================================================================\n\n";
+    echo "Monthly history reaches further back than daily history. This samples a\n";
+    echo "midsummer day per year, then narrows by month within the first year that\n";
+    echo "has detail.\n\n";
+
+    $firstYear = null;
+
+    for ($year = (int)date('Y', $start); $year <= (int)date('Y', $end); $year++) {
+        // Mid-June: high production everywhere in the northern hemisphere, so a
+        // zero is about retention rather than a dull day.
+        $probe = "$year-06-15";
+        printf("  %s ... ", $probe);
+
+        $has = dayHasDetail($api, $probe, $verbose);
+        echo $has === null ? "API error\n" : ($has ? "has detail\n" : "empty\n");
+
+        if ($has === true && $firstYear === null) {
+            $firstYear = $year;
+            break;
+        }
+
+        sleep($delay);
+    }
+
+    if ($firstYear === null) {
+        echo "\nNo sampled day returned detail. Per-day history may be unavailable\n";
+        echo "entirely; use --import-months for monthly resolution.\n";
+        exit(0);
+    }
+
+    printf("\nNarrowing within %d:\n", $firstYear);
+
+    $firstMonth = 6;
+
+    for ($month = 1; $month < 6; $month++) {
+        $probe = sprintf('%d-%02d-15', $firstYear, $month);
+        printf("  %s ... ", $probe);
+
+        sleep($delay);
+        $has = dayHasDetail($api, $probe, $verbose);
+        echo $has === null ? "API error\n" : ($has ? "has detail\n" : "empty\n");
+
+        if ($has === true) {
+            $firstMonth = $month;
+            break;
+        }
+    }
+
+    printf("\nPer-day detail appears from around %d-%02d.\n\n", $firstYear, $firstMonth);
+    echo "Suggested split:\n";
+    printf("  php %s --import-months --start=%s --end=%s\n",
+        basename(__FILE__), date('Y-m-d', $start), date('Y-m-d', $end));
+    printf("  php %s --start=%d-%02d-01 --end=%s\n",
+        basename(__FILE__), $firstYear, $firstMonth, date('Y-m-d', $end));
+    echo "\nThe sampling is coarse: it checks the 15th, so the true boundary may sit\n";
+    echo "a few weeks either side. Days without detail are skipped harmlessly.\n";
+
+    exit(0);
+}
+
 // Open database
 $dbPath = '/p1mon/www/custom/data/solar.db';
 if (!file_exists($dbPath)) {
@@ -249,6 +350,160 @@ try {
 
 echo "✓ API client initialized\n";
 echo "✓ Database connected\n\n";
+
+// Import monthly totals straight from the API. Per-day detail does not reach
+// as far back as monthly history does, so this is the only way to populate the
+// early years at all.
+if (isset($options['import-months'])) {
+    echo "================================================================================\n";
+    echo "IMPORTING MONTHLY TOTALS\n";
+    echo "================================================================================\n\n";
+
+    $capacityW = (int)SolarConfig::get('system_capacity_wp', 3780);
+    $imported = 0;
+    $kept = 0;
+    $skippedZero = 0;
+    $failedYears = 0;
+
+    // OR IGNORE by default: a month already derived from daily data carries a
+    // real power_peak and day count, which this import cannot supply and must
+    // not overwrite. --force replaces it anyway, losing those.
+    $verb = $force ? 'REPLACE' : 'IGNORE';
+    $stmt = $db->prepare("
+        INSERT OR $verb INTO solar_monthly (
+            year, month, timestamp, energy_produced, power_peak,
+            days_with_data, avg_daily_production, capacity_factor, aggregated_at
+        ) VALUES (?, ?, ?, ?, 0, 0, ?, ?, ?)
+    ");
+
+    for ($year = (int)date('Y', $start); $year <= (int)date('Y', $end); $year++) {
+        printf("%d... ", $year);
+
+        $response = $api->getPlantOutput('byyear', (string)$year);
+
+        if (!isset($response['success']) || !$response['success']) {
+            echo "API error\n";
+            $failedYears++;
+            sleep($delay);
+            continue;
+        }
+
+        $points = $response['data']['data'] ?? [];
+        $unit   = $response['data']['dataunit'] ?? null;
+
+        if ($unit === null) {
+            echo "no dataunit declared; refusing to guess\n";
+            $failedYears++;
+            sleep($delay);
+            continue;
+        }
+
+        if (SolarUnits::toWattHours(0, $unit) === null) {
+            echo "unrecognised energy unit '$unit'\n";
+            $failedYears++;
+            sleep($delay);
+            continue;
+        }
+
+        $yearImported = 0;
+
+        foreach ($points as $point) {
+            // "time" is YYYY-MM; "no" is the month number, but parse the date
+            // rather than trusting a second field to agree with it.
+            if (!isset($point['time']) || !preg_match('/^(\d{4})-(\d{2})$/', $point['time'], $m)) {
+                continue;
+            }
+
+            $energyWh = SolarUnits::toWattHours($point['value'] ?? 0, $unit);
+
+            if ($energyWh === null || $energyWh <= 0) {
+                $skippedZero++;
+                continue;
+            }
+
+            $monthYear = (int)$m[1];
+            $monthNo   = (int)$m[2];
+            $timestamp = strtotime(sprintf('%04d-%02d-01 00:00:00', $monthYear, $monthNo));
+
+            // A month still in progress has fewer elapsed days than it has days,
+            // and dividing by the full count would understate the daily average.
+            $daysInMonth = (int)date('t', $timestamp);
+            $elapsed = min($daysInMonth, max(1, (int)floor((time() - $timestamp) / 86400) + 1));
+
+            $capacityFactor = $capacityW > 0
+                ? ($energyWh / ($capacityW * 24 * $daysInMonth)) * 100
+                : 0;
+
+            if ($dryRun) {
+                $yearImported++;
+                continue;
+            }
+
+            $stmt->execute([
+                $monthYear,
+                $monthNo,
+                $timestamp,
+                $energyWh,
+                (int)round($energyWh / $elapsed),
+                round($capacityFactor, 2),
+                time(),
+            ]);
+
+            if ($stmt->rowCount() > 0) {
+                $yearImported++;
+            } else {
+                $kept++;
+            }
+        }
+
+        printf("%d months\n", $yearImported);
+        $imported += $yearImported;
+
+        sleep($delay);
+    }
+
+    if (!$dryRun && $imported > 0) {
+        echo "\nRebuilding solar_yearly from solar_monthly... ";
+        try {
+            $db->exec("
+                INSERT OR REPLACE INTO solar_yearly (
+                    year, timestamp, energy_produced, power_peak,
+                    months_with_data, avg_monthly_production, capacity_factor, aggregated_at
+                )
+                SELECT
+                    year,
+                    strftime('%s', year || '-01-01') as timestamp,
+                    SUM(energy_produced),
+                    MAX(power_peak),
+                    COUNT(*),
+                    CAST(AVG(energy_produced) AS INTEGER),
+                    AVG(capacity_factor),
+                    strftime('%s', 'now')
+                FROM solar_monthly
+                GROUP BY year
+            ");
+            echo "✓\n";
+        } catch (PDOException $e) {
+            echo "❌ " . $e->getMessage() . "\n";
+        }
+    }
+
+    echo "\n";
+    printf("Months imported: %d\n", $imported);
+    printf("Months kept as-is: %d%s\n", $kept, $force ? '' : ' (use --force to replace)');
+    printf("Zero months skipped: %d\n", $skippedZero);
+
+    if ($failedYears > 0) {
+        printf("Years that failed: %d\n", $failedYears);
+    }
+
+    if (!$dryRun) {
+        echo "\nMonth and year views now cover this range. Peak power is left at zero:\n";
+        echo "the yearly endpoint reports energy only.\n";
+    }
+
+    exit(0);
+}
 
 // Statistics
 $stats = [

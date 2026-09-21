@@ -501,6 +501,36 @@ paths under `/p1mon/www/custom`. They will not run from an arbitrary checkout.
 `--force` on the collector bypasses both the `enabled` config check and the 300-second throttle.
 The backfill defaults to a window ending *yesterday*, to avoid racing the live collector.
 
+#### Two retention windows
+
+Solplanet keeps **monthly history far longer than daily history**, and neither is documented. On
+this installation, `getPlantOutput('byyear', 2016)` returns real monthly totals from 2016-06
+onward, while `getPlantOutput('bydays', '2016-07-23')` returns a full day of zeroes for a month the
+yearly call says produced 475.5 kWh.
+
+Nothing in the response distinguishes "no data" from "no production", so the boundary between the
+two windows has to be found by probing. That is what `--probe-daily` does.
+
+The practical consequence is that a complete history needs two imports:
+
+| Period | Source | Resolution | Cost |
+|--------|--------|------------|------|
+| Since per-day detail begins | `--start`/`--end` (`bydays`) | hourly and daily | one API call per day |
+| Everything earlier | `--import-months` (`byyear`) | monthly and yearly | one API call per year |
+
+`--import-months` writes `solar_monthly` and rebuilds `solar_yearly` from it. It leaves `power_peak`
+at zero and `days_with_data` at zero, because the yearly endpoint reports energy alone — the month
+and year views are correct, the peak-power figures for those months are not available at all.
+
+Existing months are kept rather than overwritten (`INSERT OR IGNORE`), since a month already derived
+from daily data carries a real peak and day count that this import cannot supply. `--force`
+replaces them anyway and loses those.
+
+One boundary caveat: a month with *partial* daily coverage gets rebuilt from whatever daily rows
+exist when a daily backfill finishes, replacing a complete imported total with a partial sum. Run
+the daily import over whole months, or re-run `--import-months --force` for the month that straddles
+the boundary.
+
 #### Finding out what history exists
 
 Solplanet answers a request for a date it has no data with a **full day of zero-valued points**,
@@ -515,7 +545,9 @@ php scripts/solar-backfill.php --start=2016-01-01 --end=2026-09-20 --survey
 ```
 
 It reports which years hold production and names the earliest, then prints the import command for
-that range. `--verbose` additionally dumps each raw response, which is worth having: the shape of a
+that range. Follow it with `--probe-daily`, which samples a midsummer day per year and then narrows
+by month, to find where per-day detail actually begins — the survey alone will point at a start date
+whose daily data does not exist. `--verbose` additionally dumps each raw response, which is worth having: the shape of a
 `byyear` response is not documented and may not match the daily one.
 
 The importer also refuses to write a day whose total production is zero, reporting it as "no data"
