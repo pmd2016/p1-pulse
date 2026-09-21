@@ -327,6 +327,43 @@ function collectData() {
 }
 
 /**
+ * Read the inverter's running daily energy counter as it stood at a moment.
+ *
+ * Returns the most recent online reading at or before $at, restricted to the
+ * local day containing $dayOf. The restriction matters at both ends: before the
+ * day's first reading the counter is zero, and a reading taken after midnight
+ * belongs to the next day's count, so it must not be mistaken for the closing
+ * value of the 23:00 hour.
+ *
+ * @return int|null Watt-hours, or null when the day has no reading yet
+ */
+function energyCounterAt($db, $at, $dayOf) {
+    $dayStart = strtotime('midnight', $dayOf);
+    $dayEnd   = $dayStart + 86400;
+
+    $stmt = $db->prepare("
+        SELECT energy_today
+        FROM solar_realtime
+        WHERE timestamp <= :at
+          AND timestamp >= :day_start
+          AND timestamp < :day_end
+          AND inverter_status = 1
+        ORDER BY timestamp DESC
+        LIMIT 1
+    ");
+    $stmt->execute([
+        ':at'        => $at,
+        ':day_start' => $dayStart,
+        ':day_end'   => $dayEnd,
+    ]);
+
+    $value = $stmt->fetchColumn();
+
+    // No reading yet today means the counter had not started: zero, not unknown.
+    return $value === false ? 0 : (int)$value;
+}
+
+/**
  * Aggregate realtime data into hourly buckets
  */
 function aggregateHourlyData($db) {
@@ -371,31 +408,26 @@ function aggregateHourlyData($db) {
             continue; // No data for this hour
         }
         
-        // Calculate energy produced during this hour
-        // Use first and last energy_today readings to get delta
-        $stmt = $db->prepare("
-            SELECT energy_today 
-            FROM solar_realtime
-            WHERE timestamp >= :start AND timestamp < :end
-              AND inverter_status = 1
-            ORDER BY timestamp ASC
-            LIMIT 1
-        ");
-        $stmt->execute([':start' => $hourStart, ':end' => $hourEnd]);
-        $energyStart = (int)$stmt->fetchColumn();
-        
-        $stmt = $db->prepare("
-            SELECT energy_today 
-            FROM solar_realtime
-            WHERE timestamp >= :start AND timestamp < :end
-              AND inverter_status = 1
-            ORDER BY timestamp DESC
-            LIMIT 1
-        ");
-        $stmt->execute([':start' => $hourStart, ':end' => $hourEnd]);
-        $energyEnd = (int)$stmt->fetchColumn();
-        
-        $energyProduced = max(0, $energyEnd - $energyStart);
+        // Energy produced during this hour, read from the inverter's own running
+        // daily total at the hour boundaries.
+        //
+        // Evaluating at the boundaries rather than at whichever samples happen
+        // to fall inside the hour is what makes consecutive hours telescope:
+        // this hour's closing reading is the next hour's opening one, so
+        // production between the last sample of one hour and the first of the
+        // next is no longer dropped by both. Taking the first and last sample
+        // *inside* the hour lost that gap every time -- a third of each hour at
+        // three samples per hour.
+        $energyStart = energyCounterAt($db, $hourStart, $hourStart);
+        $energyEnd   = energyCounterAt($db, $hourEnd, $hourStart);
+
+        if ($energyEnd === null) {
+            $energyEnd = $energyStart;
+        }
+
+        // energy_today restarts at zero each day, so the hour spanning midnight
+        // would otherwise report a large negative.
+        $energyProduced = max(0, (int)$energyEnd - (int)$energyStart);
         
         // Insert/update hourly record
         $stmt = $db->prepare("
