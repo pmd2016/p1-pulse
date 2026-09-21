@@ -501,6 +501,26 @@ paths under `/p1mon/www/custom`. They will not run from an arbitrary checkout.
 `--force` on the collector bypasses both the `enabled` config check and the 300-second throttle.
 The backfill defaults to a window ending *yesterday*, to avoid racing the live collector.
 
+#### Finding out what history exists
+
+Solplanet answers a request for a date it has no data with a **full day of zero-valued points**,
+not an error and not an empty array. A range that starts before the plant existed therefore imports
+thousands of empty days rather than failing, and each one writes a `solar_daily` row that marks the
+day as already imported — making the emptiness permanent without `--force`.
+
+`--survey` asks per year instead of per day, so it finishes in seconds:
+
+```bash
+php scripts/solar-backfill.php --start=2016-01-01 --end=2026-09-20 --survey
+```
+
+It reports which years hold production and names the earliest, then prints the import command for
+that range. `--verbose` additionally dumps each raw response, which is worth having: the shape of a
+`byyear` response is not documented and may not match the daily one.
+
+The importer also refuses to write a day whose total production is zero, reporting it as "no data"
+and moving on.
+
 #### Backfilling a long range
 
 The backfill makes one API call per day, with `--delay` seconds between them (default 10), so a
