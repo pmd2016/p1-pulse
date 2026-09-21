@@ -12,12 +12,16 @@
  *   php solar-backfill.php --days=30 --verbose
  */
 
-require_once '/p1mon/www/custom/lib/SolarConfig.php';
-require_once '/p1mon/www/custom/lib/SolplanetAPI.php';
-require_once '/p1mon/www/custom/lib/SolarUnits.php';
+// Relative to this script, so it runs both from a checkout and from the
+// deployed copy under /p1mon/www/custom/scripts.
+define('LIB_DIR', __DIR__ . '/../lib');
+
+require_once LIB_DIR . '/SolarConfig.php';
+require_once LIB_DIR . '/SolplanetAPI.php';
+require_once LIB_DIR . '/SolarUnits.php';
 
 // Parse command line arguments
-$options = getopt('', ['days:', 'start:', 'end:', 'verbose', 'dry-run', 'force', 'help']);
+$options = getopt('', ['days:', 'start:', 'end:', 'delay:', 'verbose', 'dry-run', 'force', 'help']);
 
 if (isset($options['help'])) {
     echo <<<HELP
@@ -30,6 +34,7 @@ Options:
   --days=N          Backfill last N days (default: 7)
   --start=DATE      Start date (YYYY-MM-DD)
   --end=DATE        End date (YYYY-MM-DD)
+  --delay=N         Seconds to wait between API calls (default: 10)
   --verbose         Show detailed progress
   --dry-run         Show what would be done without inserting
   --force           Overwrite existing data
@@ -40,6 +45,16 @@ Examples:
   php solar-backfill.php --start=2025-12-15 --end=2026-01-16
   php solar-backfill.php --days=30 --verbose --force
 
+Long ranges:
+  One API call per day, so a multi-year range takes hours. The run is
+  resumable: days already present in solar_daily are skipped without an API
+  call, so an interrupted run can simply be started again with the same
+  arguments. Run it detached so an SSH drop does not kill it:
+
+    nohup php solar-backfill.php --start=2016-06-01 --end=2026-09-20 \
+      > /tmp/backfill.log 2>&1 &
+    tail -f /tmp/backfill.log
+
 HELP;
     exit(0);
 }
@@ -47,6 +62,10 @@ HELP;
 $verbose = isset($options['verbose']);
 $dryRun = isset($options['dry-run']);
 $force = isset($options['force']);
+
+// Seconds between API calls. Skipped days make no call and so never wait,
+// which is what makes an interrupted long run cheap to resume.
+$delay = isset($options['delay']) ? max(0, (int)$options['delay']) : 10;
 
 // Determine date range
 if (isset($options['start']) && isset($options['end'])) {
@@ -80,7 +99,27 @@ if ($start > $end) {
 }
 
 $totalDays = ceil(($end - $start) / 86400) + 1;
-echo "Total days to process: $totalDays\n\n";
+echo "Total days to process: $totalDays\n";
+echo "Delay between calls: {$delay}s\n";
+
+// One API call per day, so long ranges are measured in hours rather than
+// minutes. Say so up front rather than letting someone discover it.
+$worstCaseSeconds = $totalDays * $delay;
+
+if ($worstCaseSeconds > 1800) {
+    printf(
+        "\n  ! At %ds per day this run takes up to %s if no day is skipped.\n",
+        $delay,
+        $worstCaseSeconds >= 3600
+            ? sprintf('%dh %dm', intdiv($worstCaseSeconds, 3600), intdiv($worstCaseSeconds % 3600, 60))
+            : sprintf('%dm', intdiv($worstCaseSeconds, 60))
+    );
+    echo "  ! Days already in solar_daily are skipped without an API call, so an\n";
+    echo "  ! interrupted run resumes cheaply. Consider running it detached:\n";
+    echo "  !   nohup php " . basename(__FILE__) . " ... > /tmp/backfill.log 2>&1 &\n";
+}
+
+echo "\n";
 
 // Load credentials
 if (!SolarConfig::isEnabled()) {
@@ -129,12 +168,28 @@ $stats = [
 // Process each day
 $currentDate = $start;
 $processedDays = 0;
+$runStartedAt = time();
 
 while ($currentDate <= $end) {
     $dateStr = date('Y-m-d', $currentDate);
     $processedDays++;
     
-    echo "[$processedDays/$totalDays] Processing $dateStr... ";
+    // Estimate from days that actually cost an API call; skipped days finish
+    // instantly and would otherwise flatter the projection.
+    $eta = '';
+    if ($stats['api_calls'] > 0) {
+        $elapsed = time() - $runStartedAt;
+        $remainingCalls = max(0, ($totalDays - $processedDays + 1) - $stats['days_skipped']);
+        $secondsLeft = (int)round(($elapsed / $stats['api_calls']) * $remainingCalls);
+
+        if ($secondsLeft > 60) {
+            $eta = $secondsLeft >= 3600
+                ? sprintf(' (ETA %dh %dm)', intdiv($secondsLeft, 3600), intdiv($secondsLeft % 3600, 60))
+                : sprintf(' (ETA %dm)', intdiv($secondsLeft, 60));
+        }
+    }
+
+    echo "[$processedDays/$totalDays]$eta Processing $dateStr... ";
     
     if ($verbose) echo "\n";
     
@@ -352,10 +407,11 @@ while ($currentDate <= $end) {
             $stats['errors']++;
         }
         
-        // Rate limiting: 6 calls per minute = 10 second delay
-        // This is conservative to avoid hitting API limits
-        if ($processedDays < $totalDays) {
-            sleep(10);
+        // Rate limiting. The default of 10s is six calls a minute, which is
+        // conservative; --delay tunes it for long ranges. Only reached when the
+        // day actually cost an API call, since every skip path continues above.
+        if ($delay > 0 && $processedDays < $totalDays) {
+            sleep($delay);
         }
         
     } catch (Exception $e) {

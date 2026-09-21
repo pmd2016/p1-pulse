@@ -244,19 +244,30 @@ CREATE TABLE solar_hourly (
 );
 ```
 
-Hourly energy is derived as the **delta of `energy_today`** between the first and last realtime
-sample in the hour, not integrated from power readings.
+Hourly energy is derived from `energy_today`, the inverter's own running daily counter, read **at
+the hour boundaries**: `E(hourEnd) - E(hourStart)`, where each is the most recent online reading at
+or before that moment. It is not integrated from power samples.
+
+Evaluating at the boundaries is what makes consecutive hours telescope — one hour's closing reading
+is the next hour's opening one — so the sum of the hours equals the counter's movement across the
+day. Taking the first and last sample *inside* each hour instead, as this once did, dropped the gap
+between the last sample of one hour and the first of the next from both buckets: a third of every
+hour at three samples per hour.
+
+Two boundaries need care, and `energyCounterAt()` handles both. Readings are restricted to the local
+day containing the hour, because `energy_today` restarts at zero each midnight: without that, a
+reading taken at 00:00 would be treated as the closing value of the 23:00 hour and report the day's
+last hour as zero. And before the day's first reading the counter is taken as zero rather than
+unknown, so the first productive hour counts from the start of the day.
 
 Only samples with `inverter_status = 1` take part. While the inverter is offline the API reports
 zeros across every field, including `energy_today`, so those rows are absence of data shaped like a
 measurement. Counting them put the entire day's production into whichever hour the inverter came
 back, and discarded any hour that ended offline. An hour with no online samples gets no row at all.
 
-Two known limitations remain in this derivation. The delta spans the first and last sample *inside*
-the hour, so production between the last sample of one hour and the first of the next falls into
-neither bucket — at three samples per hour that loses a third of every hour. And `E-Today` is
-reported to 0.1 kWh, so hourly deltas are quantised to 100 Wh steps. Integrating `power_avg` over
-the hour would avoid both, and is viable now that power readings are correctly scaled.
+One limitation remains: `E-Today` is reported to 0.1 kWh, so an individual hour is quantised to
+100 Wh steps. Because the hours telescope, that granularity does not accumulate — daily and longer
+totals still match the inverter exactly.
 
 ### solar_daily
 
@@ -484,11 +495,33 @@ paths under `/p1mon/www/custom`. They will not run from an arbitrary checkout.
 |--------|---------|-------|
 | `init-solar-database.php` | Create the SQLite schema (idempotent) | `php init-solar-database.php` |
 | `solar-collector.php` | Fetch current data, store, aggregate, prune | `php solar-collector.php [--force] [--verbose]` |
-| `solar-backfill.php` | Import historical data from Solplanet | `php solar-backfill.php [--days=N \| --start=DATE --end=DATE] [--verbose] [--dry-run] [--force] [--help]` |
+| `solar-backfill.php` | Import historical data from Solplanet | `php solar-backfill.php [--days=N \| --start=DATE --end=DATE] [--delay=N] [--verbose] [--dry-run] [--force] [--help]` |
 | `validate-solar-data.php` | Check record counts, gaps, aggregation consistency | `php validate-solar-data.php` |
 
 `--force` on the collector bypasses both the `enabled` config check and the 300-second throttle.
 The backfill defaults to a window ending *yesterday*, to avoid racing the live collector.
+
+#### Backfilling a long range
+
+The backfill makes one API call per day, with `--delay` seconds between them (default 10), so a
+multi-year range runs for hours. It prints an estimate up front when the range is large enough to
+matter.
+
+It is resumable, and cheaply so: a day already present in `solar_daily` is skipped **without an API
+call and without the delay**, so an interrupted run can be restarted with the same arguments and
+will race through what it already has. Run it detached:
+
+```bash
+nohup php scripts/solar-backfill.php --start=2016-06-01 --end=2026-09-20 \
+  > /tmp/backfill.log 2>&1 &
+tail -f /tmp/backfill.log
+```
+
+Monthly and yearly aggregates are rebuilt from `solar_daily` at the end of each run, so they are
+correct as long as the run reaches completion. Re-running after an interruption rebuilds them.
+
+`--force` disables the skip, which is what re-imports days whose stored values are wrong. Use it for
+a bounded window rather than a decade, or delete the affected rows and re-run without it.
 
 ### Diagnostic Scripts
 
