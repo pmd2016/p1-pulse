@@ -27,19 +27,60 @@ if (!defined('SYSTEM_CAPACITY_W')) {
 }
 
 /**
+ * Record or read why the database could not be used.
+ *
+ * Kept separate from getSolarDB() so that every caller keeps its existing
+ * PDO-or-null contract while the reason survives to the response.
+ *
+ * @param string|null $set Message to record, or null to read the current one
+ * @return string|null
+ */
+function solarError($set = null) {
+    static $error = null;
+
+    if ($set !== null) {
+        $error = $set;
+    }
+
+    return $error;
+}
+
+/**
+ * Translate a PDO failure into something a reader can act on, without
+ * echoing SQL or filesystem detail back to the browser.
+ */
+function describeQueryFailure(PDOException $e) {
+    if (strpos($e->getMessage(), 'no such table') !== false) {
+        return 'Database schema is missing or incomplete';
+    }
+
+    return 'Query failed';
+}
+
+/**
  * Connect to solar database
  */
 function getSolarDB() {
+    // file_exists() returns false both when the file is absent and when the
+    // web server user cannot traverse the directory, so the two cannot be
+    // distinguished from here. Say so rather than asserting it is missing.
     if (!file_exists(SOLAR_DB_PATH)) {
+        solarError('Database not found, or not readable by the web server');
         return null;
     }
-    
+
+    if (!is_readable(SOLAR_DB_PATH)) {
+        solarError('Database exists but is not readable by the web server');
+        return null;
+    }
+
     try {
         $db = new PDO('sqlite:' . SOLAR_DB_PATH);
         $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         return $db;
     } catch (PDOException $e) {
         error_log("Solar DB connection failed: " . $e->getMessage());
+        solarError('Database could not be opened');
         return null;
     }
 }
@@ -50,7 +91,7 @@ function getSolarDB() {
 function getCurrentData() {
     $db = getSolarDB();
     if (!$db) {
-        return ['error' => 'Database not available'];
+        return ['error' => solarError()];
     }
     
     try {
@@ -83,7 +124,7 @@ function getCurrentData() {
         
     } catch (PDOException $e) {
         error_log("Error getting current data: " . $e->getMessage());
-        return ['error' => 'Query failed'];
+        return ['error' => describeQueryFailure($e)];
     }
 }
 
@@ -169,6 +210,7 @@ function getHourlyData($zoom) {
         
     } catch (PDOException $e) {
         error_log("Error getting hourly data: " . $e->getMessage());
+        solarError(describeQueryFailure($e));
         return ['chartData' => [], 'stats' => getEmptyStats()];
     }
 }
@@ -253,6 +295,7 @@ function getDailyData($zoom) {
         
     } catch (PDOException $e) {
         error_log("Error getting daily data: " . $e->getMessage());
+        solarError(describeQueryFailure($e));
         return ['chartData' => [], 'stats' => getEmptyStats()];
     }
 }
@@ -335,6 +378,7 @@ function getMonthlyData($zoom) {
         
     } catch (PDOException $e) {
         error_log("Error getting monthly data: " . $e->getMessage());
+        solarError(describeQueryFailure($e));
         return ['chartData' => [], 'stats' => getEmptyStats()];
     }
 }
@@ -413,6 +457,7 @@ function getYearlyData($zoom) {
         
     } catch (PDOException $e) {
         error_log("Error getting yearly data: " . $e->getMessage());
+        solarError(describeQueryFailure($e));
         return ['chartData' => [], 'stats' => getEmptyStats()];
     }
 }
@@ -473,6 +518,12 @@ try {
             'chartData' => $result['chartData'] ?? [],
             'stats' => $result['stats'] ?? getEmptyStats()
         ];
+
+        // Additive: clients that ignore this key still see the empty data they
+        // saw before, but an unavailable database is no longer silent.
+        if (solarError() !== null) {
+            $response['error'] = solarError();
+        }
     } else {
         $response = ['error' => 'Missing required parameters'];
     }

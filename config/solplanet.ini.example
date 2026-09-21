@@ -1,0 +1,75 @@
+; Solplanet Cloud credentials for the solar collector.
+;
+; ---------------------------------------------------------------------------
+; DO NOT fill this file in and leave it here.
+;
+; This directory sits inside the web root, so a real solplanet.ini here may be
+; served as plain text at /custom/config/solplanet.ini. Copy it outside the web
+; root instead:
+;
+;     sudo mkdir -p /p1mon/config
+;     sudo cp config/solplanet.ini.example /p1mon/config/solplanet.ini
+;     sudo chmod 600 /p1mon/config/solplanet.ini
+;
+; Only the user running the solar-collector cron job needs to read it. The web
+; server never does: api/solar.php reads the SQLite database directly and never
+; touches these credentials.
+; ---------------------------------------------------------------------------
+;
+; SolarConfig::load() checks, in order:
+;   1. Environment variables (SOLPLANET_APP_KEY etc. — all five must be set)
+;   2. /p1mon/config/solplanet.ini        <-- recommended
+;   3. /etc/p1mon/solplanet.ini
+;   4. /home/claude/solplanet.ini
+;   5. <repo>/config/solplanet.ini        <-- inside the web root, avoid
+
+[solplanet]
+
+; Collection is skipped entirely unless this is 1 (or true).
+; solar-collector.php --force overrides it.
+enabled = 1
+
+; --- Required: all five must be present and non-empty ---------------------
+;
+; Values are rejected if they start with YOUR_ or contain HERE, so this file
+; fails loudly until it is filled in rather than failing obscurely later.
+;
+; Quote every value. parse_ini_file() treats { } | & ~ ! ( ) " $ specially and
+; converts bare yes/no/true/false/on/off, which will silently mangle a secret
+; containing punctuation.
+
+; Developer credentials issued by Solplanet for their OpenAPI. Used to sign
+; each request (HMAC-SHA256 over the canonical request string).
+app_key    = "YOUR_APP_KEY_HERE"
+app_secret = "YOUR_APP_SECRET_HERE"
+
+; Your plant's API key, sent as the key= query parameter. Per-plant, from the
+; AISWEI/Solplanet cloud portal — not the same value as app_key.
+api_key    = "YOUR_PLANT_API_KEY_HERE"
+
+; Required to be present, but genuinely unused: SolplanetAPI accepts it and
+; ignores it, because the End User API authenticates by signature alone.
+; Validation still rejects an empty value, so set "unused" if you have no token.
+token      = "unused"
+
+; Inverter serial number, printed on the inverter and shown in the Solplanet
+; app under device information.
+sn         = "YOUR_INVERTER_SERIAL_HERE"
+
+; --- Optional: these are the defaults -------------------------------------
+
+; Rated capacity in Wp. Keep in step with config.php getEnergyConfig() and the
+; SYSTEM_CAPACITY_W constant in api/solar.php.
+system_capacity_wp  = 3780
+
+; Minutes between collections. The collector also self-throttles to one run per
+; 300 seconds regardless of how often cron fires.
+collection_interval = 10
+
+; Days of solar_realtime rows to keep. Aggregates are kept permanently.
+retention_days      = 7
+
+cache_enabled       = 1
+cache_ttl           = 300
+log_enabled         = 1
+log_level           = INFO

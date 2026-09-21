@@ -47,8 +47,10 @@ A modern, responsive web dashboard for monitoring real-time energy, gas, water, 
 │   ├── sidebar.php              # Navigation menu
 │   ├── footer.php               # Page footer
 │   └── theme-toggle.php         # Theme switcher
-├── data/                        # Data storage
-│   └── solar.db                 # SQLite database for solar production data
+├── config/
+│   └── solplanet.ini.example    # Credentials template — copy OUTSIDE the web root
+├── data/                        # NOT IN THIS REPOSITORY. Created on the device by
+│   └── solar.db                 # init-solar-database.php; deploying does not restore it
 ├── docs/                        # Documentation
 │   ├── TECHNICAL.md             # Detailed technical documentation
 │   └── ...                      # Phase handover documents
@@ -118,6 +120,30 @@ A modern, responsive web dashboard for monitoring real-time energy, gas, water, 
    ```
    http://your-p1-monitor-ip/custom/p1mon.php
    ```
+
+5. **Set up solar collection** (optional — only if you have a Solplanet inverter)
+
+   Three pieces of state live on the device and **nowhere in this repository**.
+   Deploying does not create them, and reinstalling P1 Monitor destroys them:
+
+   ```bash
+   # a) The database. Idempotent, safe to re-run.
+   php scripts/init-solar-database.php
+
+   # b) The credentials, outside the web root.
+   sudo mkdir -p /p1mon/config
+   sudo cp config/solplanet.ini.example /p1mon/config/solplanet.ini
+   sudo chmod 600 /p1mon/config/solplanet.ini
+   #    ... then fill in the five required values
+   php scripts/test-solar-api.php        # verify before scheduling
+
+   # c) The cron job.
+   crontab -e
+   #    */10 * * * * /usr/bin/php /p1mon/www/custom/scripts/solar-collector.php >> /tmp/solar-collector.log 2>&1
+   ```
+
+   Check it with `php scripts/solar-diagnostics.php`, which reports what is
+   missing rather than failing obscurely.
 
 ## ⚙️ Configuration
 

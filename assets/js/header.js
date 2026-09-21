@@ -97,7 +97,14 @@
                 const todayResponse = await fetch('/custom/api/solar.php?period=hours&zoom=24');
                 if (!todayResponse.ok) throw new Error('Solar today API error');
                 const today = await todayResponse.json();
-                
+
+                // Reaching the catch below hides the widget, which is the right
+                // outcome when the database is unavailable: better absent than
+                // reporting zero production.
+                if ((current && current.error) || (today && today.error)) {
+                    throw new Error(current.error || today.error);
+                }
+
                 // Update widget
                 const powerEl = document.getElementById('solar-header-power');
                 const todayEl = document.getElementById('solar-header-today');

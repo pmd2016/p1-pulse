@@ -181,7 +181,14 @@
                 const response = await fetch('/custom/api/solar.php?action=current');
                 if (!response.ok) throw new Error('Solar API error');
                 const current = await response.json();
-                
+
+                // Reported by the API when the database is missing, unreadable
+                // or uninitialised. Raising here reaches the catch below, which
+                // blanks the card rather than showing a confident zero.
+                if (current && current.error) {
+                    throw new Error(current.error);
+                }
+
                 if (current && current.power !== undefined) {
                     const power = parseFloat(current.power) || 0;
                     this.updateElement('solar-current-power', this.formatPower(power));
@@ -195,7 +202,11 @@
                 const todayResponse = await fetch('/custom/api/solar.php?period=hours&zoom=24');
                 if (!todayResponse.ok) throw new Error('Solar today API error');
                 const today = await todayResponse.json();
-                
+
+                if (today && today.error) {
+                    throw new Error(today.error);
+                }
+
                 if (today && today.chartData) {
                     // Get midnight of today (00:00:00) as Unix timestamp
                     const now = new Date();

@@ -98,28 +98,54 @@ function render($value) {
     return var_export($value, true);
 }
 
-/** Run one request against api/solar.php and decode the response. */
+/**
+ * Run one request against api/solar.php and decode the response.
+ *
+ * stdout and stderr are captured separately and deliberately: api/solar.php
+ * calls error_log() on its failure paths, which PHP CLI sends to stderr.
+ * Merging the two would corrupt the JSON on exactly the cases worth testing.
+ * stderr is still reported when the response does not parse.
+ */
 function request($dbPath, $query, $capacity = CAPACITY_W) {
     global $verbose;
 
     $cmd = sprintf(
-        'php %s %s %s %d 2>&1',
+        'php %s %s %s %d',
         escapeshellarg(__DIR__ . '/solar-api-request.php'),
         escapeshellarg($dbPath),
         escapeshellarg($query),
         $capacity
     );
 
-    $raw = shell_exec($cmd);
+    $descriptors = [1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
+    $process = proc_open($cmd, $descriptors, $pipes);
 
-    if ($verbose) {
-        echo "    > $query\n    < " . trim((string)$raw) . "\n";
+    if (!is_resource($process)) {
+        fail("could not run the request for '$query'");
+        return null;
     }
 
-    $decoded = json_decode((string)$raw, true);
+    $stdout = stream_get_contents($pipes[1]);
+    $stderr = stream_get_contents($pipes[2]);
+    fclose($pipes[1]);
+    fclose($pipes[2]);
+    proc_close($process);
+
+    if ($verbose) {
+        echo "    > $query\n    < " . trim($stdout) . "\n";
+        if (trim($stderr) !== '') {
+            echo "    ! " . trim($stderr) . "\n";
+        }
+    }
+
+    $decoded = json_decode($stdout, true);
 
     if (json_last_error() !== JSON_ERROR_NONE) {
-        fail("response was not JSON for '$query': " . trim((string)$raw));
+        $detail = trim($stdout);
+        if (trim($stderr) !== '') {
+            $detail .= ' [stderr: ' . trim($stderr) . ']';
+        }
+        fail("response was not JSON for '$query': " . $detail);
         return null;
     }
 
@@ -386,30 +412,64 @@ test('an empty database yields empty data, not an error', function () use ($empt
     assertSame(null, $peak['time'] ?? null, 'peakPower.time is null');
 });
 
-test('a missing database reproduces the live failure exactly', function () use ($missingDb) {
-    // This is what the committed fixtures captured from the real installation.
+test('a missing database says so on both routes', function () use ($missingDb) {
     $r = request($missingDb, 'action=current');
     if ($r === null) return;
 
-    assertSame('Database not available', $r['error'] ?? null, 'current reports the missing database');
+    // Deliberately hedged: file_exists() is also false when the web server user
+    // cannot traverse the directory, so the API must not claim the file is absent.
+    assertSame('Database not found, or not readable by the web server',
+        $r['error'] ?? null, 'current reports the unavailable database');
 
     $hours = request($missingDb, 'period=hours&zoom=24');
     if ($hours === null) return;
 
-    assertSame([], $hours['chartData'] ?? null, 'history degrades to empty chartData');
+    assertSame([], $hours['chartData'] ?? null, 'history still degrades to empty chartData');
+    assertSame('Database not found, or not readable by the web server',
+        $hours['error'] ?? null, 'history now reports why it is empty');
 });
 
-test('missing and empty databases are indistinguishable over the history API', function () use ($emptyDb, $missingDb) {
-    // Worth pinning: it is why a broken installation looks like a quiet night.
-    $fromEmpty   = request($emptyDb, 'period=hours&zoom=24');
+test('a schemaless database is reported as such, not as no data', function () use ($tmpDir) {
+    // Exactly the state a collector run against a missing database used to
+    // leave behind: the file exists and opens, but has no tables.
+    $path = $tmpDir . '/solar-schemaless.db';
+    if (file_exists($path)) {
+        unlink($path);
+    }
+    new PDO('sqlite:' . $path);
+
+    $r = request($path, 'period=hours&zoom=24');
+    if ($r === null) return;
+
+    assertSame([], $r['chartData'] ?? null, 'chartData is empty');
+    assertSame('Database schema is missing or incomplete', $r['error'] ?? null,
+        'the schema problem is named');
+
+    $current = request($path, 'action=current');
+    if ($current === null) return;
+
+    assertSame('Database schema is missing or incomplete', $current['error'] ?? null,
+        'current names it too');
+});
+
+test('a genuinely empty database is NOT reported as an error', function () use ($emptyDb, $missingDb) {
+    // The distinction that was missing: no rows yet is a normal state, an
+    // unavailable database is not. These used to be identical responses.
+    $fromEmpty = request($emptyDb, 'period=hours&zoom=24');
+    if ($fromEmpty === null) return;
+
+    assertSame([], $fromEmpty['chartData'] ?? null, 'chartData is empty');
+    assertSame(false, array_key_exists('error', $fromEmpty), 'no error key for an initialised database');
+
     $fromMissing = request($missingDb, 'period=hours&zoom=24');
+    if ($fromMissing === null) return;
 
-    if ($fromEmpty === null || $fromMissing === null) return;
-
-    assertEquals($fromEmpty, $fromMissing, 'both produce an identical response');
+    assertSame(true, array_key_exists('error', $fromMissing), 'but an unavailable one is flagged');
 });
 
-test('the committed fixture matches what the API produces with no database', function () use ($missingDb) {
+test('the committed fixture is reproduced, plus the error it was missing', function () use ($missingDb) {
+    // The fixtures were captured before the API could explain itself. Their
+    // data is still exactly what it produces; only the diagnosis is new.
     $fixturePath = dirname(__DIR__) . '/tests/fixtures/solar/hours-24.json';
 
     if (!is_readable($fixturePath)) {
@@ -422,7 +482,12 @@ test('the committed fixture matches what the API produces with no database', fun
 
     if ($live === null) return;
 
-    assertEquals($fixture, $live, 'fixture reproduces byte-for-byte in structure');
+    assertSame(false, array_key_exists('error', $fixture), 'the fixture predates error reporting');
+
+    $liveWithoutError = $live;
+    unset($liveWithoutError['error']);
+
+    assertEquals($fixture, $liveWithoutError, 'the data itself is unchanged');
 });
 
 // ----------------------------------------------------------------------------

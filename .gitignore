@@ -1,0 +1,22 @@
+# Device-only state. None of this belongs in the repository, and this file is
+# public — see tests/fixtures/README.md on why energy data is sensitive.
+
+# Solar production database. Lives only on the P1 Monitor host; it is not
+# shipped and is never restored by deploying this repository.
+data/
+*.db
+*.sqlite
+*.sqlite3
+
+# Credentials. Only the .example template is tracked.
+*.ini
+!*.ini.example
+
+# Raw (non-anonymised) fixture dumps
+tests/fixtures/**/*.raw.json
+
+# Editor and OS noise
+.DS_Store
+Thumbs.db
+*.swp
+*~
