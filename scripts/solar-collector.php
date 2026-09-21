@@ -10,10 +10,18 @@
  * *\/10 * * * * /usr/bin/php /p1mon/www/custom/scripts/solar-collector.php >> /tmp/solar-collector.log 2>&1
  */
 
-// Configuration
-define('BASE_DIR', '/p1mon/www/custom');
-define('DB_PATH', BASE_DIR . '/data/solar.db');
-define('LIB_DIR', BASE_DIR . '/lib');
+// Configuration. Guarded so the test harness can point this file at a
+// temporary database and a local lib directory; nothing defines them in
+// normal use, so production behaviour is unchanged.
+if (!defined('BASE_DIR')) {
+    define('BASE_DIR', '/p1mon/www/custom');
+}
+if (!defined('DB_PATH')) {
+    define('DB_PATH', BASE_DIR . '/data/solar.db');
+}
+if (!defined('LIB_DIR')) {
+    define('LIB_DIR', BASE_DIR . '/lib');
+}
 
 // Parse command line arguments
 $options = getopt('', ['force', 'verbose']);
@@ -23,6 +31,7 @@ $verbose = isset($options['verbose']);
 // Include dependencies
 require_once LIB_DIR . '/SolarConfig.php';
 require_once LIB_DIR . '/SolplanetAPI.php';
+require_once LIB_DIR . '/SolarUnits.php';
 
 /**
  * Logger function
@@ -40,6 +49,53 @@ function logMessage($message, $level = 'INFO') {
     if ($level === 'ERROR') {
         error_log("solar-collector: $message");
     }
+}
+
+/**
+ * Read one measurement from a plant overview response and convert it to the
+ * base unit the database stores (W for power, Wh for energy).
+ *
+ * @param array  $data  The response's data object
+ * @param string $field Field name, e.g. 'Power' or 'E-Today'
+ * @param string $kind  'power' or 'energy'
+ * @return int|null Converted value, or null if it could not be read
+ */
+function extractMeasurement(array $data, $field, $kind) {
+    if (!isset($data[$field]['value'])) {
+        logMessage("API response has no $field value", 'ERROR');
+        return null;
+    }
+
+    if (!isset($data[$field]['unit'])) {
+        logMessage("API response gives $field without a unit; refusing to guess", 'ERROR');
+        return null;
+    }
+
+    $value = $data[$field]['value'];
+    $unit  = $data[$field]['unit'];
+
+    $converted = $kind === 'power'
+        ? SolarUnits::toWatts($value, $unit)
+        : SolarUnits::toWattHours($value, $unit);
+
+    if ($converted === null) {
+        $known = $kind === 'power'
+            ? SolarUnits::knownPowerUnits()
+            : SolarUnits::knownEnergyUnits();
+
+        logMessage(sprintf(
+            "Cannot convert %s: value '%s' in unit '%s'. Known %s units: %s",
+            $field,
+            is_scalar($value) ? $value : gettype($value),
+            is_scalar($unit) ? $unit : gettype($unit),
+            $kind,
+            implode(', ', $known)
+        ), 'ERROR');
+
+        return null;
+    }
+
+    return $converted;
 }
 
 /**
@@ -169,16 +225,23 @@ function collectData() {
         
         $data = $overview['data'];
         
-        // Extract values - API returns nested objects with 'value' and 'unit' properties
-        // Power.value is ALREADY in W (not KW as initially thought)
-        $powerCurrent = isset($data['Power']['value']) ? (int)$data['Power']['value'] : 0;
+        // Convert from whatever unit the API declares, rather than assuming one
+        // per field. The units genuinely differ between fields -- Power is KW,
+        // E-Today and E-Month are KWh, E-Total is MWh -- and a hardcoded
+        // multiplier that guesses wrong is a silent 1000x error.
+        $powerCurrent = extractMeasurement($data, 'Power', 'power');
+        $energyToday  = extractMeasurement($data, 'E-Today', 'energy');
+        $energyMonth  = extractMeasurement($data, 'E-Month', 'energy');
+        $energyTotal  = extractMeasurement($data, 'E-Total', 'energy');
 
-        // Energy values are in kWh, convert to Wh
-        $energyToday = isset($data['E-Today']['value']) ? (int)($data['E-Today']['value'] * 1000) : 0;
-        $energyMonth = isset($data['E-Month']['value']) ? (int)($data['E-Month']['value'] * 1000) : 0;
-
-        // E-Total is in MWh, convert to Wh
-        $energyTotal = isset($data['E-Total']['value']) ? (int)($data['E-Total']['value'] * 1000000) : 0;
+        // Refuse to store a partial reading. A gap is recoverable by backfill;
+        // a wrong value quietly corrupts every aggregate derived from it, which
+        // is how this went unnoticed for months.
+        if ($powerCurrent === null || $energyToday === null
+            || $energyMonth === null || $energyTotal === null) {
+            logMessage("Aborting: could not convert every measurement in the response", 'ERROR');
+            return false;
+        }
         
         // Status: "1" (string) = normal, convert to int
         $status = isset($data['status']) ? (int)$data['status'] : 0;
@@ -282,7 +345,15 @@ function aggregateHourlyData($db) {
     for ($hourStart = $lastHourAggregated; $hourStart < $currentHour; $hourStart += 3600) {
         $hourEnd = $hourStart + 3600;
         
-        // Get all realtime samples for this hour
+        // Get all realtime samples for this hour.
+        //
+        // inverter_status = 1 filters out readings taken while the inverter was
+        // offline. The API reports those as zeros across every field, including
+        // energy_today, so they are absence of data wearing the costume of a
+        // measurement. Including them wrecks the delta below: a zero at the
+        // start of an hour followed by a real reading records the entire day's
+        // production into that single hour, and a real reading followed by a
+        // zero yields max(0, negative) and loses the hour altogether.
         $stmt = $db->prepare("
             SELECT 
                 COUNT(*) as samples,
@@ -291,6 +362,7 @@ function aggregateHourlyData($db) {
                 MIN(power_current) as power_min
             FROM solar_realtime
             WHERE timestamp >= :start AND timestamp < :end
+              AND inverter_status = 1
         ");
         $stmt->execute([':start' => $hourStart, ':end' => $hourEnd]);
         $stats = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -305,6 +377,7 @@ function aggregateHourlyData($db) {
             SELECT energy_today 
             FROM solar_realtime
             WHERE timestamp >= :start AND timestamp < :end
+              AND inverter_status = 1
             ORDER BY timestamp ASC
             LIMIT 1
         ");
@@ -315,6 +388,7 @@ function aggregateHourlyData($db) {
             SELECT energy_today 
             FROM solar_realtime
             WHERE timestamp >= :start AND timestamp < :end
+              AND inverter_status = 1
             ORDER BY timestamp DESC
             LIMIT 1
         ");
@@ -572,8 +646,10 @@ function aggregateYearlyData($db) {
     }
 }
 
-// Run collection
-$success = collectData();
-exit($success ? 0 : 1);
+// Run collection, unless this file was included to reach its functions.
+if (!defined('SOLAR_COLLECTOR_NO_RUN')) {
+    $success = collectData();
+    exit($success ? 0 : 1);
+}
 
 ?>
