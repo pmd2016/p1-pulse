@@ -8,6 +8,7 @@
 
 $suites = [
     'run-solar-units-tests.php',
+    'run-solar-collector-tests.php',
     'run-solar-api-tests.php',
 ];
 

@@ -247,6 +247,17 @@ CREATE TABLE solar_hourly (
 Hourly energy is derived as the **delta of `energy_today`** between the first and last realtime
 sample in the hour, not integrated from power readings.
 
+Only samples with `inverter_status = 1` take part. While the inverter is offline the API reports
+zeros across every field, including `energy_today`, so those rows are absence of data shaped like a
+measurement. Counting them put the entire day's production into whichever hour the inverter came
+back, and discarded any hour that ended offline. An hour with no online samples gets no row at all.
+
+Two known limitations remain in this derivation. The delta spans the first and last sample *inside*
+the hour, so production between the last sample of one hour and the first of the next falls into
+neither bucket — at three samples per hour that loses a third of every hour. And `E-Today` is
+reported to 0.1 kWh, so hourly deltas are quantised to 100 Wh steps. Integrating `power_avg` over
+the hour would avoid both, and is viable now that power readings are correctly scaled.
+
 ### solar_daily
 
 ```sql
@@ -718,19 +729,21 @@ Browser
 
 ## Known Issues
 
-### Solar backfill values are too low
+### Backfilled history before the unit fix is wrong and must be re-imported
 
-**Issue**: energy imported by `solar-backfill.php` is substantially lower than what the Solplanet
-dashboard reports — roughly 3× in some samples, far worse in others.
+**Resolved in code, but existing rows are still bad.** `solar-backfill.php` read the response's
+`dataunit` into a variable and then ignored it, treating every power reading as watts. When the API
+reports kW, that divided the whole import by a thousand.
 
-**Observed** (see `docs/PHASE6A_HANDOVER.md`): for 2026-01-16 the database held 2,896 Wh where the
-API data implied ~7.3 kWh. Peak power for the same day was correct (730 W), which points at the
-energy integration rather than the fetch.
+The fingerprint of an affected row is `samples = 3` — the backfill writes one sample per
+20-minute reading, where the live collector writes one per collection — together with single-digit
+`power_avg` and `energy_produced` during daylight hours.
 
-**Status**: open, never resolved. Live collector data (which derives hourly energy from
-`energy_today` deltas rather than integrating power) is not affected by this path. Treat backfilled
-history as unreliable until the integration is re-derived and validated against the Solplanet
-dashboard.
+`docs/PHASE6A_HANDOVER.md` recorded this as "roughly 3× too low", which was a misdiagnosis of the
+same fault measured against a different comparison.
+
+**Action required**: rows imported before the fix are not salvageable in place; re-run
+`solar-backfill.php --force` for the affected range.
 
 ### Device-only state is not in this repository
 
@@ -826,6 +839,7 @@ directly.
 php tests/run-all.php                          # every suite; exit 0 on success, 1 on any failure
 
 php tests/run-solar-units-tests.php            # unit conversion only
+php tests/run-solar-collector-tests.php        # collector aggregation only
 php tests/run-solar-api-tests.php              # the solar API only
 php tests/run-solar-api-tests.php --verbose    # also print every response body
 php tests/run-solar-api-tests.php --keep       # leave the temporary databases for inspection

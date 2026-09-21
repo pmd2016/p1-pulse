@@ -14,6 +14,7 @@
 
 require_once '/p1mon/www/custom/lib/SolarConfig.php';
 require_once '/p1mon/www/custom/lib/SolplanetAPI.php';
+require_once '/p1mon/www/custom/lib/SolarUnits.php';
 
 // Parse command line arguments
 $options = getopt('', ['days:', 'start:', 'end:', 'verbose', 'dry-run', 'force', 'help']);
@@ -171,8 +172,27 @@ while ($currentDate <= $end) {
         }
         
         $dataPoints = $response['data']['data'];
-        $dataUnit = $response['data']['dataunit'] ?? 'W';
-        
+
+        // Honour the declared unit. This used to default to 'W' and then ignore
+        // the value entirely, which silently divided every backfilled reading by
+        // a thousand when the API reported kW.
+        $dataUnit = $response['data']['dataunit'] ?? null;
+
+        if ($dataUnit === null) {
+            echo "✗ $dateStr: response declares no dataunit; refusing to guess\n";
+            $stats['errors']++;
+            $currentDate = strtotime('+1 day', $currentDate);
+            continue;
+        }
+
+        if (SolarUnits::toWatts(0, $dataUnit) === null) {
+            echo "✗ $dateStr: unrecognised power unit '$dataUnit'. Known: "
+                . implode(', ', SolarUnits::knownPowerUnits()) . "\n";
+            $stats['errors']++;
+            $currentDate = strtotime('+1 day', $currentDate);
+            continue;
+        }
+
         if ($verbose) {
             echo "  Received " . count($dataPoints) . " data points ($dataUnit)\n";
         }
@@ -185,8 +205,17 @@ while ($currentDate <= $end) {
         
         foreach ($dataPoints as $point) {
             $time = $point['time']; // "HH:MM"
-            $powerW = floatval($point['value']);
-            
+
+            // Convert from the declared unit rather than assuming watts.
+            $powerW = SolarUnits::toWatts($point['value'], $dataUnit);
+
+            if ($powerW === null) {
+                if ($verbose) {
+                    echo "  Skipping unreadable point at $time\n";
+                }
+                continue;
+            }
+
             if ($powerW < 0) $powerW = 0; // Sanity check
             
             // Track peak

@@ -10,10 +10,18 @@
  * *\/10 * * * * /usr/bin/php /p1mon/www/custom/scripts/solar-collector.php >> /tmp/solar-collector.log 2>&1
  */
 
-// Configuration
-define('BASE_DIR', '/p1mon/www/custom');
-define('DB_PATH', BASE_DIR . '/data/solar.db');
-define('LIB_DIR', BASE_DIR . '/lib');
+// Configuration. Guarded so the test harness can point this file at a
+// temporary database and a local lib directory; nothing defines them in
+// normal use, so production behaviour is unchanged.
+if (!defined('BASE_DIR')) {
+    define('BASE_DIR', '/p1mon/www/custom');
+}
+if (!defined('DB_PATH')) {
+    define('DB_PATH', BASE_DIR . '/data/solar.db');
+}
+if (!defined('LIB_DIR')) {
+    define('LIB_DIR', BASE_DIR . '/lib');
+}
 
 // Parse command line arguments
 $options = getopt('', ['force', 'verbose']);
@@ -337,7 +345,15 @@ function aggregateHourlyData($db) {
     for ($hourStart = $lastHourAggregated; $hourStart < $currentHour; $hourStart += 3600) {
         $hourEnd = $hourStart + 3600;
         
-        // Get all realtime samples for this hour
+        // Get all realtime samples for this hour.
+        //
+        // inverter_status = 1 filters out readings taken while the inverter was
+        // offline. The API reports those as zeros across every field, including
+        // energy_today, so they are absence of data wearing the costume of a
+        // measurement. Including them wrecks the delta below: a zero at the
+        // start of an hour followed by a real reading records the entire day's
+        // production into that single hour, and a real reading followed by a
+        // zero yields max(0, negative) and loses the hour altogether.
         $stmt = $db->prepare("
             SELECT 
                 COUNT(*) as samples,
@@ -346,6 +362,7 @@ function aggregateHourlyData($db) {
                 MIN(power_current) as power_min
             FROM solar_realtime
             WHERE timestamp >= :start AND timestamp < :end
+              AND inverter_status = 1
         ");
         $stmt->execute([':start' => $hourStart, ':end' => $hourEnd]);
         $stats = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -360,6 +377,7 @@ function aggregateHourlyData($db) {
             SELECT energy_today 
             FROM solar_realtime
             WHERE timestamp >= :start AND timestamp < :end
+              AND inverter_status = 1
             ORDER BY timestamp ASC
             LIMIT 1
         ");
@@ -370,6 +388,7 @@ function aggregateHourlyData($db) {
             SELECT energy_today 
             FROM solar_realtime
             WHERE timestamp >= :start AND timestamp < :end
+              AND inverter_status = 1
             ORDER BY timestamp DESC
             LIMIT 1
         ");
@@ -627,8 +646,10 @@ function aggregateYearlyData($db) {
     }
 }
 
-// Run collection
-$success = collectData();
-exit($success ? 0 : 1);
+// Run collection, unless this file was included to reach its functions.
+if (!defined('SOLAR_COLLECTOR_NO_RUN')) {
+    $success = collectData();
+    exit($success ? 0 : 1);
+}
 
 ?>
