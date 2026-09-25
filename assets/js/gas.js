@@ -2,17 +2,20 @@
  * Gas page
  *
  * Gas usage comes from the P1 power/gas history (P1API.getElectricityData),
- * degree days and temperature from the weather history. P1Section handles
- * the period and range controls, P1Chart draws the chart and its legend.
+ * degree days and temperature from the weather history. P1Section drives
+ * the toolbar, KPI cards and chart states, P1Chart draws the chart.
  */
 
 (function() {
     'use strict';
 
+    const fmt = (v, d) => P1Utils.formatNumber(v, d);
+    const m3 = (v) => `${fmt(v, 3)} m³`;
+    const eur = (v) => `€ ${fmt(v, 2)}`;
+
     const GasPage = {
         chart: null,
         section: null,
-        showTemp: false,
 
         init() {
             this.chart = P1Chart.create(document.getElementById('gas-chart'), {
@@ -27,99 +30,103 @@
             });
 
             this.section = P1Section.create({
-                zoomButtonsId: 'zoom-buttons-gas',
-                onLoad: (period, zoom, isCurrent) => this.load(period, zoom, isCurrent)
+                id: 'gas',
+                load: (state, isCurrent) => this.load(state, isCurrent),
+                live: () => this.loadLive()
             });
-
-            const tempToggle = document.getElementById('toggle-gas-temp');
-            if (tempToggle) {
-                tempToggle.addEventListener('change', (e) => {
-                    this.showTemp = e.target.checked;
-                    this.section.reload();
-                });
-            }
 
             this.section.init();
         },
 
-        async load(period, zoom, isCurrent) {
-            try {
-                const payload = await window.P1API.getElectricityData(period, zoom, false);
-                if (!isCurrent()) return;
+        async load({ period, zoom, page, temperature }, isCurrent) {
+            const [data, weatherRows] = await Promise.all([
+                window.P1API.getElectricityData(period, zoom, false, { page }),
+                // Current and previous window, for degree days in both
+                window.P1API.getWeatherHistory(period, zoom * (page + 2))
+            ]);
+            if (!isCurrent()) return null;
 
-                if (!payload || !payload.chartData) {
-                    P1Utils.showError('Geen data beschikbaar');
-                    return;
-                }
-
-                let points = this.fillMissingData(payload.chartData, period);
-                points = await window.P1API.attachWeather(points, period, zoom);
-                if (!isCurrent()) return;
-
-                this.updateStatistics(points, period, zoom);
-                this.chart.setData(points, period, { temperature: this.showTemp });
-                P1Utils.hideError();
-            } catch (err) {
-                if (!isCurrent()) return;
-                P1Logger.error('Error loading gas data', err);
-                P1Utils.showError('Fout bij ophalen gasdata');
+            if (!data || !data.chartData.length) {
+                this.chart.setData([], period);
+                return { empty: true, hasOlder: false };
             }
+
+            const weather = window.P1API.processTemperatureData(weatherRows, period);
+            const points = window.P1API.joinWeather(this.fillMissingData(data.chartData, period), weather, period);
+
+            this.chart.setData(points, period, { temperature });
+            this.updateKpis(points, data, weatherRows, period);
+
+            return { from: data.stats.from, to: data.stats.to, hasOlder: data.hasOlder };
         },
 
-        updateStatistics(points, period, zoom) {
-            const fmt = P1Utils.formatNumber;
-            const gasValues = points.map(d => parseFloat(d.gas) || 0);
+        updateKpis(points, { stats, previous }, weatherRows, period) {
+            const s = this.section;
+            const prev = previous || {};
+            const values = points.map(p => parseFloat(p.gas) || 0);
+            const total = values.reduce((sum, v) => sum + v, 0);
 
-            const total = gasValues.reduce((s, v) => s + v, 0);
-            const avg = gasValues.length > 0 ? total / gasValues.length : 0;
-            const hasConsumption = total > 0.001;
-
-            let peakValue = 0;
-            let peakTime = '';
-            gasValues.forEach((v, idx) => {
-                if (v > peakValue) {
-                    peakValue = v;
-                    peakTime = points[idx].timestamp || points[idx].unixTimestamp;
-                }
+            s.setKpi('total', {
+                value: m3(total),
+                sub: previous ? `vorige: ${m3(prev.totalGas)}` : '',
+                delta: { current: total, previous: prev.totalGas, goodWhen: 'down' }
             });
 
-            // Estimated current flow in m³/h, from the most recent bucket(s)
-            let flow = 0;
-            const last = gasValues[gasValues.length - 1] || 0;
-            if (period === 'hours') {
-                flow = last;
-            } else if (period === 'days') {
-                flow = last / 24;
-            } else if (gasValues.length >= 2) {
-                const avgRecent = (last + gasValues[gasValues.length - 2]) / 2;
-                flow = period === 'months' ? avgRecent / (30 * 24) : avgRecent / (365 * 24);
+            s.setKpi('cost', {
+                value: eur(stats.gasCost),
+                sub: [stats.costIsEstimate ? 'geschat' : '', previous ? `vorige: ${eur(prev.gasCost)}` : '']
+                    .filter(Boolean).join(' · '),
+                delta: { current: stats.gasCost, previous: prev.gasCost, goodWhen: 'down', format: eur }
+            });
+
+            const average = values.length ? total / values.length : 0;
+            const previousAverage = previous ? prev.totalGas / points.length : undefined;
+            s.setKpi('average', {
+                value: m3(average),
+                sub: `per ${P1Utils.periodLabelsSingular[period] || 'periode'}`,
+                delta: { current: average, previous: previousAverage, goodWhen: 'down' }
+            });
+
+            const peak = values.reduce((best, v, i) => (v > best.value ? { value: v, index: i } : best), { value: 0, index: -1 });
+            s.setKpi('peak', {
+                value: peak.index >= 0 ? m3(peak.value) : '--',
+                sub: peak.index >= 0 ? P1Utils.formatPeakTime(points[peak.index].timestamp || points[peak.index].unixTimestamp, period) : 'geen verbruik',
+                delta: null
+            });
+
+            // Degree days: a measure of heating demand, so no good or bad direction
+            const hasDegreeDays = points.some(p => p.degreeDays !== undefined && p.degreeDays !== null);
+            const degreeDays = points.reduce((sum, p) => sum + (p.degreeDays || 0), 0);
+            let previousDegreeDays;
+            if (previous) {
+                const inPrevious = weatherRows.filter(r => {
+                    const ts = parseInt(r.TIMESTAMP_UTC);
+                    return ts >= prev.from && ts <= prev.to;
+                });
+                if (inPrevious.length) {
+                    previousDegreeDays = inPrevious.reduce((sum, r) => sum + (parseFloat(r.DEGREE_DAYS) || 0), 0);
+                }
             }
+            s.setKpi('extra', {
+                value: hasDegreeDays ? fmt(degreeDays, 1) : '--',
+                sub: previousDegreeDays !== undefined ? `vorige: ${fmt(previousDegreeDays, 1)}` : '',
+                delta: { current: hasDegreeDays ? degreeDays : undefined, previous: previousDegreeDays }
+            });
+        },
 
-            if (period === 'hours') {
-                P1Utils.updateElement('stat-total-gas', fmt(last, 3) + ' m³');
-                P1Utils.updateElement('stat-gas-period', last > 0.001 ? 'Huidig uur' : 'Geen verbruik');
-            } else {
-                P1Utils.updateElement('stat-total-gas', fmt(total, 3) + ' m³');
-                P1Utils.updateElement('stat-gas-period', hasConsumption ? P1Utils.rangeLabel(period, zoom) : 'Geen verbruik');
-            }
+        /**
+         * Gas used in the most recent hour. The meter reports gas in steps,
+         * so this is the latest hourly delta rather than a true flow.
+         */
+        async loadLive() {
+            const rows = await window.P1API.getHistoryHour(1);
+            const latest = rows && rows[0];
+            if (!latest) return;
 
-            // Gas cost uses config value from config.php (default: €1.50/m³)
-            const gasCost = window.P1MonConfig?.gasCostPerM3 ?? 1.50;
-            P1Utils.updateElement('stat-gas-cost', '€ ' + fmt(total * gasCost, 2));
-            P1Utils.updateElement('stat-gas-cost-period', hasConsumption ? 'Geschat' : 'Geen verbruik');
-
-            P1Utils.updateElement('stat-gas-average', fmt(avg, 3) + ' m³');
-            P1Utils.updateElement('stat-gas-average-period', `per ${P1Utils.periodLabelsSingular[period] || 'periode'}`);
-
-            P1Utils.updateElement('stat-gas-flow', fmt(flow > 0.001 ? flow : 0, 3) + ' m³/h');
-
-            if (hasConsumption && peakValue > 0.001) {
-                P1Utils.updateElement('stat-gas-peak', fmt(peakValue, 3) + ' m³');
-                P1Utils.updateElement('stat-gas-peak-time', P1Utils.formatPeakTime(peakTime, period));
-            } else {
-                P1Utils.updateElement('stat-gas-peak', '--');
-                P1Utils.updateElement('stat-gas-peak-time', 'Geen verbruik');
-            }
+            this.section.setKpi('now', {
+                value: m3(parseFloat(latest.CONSUMPTION_GAS_DELTA_M3) || 0),
+                sub: 'laatste uur'
+            });
         },
 
         /**

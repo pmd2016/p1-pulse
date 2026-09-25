@@ -324,6 +324,44 @@ test('zoom is clamped per period and echoed back', function () use ($seededDb) {
     }
 });
 
+test('offset skips the newest buckets, for paging back', function () use ($seededDb) {
+    $r = request($seededDb, 'period=hours&zoom=2&offset=1');
+    if ($r === null) return;
+
+    $chart = $r['chartData'] ?? [];
+    assertSame(1, $r['offset'] ?? null, 'offset is echoed back');
+    assertSame(2, count($chart), 'two buckets returned');
+    if (count($chart) !== 2) return;
+
+    assertSame(T0 - 7200, $chart[0]['unixTimestamp'], 'window starts two hours back');
+    assertSame(T0 - 3600, $chart[1]['unixTimestamp'], 'the newest hour is skipped');
+    assertClose(3.0, $r['stats']['totalEnergy'] ?? null, 'stats cover only the returned window');
+
+    $days = request($seededDb, 'period=days&zoom=1&offset=1');
+    if ($days !== null) {
+        assertSame(T0 - 86400, $days['chartData'][0]['unixTimestamp'] ?? null, 'days page back too');
+    }
+});
+
+test('offset defaults to 0 and is clamped', function () use ($seededDb) {
+    $cases = [
+        ['period=hours&zoom=3',              0, 'no offset means 0'],
+        ['period=hours&zoom=3&offset=-4',    0, 'negative offset falls back to 0'],
+        ['period=hours&zoom=3&offset=999999', 100000, 'huge offset is clamped'],
+    ];
+
+    foreach ($cases as [$query, $expected, $what]) {
+        $r = request($seededDb, $query);
+        if ($r === null) continue;
+        assertSame($expected, $r['offset'] ?? null, $what);
+    }
+
+    $past = request($seededDb, 'period=hours&zoom=3&offset=50');
+    if ($past !== null) {
+        assertSame([], $past['chartData'] ?? null, 'an offset past the data returns no buckets');
+    }
+});
+
 test('an unknown period is rejected rather than silently defaulted', function () use ($seededDb) {
     $r = request($seededDb, 'period=fortnights&zoom=5');
     if ($r === null) return;
@@ -407,9 +445,10 @@ test('a genuinely empty database is NOT reported as an error', function () use (
     assertSame(true, array_key_exists('error', $fromMissing), 'but an unavailable one is flagged');
 });
 
-test('the committed fixture is reproduced, plus the error it was missing', function () use ($missingDb) {
-    // The fixtures were captured before the API could explain itself. Their
-    // data is still exactly what it produces; only the diagnosis is new.
+test('the committed fixture is reproduced, plus the keys added since', function () use ($missingDb) {
+    // The fixtures were captured before the API could explain itself or page
+    // back. Their data is still exactly what it produces; only the diagnosis
+    // (error) and the echoed paging offset are new.
     $fixturePath = dirname(__DIR__) . '/tests/fixtures/solar/hours-24.json';
 
     if (!is_readable($fixturePath)) {
@@ -424,10 +463,12 @@ test('the committed fixture is reproduced, plus the error it was missing', funct
 
     assertSame(false, array_key_exists('error', $fixture), 'the fixture predates error reporting');
 
-    $liveWithoutError = $live;
-    unset($liveWithoutError['error']);
+    assertSame(0, $live['offset'] ?? null, 'the default offset is echoed');
 
-    assertEquals($fixture, $liveWithoutError, 'the data itself is unchanged');
+    $liveWithoutNewKeys = $live;
+    unset($liveWithoutNewKeys['error'], $liveWithoutNewKeys['offset']);
+
+    assertEquals($fixture, $liveWithoutNewKeys, 'the data itself is unchanged');
 });
 
 // ----------------------------------------------------------------------------

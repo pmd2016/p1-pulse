@@ -131,7 +131,7 @@ function getCurrentData() {
 /**
  * Get hourly solar data - FIXED to get most recent N hours
  */
-function getHourlyData($zoom) {
+function getHourlyData($zoom, $offset = 0) {
     $db = getSolarDB();
     if (!$db) {
         return ['chartData' => [], 'stats' => getEmptyStats()];
@@ -149,10 +149,11 @@ function getHourlyData($zoom) {
                 samples
             FROM solar_hourly 
             ORDER BY timestamp DESC 
-            LIMIT :limit
+            LIMIT :limit OFFSET :offset
         ");
         
         $stmt->bindValue(':limit', (int)$zoom, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', (int)$offset, PDO::PARAM_INT);
         $stmt->execute();
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
@@ -218,7 +219,7 @@ function getHourlyData($zoom) {
 /**
  * Get daily solar data - FIXED to get most recent N days
  */
-function getDailyData($zoom) {
+function getDailyData($zoom, $offset = 0) {
     $db = getSolarDB();
     if (!$db) {
         return ['chartData' => [], 'stats' => getEmptyStats()];
@@ -237,10 +238,11 @@ function getDailyData($zoom) {
                 capacity_factor
             FROM solar_daily 
             ORDER BY date DESC 
-            LIMIT :limit
+            LIMIT :limit OFFSET :offset
         ");
         
         $stmt->bindValue(':limit', (int)$zoom, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', (int)$offset, PDO::PARAM_INT);
         $stmt->execute();
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
@@ -303,7 +305,7 @@ function getDailyData($zoom) {
 /**
  * Get monthly solar data - FIXED
  */
-function getMonthlyData($zoom) {
+function getMonthlyData($zoom, $offset = 0) {
     $db = getSolarDB();
     if (!$db) {
         return ['chartData' => [], 'stats' => getEmptyStats()];
@@ -322,10 +324,11 @@ function getMonthlyData($zoom) {
                 capacity_factor
             FROM solar_monthly 
             ORDER BY year DESC, month DESC 
-            LIMIT :limit
+            LIMIT :limit OFFSET :offset
         ");
         
         $stmt->bindValue(':limit', (int)$zoom, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', (int)$offset, PDO::PARAM_INT);
         $stmt->execute();
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
@@ -386,7 +389,7 @@ function getMonthlyData($zoom) {
 /**
  * Get yearly solar data - FIXED
  */
-function getYearlyData($zoom) {
+function getYearlyData($zoom, $offset = 0) {
     $db = getSolarDB();
     if (!$db) {
         return ['chartData' => [], 'stats' => getEmptyStats()];
@@ -403,10 +406,11 @@ function getYearlyData($zoom) {
                 avg_monthly_production
             FROM solar_yearly 
             ORDER BY year DESC 
-            LIMIT :limit
+            LIMIT :limit OFFSET :offset
         ");
         
         $stmt->bindValue(':limit', (int)$zoom, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', (int)$offset, PDO::PARAM_INT);
         $stmt->execute();
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
@@ -489,6 +493,12 @@ if ($period === 'days' && $zoom > 365) $zoom = 365;
 if ($period === 'months' && $zoom > 24) $zoom = 24;
 if ($period === 'years' && $zoom > 10) $zoom = 10;
 
+// Number of newest buckets to skip, for paging back through history.
+// Clamped so a stray value cannot turn into an expensive scan.
+$offset = isset($_GET['offset']) ? (int)$_GET['offset'] : 0;
+if ($offset < 0) $offset = 0;
+if ($offset > 100000) $offset = 100000;
+
 try {
     if ($action === 'current') {
         // Current/realtime data
@@ -497,16 +507,16 @@ try {
         // Historical data
         switch ($period) {
             case 'hours':
-                $result = getHourlyData($zoom);
+                $result = getHourlyData($zoom, $offset);
                 break;
             case 'days':
-                $result = getDailyData($zoom);
+                $result = getDailyData($zoom, $offset);
                 break;
             case 'months':
-                $result = getMonthlyData($zoom);
+                $result = getMonthlyData($zoom, $offset);
                 break;
             case 'years':
-                $result = getYearlyData($zoom);
+                $result = getYearlyData($zoom, $offset);
                 break;
             default:
                 $result = ['error' => 'Invalid period'];
@@ -515,6 +525,7 @@ try {
         $response = [
             'period' => $period,
             'zoom' => $zoom,
+            'offset' => $offset,
             'chartData' => $result['chartData'] ?? [],
             'stats' => $result['stats'] ?? getEmptyStats()
         ];

@@ -391,7 +391,14 @@
          */
         async attachWeather(points, period, limit) {
             const weather = this.processTemperatureData(await this.getWeatherHistory(period, limit), period);
+            return this.joinWeather(points, weather, period);
+        },
 
+        /**
+         * Join an already processed weather map (processTemperatureData)
+         * onto chart points; see attachWeather()
+         */
+        joinWeather(points, weather, period) {
             return points.map(point => {
                 const w = weather[P1Utils.getPeriodKey(point.unixTimestamp, period)];
                 if (!w) return point;
@@ -442,59 +449,42 @@
         // ========================================================================
 
         /**
-         * Get electricity data with statistics for a specific period
+         * Get electricity data with statistics for a window of buckets.
+         *
+         * Windows are counted in buckets back from the newest: page 0 is the
+         * latest `limit` buckets, page 1 the `limit` before that, and so on.
+         * The window before the requested one is fetched too, so callers can
+         * compare against the previous period (`previous`).
+         *
          * @param {string} period - 'hours', 'days', 'months', 'years'
-         * @param {number} limit - Number of records to fetch
-         * @param {boolean} includeTemperature - Whether to include temperature data
-         * @returns {Promise<Object>}
+         * @param {number} limit - Buckets per window
+         * @param {boolean} includeTemperature - Join weather onto the points
+         * @param {Object} options - { page: 0 }
+         * @returns {Promise<Object|null>} { period, limit, page, chartData, stats, previous }
          */
-        async getElectricityData(period = 'hours', limit = 24, includeTemperature = false) {
+        async getElectricityData(period = 'hours', limit = 24, includeTemperature = false, options = {}) {
+            const page = Math.max(0, options.page || 0);
+            const fetchLimit = limit * (page + 2);
+
             try {
-                let historyData, financialData, temperatureMap = null;
+                let historyData;
+                let financialData = null;
 
-                // Fetch temperature data if requested
-                if (includeTemperature) {
-                    try {
-                        const weatherData = await this.getWeatherHistory(period, limit);
-                        temperatureMap = this.processTemperatureData(weatherData, period);
-                    } catch (error) {
-                        P1Logger.warn('Could not fetch temperature data:', error);
-                        temperatureMap = null;
-                    }
-                }
-
-                // Fetch appropriate data based on period
-                switch(period) {
+                switch (period) {
                     case 'hours':
-                        historyData = await this.getHistoryHour(limit);
-                        financialData = null;
+                        historyData = await this.getHistoryHour(fetchLimit);
                         break;
                     case 'days':
-                        historyData = await this.getHistoryDay(limit);
-                        try {
-                            financialData = await this.getFinancial(limit);
-                        } catch (error) {
-                            P1Logger.warn('Financial day data not available');
-                            financialData = null;
-                        }
+                        historyData = await this.getHistoryDay(fetchLimit);
+                        financialData = await this.getFinancial(fetchLimit).catch(() => null);
                         break;
                     case 'months':
-                        historyData = await this.getHistoryMonth(limit);
-                        try {
-                            financialData = await this.getFinancialMonth(limit);
-                        } catch (error) {
-                            P1Logger.warn('Financial month data not available');
-                            financialData = null;
-                        }
+                        historyData = await this.getHistoryMonth(fetchLimit);
+                        financialData = await this.getFinancialMonth(fetchLimit).catch(() => null);
                         break;
                     case 'years':
-                        historyData = await this.getHistoryYear(limit);
-                        try {
-                            financialData = await this.getFinancialYear(limit);
-                        } catch (error) {
-                            P1Logger.warn('Financial year data not available');
-                            financialData = null;
-                        }
+                        historyData = await this.getHistoryYear(fetchLimit);
+                        financialData = await this.getFinancialYear(fetchLimit).catch(() => null);
                         break;
                     default:
                         throw new Error('Invalid period: ' + period);
@@ -504,95 +494,127 @@
                     return null;
                 }
 
-                // API returns sort=desc (newest first), clone and reverse for chronological order
-                // Clone to avoid mutating the fetchCached reference
-                historyData = [...historyData].reverse();
+                // API returns newest first; slice windows, then make each chronological.
+                // slice() copies, so the fetchCached reference is never mutated.
+                const current = historyData.slice(page * limit, (page + 1) * limit).reverse();
+                const previous = historyData.slice((page + 1) * limit, (page + 2) * limit).reverse();
 
-                // Process data into chart-friendly format (oldest first)
-                const chartData = [];
-                let totalConsumption = 0;
-                let totalProduction = 0;
-                let totalCost = 0;
-                let peakConsumption = { value: 0, time: '' };
-
-                historyData.forEach((row) => {
-                    const consumption = parseFloat(row.CONSUMPTION_DELTA_KWH || 0);
-                    const production = parseFloat(row.PRODUCTION_DELTA_KWH || 0);
-                    const net = consumption - production;
-
-                    totalConsumption += consumption;
-                    totalProduction += production;
-
-                    // Track peak
-                    if (consumption > peakConsumption.value) {
-                        peakConsumption.value = consumption;
-                        peakConsumption.time = row.TIMESTAMP_lOCAL;
-                    }
-
-                    // Get temperature data for this timestamp if available
-                    const unixTimestamp = parseInt(row.TIMESTAMP_UTC);
-                    let tempData = {};
-                    if (temperatureMap && unixTimestamp) {
-                        const key = P1Utils.getPeriodKey(unixTimestamp, period);
-                        const temps = temperatureMap[key];
-                        if (temps) {
-                            tempData = {
-                                tempMin: temps.min,
-                                tempMax: temps.max,
-                                tempAvg: temps.avg
-                            };
-                        }
-                    }
-
-                    chartData.push({
-                        timestamp: row.TIMESTAMP_lOCAL,
-                        unixTimestamp: unixTimestamp,
-                        consumption: consumption,
-                        production: production,
-                        net: net,
-                        gas: parseFloat(row.CONSUMPTION_GAS_DELTA_M3 || 0),
-                        ...tempData
-                    });
-                });
-
-                // Calculate financial totals
-                if (financialData && financialData.length > 0) {
-                    financialData.forEach(row => {
-                        const costs = parseFloat(row.CONSUMPTION_COST_ELECTRICITY_HIGH || 0)
-                                    + parseFloat(row.CONSUMPTION_COST_ELECTRICITY_LOW || 0)
-                                    + parseFloat(row.CONSUMPTION_COST_GAS || 0);
-                        const revenue = parseFloat(row.PRODUCTION_REVENUES_ELECTRICITY_HIGH || 0)
-                                      + parseFloat(row.PRODUCTION_REVENUES_ELECTRICITY_LOW || 0);
-                        totalCost += (costs - revenue);
-                    });
-                } else {
-                    // If financial data not available, estimate from consumption
-                    // Uses config value from config.php (default: €0.30/kWh)
-                    const estimatedCostPerKwh = window.P1MonConfig?.electricityCostPerKwh ?? 0.30;
-                    totalCost = (totalConsumption - totalProduction) * estimatedCostPerKwh;
+                if (current.length === 0) {
+                    return null;
                 }
 
-                // Calculate statistics
-                const average = chartData.length > 0 ? totalConsumption / chartData.length : 0;
+                let temperatureMap = null;
+                if (includeTemperature) {
+                    const weatherData = await this.getWeatherHistory(period, limit * (page + 1));
+                    temperatureMap = this.processTemperatureData(weatherData, period);
+                }
+
+                const chartData = current.map(row => this.electricityPoint(row, period, temperatureMap));
 
                 return {
-                    period: period,
-                    limit: limit,
-                    chartData: chartData,
-                    stats: {
-                        totalConsumption: totalConsumption,
-                        totalProduction: totalProduction,
-                        netConsumption: totalConsumption - totalProduction,
-                        totalCost: totalCost,
-                        average: average,
-                        peakConsumption: peakConsumption
-                    }
+                    period,
+                    limit,
+                    page,
+                    chartData,
+                    stats: this.electricityStats(current, financialData),
+                    previous: previous.length === limit ? this.electricityStats(previous, financialData) : null,
+                    hasOlder: previous.length > 0
                 };
 
             } catch (error) {
                 P1Logger.error('Error fetching electricity data:', error);
                 throw error;
             }
+        },
+
+        /**
+         * One chart point from a powergas row
+         */
+        electricityPoint(row, period, temperatureMap) {
+            const consumption = parseFloat(row.CONSUMPTION_DELTA_KWH || 0);
+            const production = parseFloat(row.PRODUCTION_DELTA_KWH || 0);
+            const unixTimestamp = parseInt(row.TIMESTAMP_UTC);
+
+            const point = {
+                timestamp: row.TIMESTAMP_lOCAL,
+                unixTimestamp,
+                consumption,
+                production,
+                net: consumption - production,
+                gas: parseFloat(row.CONSUMPTION_GAS_DELTA_M3 || 0)
+            };
+
+            const temps = temperatureMap && unixTimestamp
+                ? temperatureMap[P1Utils.getPeriodKey(unixTimestamp, period)]
+                : null;
+            if (temps) {
+                point.tempMin = temps.min;
+                point.tempMax = temps.max;
+                point.tempAvg = temps.avg;
+            }
+
+            return point;
+        },
+
+        /**
+         * Totals for a window of powergas rows (chronological).
+         * Costs come from the financial rows that fall inside the window;
+         * without them they are estimated from P1MonConfig.electricityCostPerKwh.
+         */
+        electricityStats(rows, financialData) {
+            let totalConsumption = 0;
+            let totalProduction = 0;
+            let totalGas = 0;
+            const peakConsumption = { value: 0, time: '' };
+
+            rows.forEach(row => {
+                const consumption = parseFloat(row.CONSUMPTION_DELTA_KWH || 0);
+                totalConsumption += consumption;
+                totalProduction += parseFloat(row.PRODUCTION_DELTA_KWH || 0);
+                totalGas += parseFloat(row.CONSUMPTION_GAS_DELTA_M3 || 0);
+
+                if (consumption > peakConsumption.value) {
+                    peakConsumption.value = consumption;
+                    peakConsumption.time = row.TIMESTAMP_lOCAL;
+                }
+            });
+
+            const first = parseInt(rows[0]?.TIMESTAMP_UTC);
+            const last = parseInt(rows[rows.length - 1]?.TIMESTAMP_UTC);
+            const financial = (financialData || []).filter(row => {
+                const ts = parseInt(row.TIMESTAMP_UTC);
+                return ts >= first && ts <= last;
+            });
+
+            let totalCost;
+            let gasCost;
+            if (financial.length > 0) {
+                gasCost = financial.reduce((sum, row) => sum + parseFloat(row.CONSUMPTION_COST_GAS || 0), 0);
+                totalCost = financial.reduce((sum, row) => sum
+                    + parseFloat(row.CONSUMPTION_COST_ELECTRICITY_HIGH || 0)
+                    + parseFloat(row.CONSUMPTION_COST_ELECTRICITY_LOW || 0)
+                    - parseFloat(row.PRODUCTION_REVENUES_ELECTRICITY_HIGH || 0)
+                    - parseFloat(row.PRODUCTION_REVENUES_ELECTRICITY_LOW || 0), 0);
+            } else {
+                // Estimate from the configured tariff (config.php, default €0.30/kWh)
+                const estimatedCostPerKwh = window.P1MonConfig?.electricityCostPerKwh ?? 0.30;
+                totalCost = (totalConsumption - totalProduction) * estimatedCostPerKwh;
+                gasCost = totalGas * (window.P1MonConfig?.gasCostPerM3 ?? 1.50);
+            }
+
+            return {
+                totalConsumption,
+                totalProduction,
+                netConsumption: totalConsumption - totalProduction,
+                totalGas,
+                totalCost,
+                gasCost,
+                costIsEstimate: financial.length === 0,
+                average: rows.length > 0 ? totalConsumption / rows.length : 0,
+                peakConsumption,
+                from: first,
+                to: last
+            };
         }
     };
 

@@ -1,100 +1,389 @@
 /**
- * P1Section - period and range controller for a section page
+ * P1Section - controller for a section page (Elektriciteit, Gas, Zon, ...)
  *
- * Drives the period tabs (.period-tab) and the range buttons, and calls
- * `onLoad(period, zoom)` whenever either changes. Responses that arrive
- * after a newer request was started are dropped, so quickly tapping
- * through tabs never leaves the chart showing an older period.
+ * Drives the markup from components/section.php:
+ *   - toolbar: period tabs, back/forward through history, range, temperature
+ *   - KPI cards: value, subtitle and change vs the previous period
+ *   - chart card: loading / ready / empty / error states, retry
+ *   - the live "Nu" card, refreshed while the page is visible
+ *
+ * State (period, range, page back, temperature) is kept in the URL so a
+ * view can be shared or reloaded, and the last period/range/temperature
+ * per section is remembered in localStorage.
  *
  * Usage:
  *   const section = P1Section.create({
- *       zoomButtonsId: 'zoom-buttons',
- *       onLoad: async (period, zoom, isCurrent) => { ... }
+ *       id: 'gas',
+ *       load: async (state, isCurrent) => {
+ *           // fetch, then if (!isCurrent()) return; render chart + KPIs
+ *           return { empty: false, from, to, hasOlder: true };
+ *       },
+ *       live: async () => { section.setKpi('now', { ... }); }
  *   });
  *   section.init();
+ *
+ * state = { period, zoom, page, temperature }. page 0 is the newest window,
+ * page 1 the one before it, and so on.
  */
 
 (function() {
     'use strict';
 
+    const PERIODS = ['hours', 'days', 'months', 'years'];
+    const STORAGE_PREFIX = 'p1pulse.section.';
+
+    function readStorage(key) {
+        try {
+            return JSON.parse(localStorage.getItem(key) || 'null');
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function writeStorage(key, value) {
+        try {
+            localStorage.setItem(key, JSON.stringify(value));
+        } catch (e) {
+            // Storage unavailable (private mode): the URL still carries the state
+        }
+    }
+
+    function validZoom(period, zoom) {
+        return (P1Utils.zoomOptions[period] || []).some(o => o.value === zoom);
+    }
+
     const P1Section = {
         create(config) {
+            const root = document;
+            const toolbar = root.querySelector('[data-section-toolbar]');
+            const card = root.querySelector('[data-chart-card]');
+
             const section = {
-                period: config.defaultPeriod || 'hours',
-                zoom: null,
+                state: null,
                 loadId: 0,
+                hasOlder: true,
+                liveTimer: null,
 
                 init() {
-                    this.zoom = P1Utils.defaultZooms[this.period];
+                    this.state = this.initialState();
+                    this.bindToolbar();
+                    this.renderToolbar();
 
-                    document.querySelectorAll('.period-tab').forEach(tab => {
-                        tab.setAttribute('aria-selected', tab.dataset.period === this.period ? 'true' : 'false');
-                        tab.addEventListener('click', () => {
-                            if (!tab.disabled) this.setPeriod(tab.dataset.period);
+                    if (card) {
+                        const retry = card.querySelector('[data-retry]');
+                        if (retry) retry.addEventListener('click', () => this.reload());
+                    }
+
+                    this.reload();
+                    this.startLive();
+                },
+
+                /**
+                 * URL first, then the remembered choice, then defaults
+                 */
+                initialState() {
+                    const params = new URLSearchParams(window.location.search);
+                    const stored = readStorage(STORAGE_PREFIX + config.id) || {};
+
+                    let period = params.get('period') || stored.period || 'hours';
+                    if (!PERIODS.includes(period)) period = 'hours';
+
+                    let zoom = parseInt(params.get('range') || stored.zoom, 10);
+                    if (!validZoom(period, zoom)) zoom = P1Utils.defaultZooms[period];
+
+                    const page = Math.max(0, parseInt(params.get('offset'), 10) || 0);
+
+                    const temperature = params.has('temp')
+                        ? params.get('temp') === '1'
+                        : !!stored.temperature;
+
+                    return { period, zoom, page, temperature };
+                },
+
+                persistState() {
+                    const { period, zoom, page, temperature } = this.state;
+                    writeStorage(STORAGE_PREFIX + config.id, { period, zoom, temperature });
+
+                    const params = new URLSearchParams(window.location.search);
+                    params.set('period', period);
+                    params.set('range', zoom);
+                    if (page > 0) params.set('offset', page); else params.delete('offset');
+                    if (temperature) params.set('temp', '1'); else params.delete('temp');
+
+                    const url = `${window.location.pathname}?${params.toString()}`;
+                    try {
+                        window.history.replaceState(null, '', url);
+                    } catch (e) {
+                        // Some embedded viewers disallow history changes; state still works
+                    }
+                },
+
+                bindToolbar() {
+                    if (!toolbar) return;
+
+                    const tabs = [...toolbar.querySelectorAll('.period-tab')];
+                    tabs.forEach((tab, i) => {
+                        tab.addEventListener('click', () => this.setPeriod(tab.dataset.period));
+                        tab.addEventListener('keydown', (e) => {
+                            if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+                            e.preventDefault();
+                            const next = tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length];
+                            next.focus();
+                            this.setPeriod(next.dataset.period);
                         });
                     });
 
-                    const tabs = document.querySelector('.period-tabs');
-                    if (tabs) tabs.setAttribute('role', 'tablist');
-                    document.querySelectorAll('.period-tab').forEach(tab => tab.setAttribute('role', 'tab'));
+                    toolbar.querySelector('[data-nav="prev"]')?.addEventListener('click', () => this.setPage(this.state.page + 1));
+                    toolbar.querySelector('[data-nav="next"]')?.addEventListener('click', () => this.setPage(this.state.page - 1));
 
-                    this.renderZoomButtons();
-                    this.reload();
+                    toolbar.querySelector('[data-range-select]')?.addEventListener('change', (e) => {
+                        this.setZoom(parseInt(e.target.value, 10));
+                    });
+
+                    toolbar.querySelector('[data-toggle="temperature"]')?.addEventListener('click', () => {
+                        this.state.temperature = !this.state.temperature;
+                        this.renderToolbar();
+                        this.reload();
+                    });
                 },
 
-                setPeriod(period) {
-                    if (period === this.period) return;
-                    this.period = period;
-                    this.zoom = P1Utils.defaultZooms[period];
+                renderToolbar() {
+                    if (!toolbar) return;
+                    const { period, zoom, page, temperature } = this.state;
 
-                    document.querySelectorAll('.period-tab').forEach(tab => {
+                    toolbar.querySelectorAll('.period-tab').forEach(tab => {
                         const active = tab.dataset.period === period;
                         tab.classList.toggle('active', active);
                         tab.setAttribute('aria-selected', active ? 'true' : 'false');
+                        tab.tabIndex = active ? 0 : -1;
                     });
 
-                    this.renderZoomButtons();
+                    const options = P1Utils.zoomOptions[period] || [];
+
+                    const select = toolbar.querySelector('[data-range-select]');
+                    if (select) {
+                        select.replaceChildren(...options.map(opt => {
+                            const o = document.createElement('option');
+                            o.value = opt.value;
+                            o.textContent = opt.label;
+                            o.selected = opt.value === zoom;
+                            return o;
+                        }));
+                    }
+
+                    const buttons = toolbar.querySelector('[data-range-buttons]');
+                    if (buttons) {
+                        buttons.replaceChildren(...options.map(opt => {
+                            const btn = document.createElement('button');
+                            btn.type = 'button';
+                            btn.className = 'control-button';
+                            btn.textContent = opt.label;
+                            const active = opt.value === zoom;
+                            btn.classList.toggle('active', active);
+                            btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+                            btn.addEventListener('click', () => this.setZoom(opt.value));
+                            return btn;
+                        }));
+                    }
+
+                    const next = toolbar.querySelector('[data-nav="next"]');
+                    if (next) next.disabled = page === 0;
+                    const prev = toolbar.querySelector('[data-nav="prev"]');
+                    if (prev) prev.disabled = !this.hasOlder;
+
+                    const temp = toolbar.querySelector('[data-toggle="temperature"]');
+                    if (temp) temp.setAttribute('aria-pressed', temperature ? 'true' : 'false');
+                },
+
+                setPeriod(period) {
+                    if (period === this.state.period || !PERIODS.includes(period)) return;
+                    this.state.period = period;
+                    this.state.zoom = P1Utils.defaultZooms[period];
+                    this.state.page = 0;
+                    this.hasOlder = true;
+                    this.renderToolbar();
                     this.reload();
                 },
 
                 setZoom(zoom) {
-                    if (zoom === this.zoom) return;
-                    this.zoom = zoom;
-                    this.renderZoomButtons();
+                    if (zoom === this.state.zoom || !validZoom(this.state.period, zoom)) return;
+                    this.state.zoom = zoom;
+                    this.state.page = 0;
+                    this.hasOlder = true;
+                    this.renderToolbar();
                     this.reload();
                 },
 
-                renderZoomButtons() {
-                    const container = document.getElementById(config.zoomButtonsId);
-                    if (!container) return;
+                setPage(page) {
+                    if (page < 0 || page === this.state.page) return;
+                    this.state.page = page;
+                    this.renderToolbar();
+                    this.reload();
+                },
 
-                    container.replaceChildren();
-                    (P1Utils.zoomOptions[this.period] || []).forEach(opt => {
-                        const btn = document.createElement('button');
-                        btn.type = 'button';
-                        btn.className = 'control-button';
-                        btn.dataset.zoom = opt.value;
-                        btn.textContent = opt.label;
-                        const active = opt.value === this.zoom;
-                        btn.classList.toggle('active', active);
-                        btn.setAttribute('aria-pressed', active ? 'true' : 'false');
-                        btn.addEventListener('click', () => this.setZoom(opt.value));
-                        container.appendChild(btn);
-                    });
+                setCardState(state, message) {
+                    if (!card) return;
+                    card.dataset.state = state;
+                    if (state === 'error') {
+                        const text = card.querySelector('[data-error-text]');
+                        if (text) text.textContent = message || 'Fout bij ophalen data';
+                    }
+                },
+
+                setPeriodLabel(from, to) {
+                    const label = toolbar && toolbar.querySelector('[data-period-label]');
+                    if (!label) return;
+                    label.textContent = from && to
+                        ? P1Utils.formatRange(from, to, this.state.period)
+                        : P1Utils.rangeLabel(this.state.period, this.state.zoom);
                 },
 
                 /**
-                 * Load data for the current period and zoom.
-                 * onLoad receives isCurrent(): false once a newer load started.
+                 * Load data for the current state. The page's load() must
+                 * check isCurrent() before rendering: a slower response for
+                 * an older request is dropped.
                  */
                 async reload() {
                     const id = ++this.loadId;
                     const isCurrent = () => id === this.loadId;
-                    await config.onLoad(this.period, this.zoom, isCurrent);
+
+                    this.persistState();
+                    if (card) card.classList.add('is-busy');
+                    this.setCardState(card && card.classList.contains('has-data') ? 'ready' : 'loading');
+
+                    try {
+                        const result = await config.load({ ...this.state }, isCurrent);
+                        if (!isCurrent()) return;
+
+                        const r = result || {};
+                        this.hasOlder = r.hasOlder !== false;
+                        this.setPeriodLabel(r.from, r.to);
+                        this.renderToolbar();
+
+                        if (r.empty) {
+                            this.setCardState('empty');
+                        } else {
+                            if (card) card.classList.add('has-data');
+                            this.setCardState('ready');
+                        }
+                    } catch (error) {
+                        if (!isCurrent()) return;
+                        P1Logger.error(`[${config.id}] load failed:`, error);
+                        this.setCardState('error', error && error.userMessage);
+                    } finally {
+                        if (isCurrent() && card) card.classList.remove('is-busy');
+                    }
+                },
+
+                /**
+                 * Update one KPI card.
+                 * @param {string} key - data-kpi attribute
+                 * @param {Object} kpi - { value, sub, delta: { current, previous, goodWhen, previousText, format } }
+                 *   goodWhen: 'down' (usage, cost) or 'up' (production); omit for neutral
+                 *   format: formats an absolute difference, shown instead of a
+                 *   percentage when the previous value is zero or below (net costs)
+                 */
+                setKpi(key, kpi) {
+                    const el = document.querySelector(`[data-kpi="${key}"]`);
+                    if (!el) return;
+
+                    if (kpi.value !== undefined) el.querySelector('.kpi-value').textContent = kpi.value;
+                    if (kpi.sub !== undefined) el.querySelector('.kpi-sub').textContent = kpi.sub;
+                    if (kpi.tone) {
+                        el.classList.remove('is-import', 'is-export', 'is-net', 'is-solar', 'is-gas', 'is-water', 'is-cost', 'is-neutral');
+                        el.classList.add(kpi.tone);
+                    }
+
+                    const deltaEl = el.querySelector('.kpi-delta');
+                    if (deltaEl && 'delta' in kpi) this.renderDelta(deltaEl, kpi.delta);
+                },
+
+                renderDelta(el, delta) {
+                    el.classList.remove('is-better', 'is-worse', 'is-same');
+
+                    const hide = () => {
+                        el.hidden = true;
+                        el.textContent = '';
+                        el.removeAttribute('title');
+                        el.removeAttribute('aria-label');
+                    };
+
+                    if (!delta || !Number.isFinite(delta.current) || !Number.isFinite(delta.previous)) {
+                        return hide();
+                    }
+
+                    // A percentage of a zero or negative base means nothing
+                    // (net costs can be negative): show the difference instead
+                    const diff = delta.current - delta.previous;
+                    const percentage = delta.previous > 1e-9;
+                    if (!percentage && typeof delta.format !== 'function') {
+                        return hide();
+                    }
+
+                    const change = percentage
+                        ? Math.round((diff / delta.previous) * 100)
+                        : (Math.abs(diff) < 0.005 ? 0 : diff);
+                    const amount = percentage ? `${Math.abs(change)}%` : delta.format(Math.abs(diff));
+
+                    let arrow = '→';
+                    let direction = 'gelijk aan';
+                    let cls = 'is-same';
+
+                    if (change !== 0) {
+                        const up = change > 0;
+                        arrow = up ? '▲' : '▼';
+                        direction = up ? 'hoger dan' : 'lager dan';
+                        if (delta.goodWhen) {
+                            const good = (delta.goodWhen === 'up') === up;
+                            cls = good ? 'is-better' : 'is-worse';
+                        }
+                    }
+
+                    el.hidden = false;
+                    el.classList.add(cls);
+                    el.textContent = `${arrow} ${amount}`;
+
+                    const context = `${amount} ${direction} de vorige periode`
+                        + (delta.previousText ? ` (${delta.previousText})` : '');
+                    el.title = context;
+                    el.setAttribute('aria-label', context);
+                },
+
+                /**
+                 * Refresh the live "Nu" card while the page is visible
+                 */
+                startLive() {
+                    if (!config.live) return;
+
+                    const interval = Math.max(window.P1MonConfig?.updateInterval || 10000, 10000);
+                    const tick = () => config.live().catch(err => P1Logger.warn(`[${config.id}] live update failed:`, err));
+
+                    const start = () => {
+                        if (this.liveTimer) return;
+                        tick();
+                        this.liveTimer = setInterval(tick, interval);
+                    };
+                    const stop = () => {
+                        clearInterval(this.liveTimer);
+                        this.liveTimer = null;
+                    };
+
+                    document.addEventListener('visibilitychange', () => (document.hidden ? stop() : start()));
+                    window.addEventListener('beforeunload', stop);
+                    if (!document.hidden) start();
                 }
             };
 
             return section;
+        },
+
+        /**
+         * Error with a message meant for the user (shown in the chart card)
+         */
+        userError(message) {
+            const error = new Error(message);
+            error.userMessage = message;
+            return error;
         }
     };
 

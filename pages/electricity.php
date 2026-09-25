@@ -3,127 +3,28 @@
             <div class="page-header">
                 <h2 class="page-title">Elektriciteit</h2>
             </div>
-            
+
             <div class="content-wrapper">
-                <!-- Error container -->
-                <div id="error-container"></div>
-                
-                <!-- Period selector tabs -->
-                <div class="period-tabs">
-                    <button class="period-tab active" data-period="hours">
-                        <span class="tab-icon"><?php echo icon('clock', 16); ?></span>
-                        <span class="tab-label">Uren</span>
-                    </button>
-                    <button class="period-tab" data-period="days">
-                        <span class="tab-icon"><?php echo icon('calendar', 16); ?></span>
-                        <span class="tab-label">Dagen</span>
-                    </button>
-                    <button class="period-tab" data-period="months">
-                        <span class="tab-icon"><?php echo icon('calendar-range', 16); ?></span>
-                        <span class="tab-label">Maanden</span>
-                    </button>
-                    <button class="period-tab" data-period="years">
-                        <span class="tab-icon"><?php echo icon('trending-up', 16); ?></span>
-                        <span class="tab-label">Jaren</span>
-                    </button>
-                </div>
-                
-                <!-- Statistics cards -->
-                <div class="stats-section">
-                    <div class="stats-grid" id="electricity-stats">
-                        <div class="stat-card is-import">
-                            <div class="stat-icon"><?php echo icon('zap'); ?></div>
-                            <div class="stat-content">
-                                <div class="stat-label">Totaal Verbruik</div>
-                                <div class="stat-value" id="stat-total-consumption">-- kWh</div>
-                                <div class="stat-subtitle" id="stat-consumption-period">--</div>
-                            </div>
-                        </div>
-                        
-                        <div class="stat-card is-export">
-                            <div class="stat-icon"><?php echo icon('sun'); ?></div>
-                            <div class="stat-content">
-                                <div class="stat-label">Teruglevering</div>
-                                <div class="stat-value" id="stat-total-production">-- kWh</div>
-                                <div class="stat-subtitle" id="stat-production-period">--</div>
-                            </div>
-                        </div>
-                        
-                        <div class="stat-card is-net">
-                            <div class="stat-icon"><?php echo icon('scale'); ?></div>
-                            <div class="stat-content">
-                                <div class="stat-label">Netto</div>
-                                <div class="stat-value" id="stat-net">-- kWh</div>
-                                <div class="stat-subtitle">Verbruik − teruglevering</div>
-                            </div>
-                        </div>
-                        
-                        <div class="stat-card is-cost">
-                            <div class="stat-icon"><?php echo icon('euro'); ?></div>
-                            <div class="stat-content">
-                                <div class="stat-label">Kosten</div>
-                                <div class="stat-value" id="stat-cost">€ --</div>
-                                <div class="stat-subtitle" id="stat-cost-period">--</div>
-                            </div>
-                        </div>
-                        
-                        <div class="stat-card is-neutral">
-                            <div class="stat-icon"><?php echo icon('bar-chart'); ?></div>
-                            <div class="stat-content">
-                                <div class="stat-label">Gemiddeld</div>
-                                <div class="stat-value" id="stat-average">-- kWh</div>
-                                <div class="stat-subtitle" id="stat-average-period">per uur</div>
-                            </div>
-                        </div>
-                        
-                        <div class="stat-card is-neutral">
-                            <div class="stat-icon"><?php echo icon('arrow-up'); ?></div>
-                            <div class="stat-content">
-                                <div class="stat-label">Piek Moment</div>
-                                <div class="stat-value" id="stat-peak-value">-- kWh</div>
-                                <div class="stat-subtitle" id="stat-peak-time">--:--</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Chart controls -->
-                <div class="chart-controls-section">
-                    <div class="chart-controls">
-                        <div class="control-group">
-                            <label class="control-label">Zoom:</label>
-                            <div class="button-group" id="zoom-buttons">
-                                <!-- Zoom buttons will be dynamically updated based on period -->
-                                <button class="control-button active" data-zoom="24">24 uur</button>
-                                <button class="control-button" data-zoom="48">48 uur</button>
-                                <button class="control-button" data-zoom="72">72 uur</button>
-                            </div>
-                        </div>
-                        
-                        <div class="control-group">
-                            <label class="control-label">Extra:</label>
-                            <div class="toggle-group">
-                                <label class="toggle-switch">
-                                    <input type="checkbox" id="toggle-temp" disabled>
-                                    <span class="toggle-slider"></span>
-                                    <span class="toggle-label">Temperatuur</span>
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Main chart -->
+<?php
+section_toolbar(['temperature' => true]);
+
+kpi_strip([
+    ['key' => 'now',     'label' => 'Nu',            'icon' => 'activity',  'tone' => 'is-import'],
+    ['key' => 'total',   'label' => 'Verbruik',      'icon' => 'zap',       'tone' => 'is-import'],
+    ['key' => 'cost',    'label' => 'Kosten',        'icon' => 'euro',      'tone' => 'is-cost'],
+    ['key' => 'average', 'label' => 'Gemiddeld',     'icon' => 'bar-chart', 'tone' => 'is-neutral'],
+    ['key' => 'peak',    'label' => 'Piek',          'icon' => 'arrow-up',  'tone' => 'is-neutral'],
+    ['key' => 'extra',   'label' => 'Teruglevering', 'icon' => 'sun',       'tone' => 'is-export'],
+]);
+?>
                 <div class="chart-section">
-                    <div class="card chart-card">
-                        <div class="chart-header">
-                            <h3 class="chart-title">Verbruik &amp; teruglevering</h3>
-                            <div class="chart-legend" id="electricity-legend" aria-label="Reeksen tonen of verbergen"></div>
-                        </div>
-                        <div class="chart-container-large">
-                            <canvas id="electricity-chart" role="img" aria-label="Grafiek van elektriciteitsverbruik en teruglevering"></canvas>
-                        </div>
-                    </div>
+<?php
+chart_card([
+    'id'    => 'electricity',
+    'title' => 'Verbruik & teruglevering',
+    'aria'  => 'Grafiek van elektriciteitsverbruik en teruglevering',
+]);
+?>
                 </div>
             </div>
         </main>
