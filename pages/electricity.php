@@ -43,7 +43,7 @@
                         <div class="stat-card is-export">
                             <div class="stat-icon"><?php echo icon('sun'); ?></div>
                             <div class="stat-content">
-                                <div class="stat-label">Totaal Productie</div>
+                                <div class="stat-label">Teruglevering</div>
                                 <div class="stat-value" id="stat-total-production">-- kWh</div>
                                 <div class="stat-subtitle" id="stat-production-period">--</div>
                             </div>
@@ -101,13 +101,8 @@
                         </div>
                         
                         <div class="control-group">
-                            <label class="control-label">Toon:</label>
+                            <label class="control-label">Extra:</label>
                             <div class="toggle-group">
-                                <label class="toggle-switch">
-                                    <input type="checkbox" id="toggle-net" checked>
-                                    <span class="toggle-slider"></span>
-                                    <span class="toggle-label">Netto lijn</span>
-                                </label>
                                 <label class="toggle-switch">
                                     <input type="checkbox" id="toggle-temp" disabled>
                                     <span class="toggle-slider"></span>
@@ -122,36 +117,11 @@
                 <div class="chart-section">
                     <div class="card chart-card">
                         <div class="chart-header">
-                            <h3 class="chart-title">Elektriciteit Verbruik & Productie</h3>
-                            <div class="chart-legend">
-                                <span class="legend-item consumption">
-                                    <span class="legend-color"></span>
-                                    <span class="legend-text">Verbruik</span>
-                                </span>
-                                <span class="legend-item production">
-                                    <span class="legend-color"></span>
-                                    <span class="legend-text">Productie</span>
-                                </span>
-                                <span class="legend-item net line">
-                                    <span class="legend-color"></span>
-                                    <span class="legend-text">Netto</span>
-                                </span>
-                                <span class="legend-item temp-max line dashed" id="legend-temp-max" style="display: none;">
-                                    <span class="legend-color"></span>
-                                    <span class="legend-text">Temp Max</span>
-                                </span>
-                                <span class="legend-item temp-avg line" id="legend-temp-avg" style="display: none;">
-                                    <span class="legend-color"></span>
-                                    <span class="legend-text">Temp Gem</span>
-                                </span>
-                                <span class="legend-item temp-min line dashed" id="legend-temp-min" style="display: none;">
-                                    <span class="legend-color"></span>
-                                    <span class="legend-text">Temp Min</span>
-                                </span>
-                            </div>
+                            <h3 class="chart-title">Verbruik &amp; teruglevering</h3>
+                            <div class="chart-legend" id="electricity-legend" aria-label="Reeksen tonen of verbergen"></div>
                         </div>
                         <div class="chart-container-large">
-                            <canvas id="electricity-chart"></canvas>
+                            <canvas id="electricity-chart" role="img" aria-label="Grafiek van elektriciteitsverbruik en teruglevering"></canvas>
                         </div>
                     </div>
                 </div>

@@ -1,54 +1,52 @@
 /**
- * Electricity Page Manager
- * Handles chart rendering and interactivity for electricity data
- * Uses ChartBase for common functionality
+ * Electricity page
+ *
+ * Data comes from P1API.getElectricityData; P1Section handles the period
+ * and range controls, P1Chart draws the chart and its legend.
  */
 
 (function() {
     'use strict';
 
-    const ElectricityManager = window.ChartBase.createManager({
-        canvasId: 'electricity-chart',
-        zoomButtonsId: 'zoom-buttons',
-        pageName: 'electricity',
-        defaultPeriod: 'hours',
-        defaultZoom: 24,
-        features: {
-            largePaddingLeft: true,
-            largePaddingTop: true
-        },
+    const ElectricityPage = {
+        chart: null,
+        section: null,
+        data: null,
+        showTemp: false,
 
-        onInit() {
-            this.showNet = true;
-            this.showTemp = false;
-        },
+        init() {
+            this.chart = P1Chart.create(document.getElementById('electricity-chart'), {
+                unit: 'kWh',
+                decimals: 3,
+                legendEl: document.getElementById('electricity-legend'),
+                series: [
+                    { key: 'consumption', label: 'Verbruik', type: 'bar', token: 'series-import' },
+                    { key: 'production', label: 'Teruglevering', type: 'bar', token: 'series-export' },
+                    { key: 'net', label: 'Netto', type: 'line', token: 'series-net' }
+                ]
+            });
 
-        onSetupEventListeners() {
-            // Toggle switches
-            const toggleNet = document.getElementById('toggle-net');
-            if (toggleNet) {
-                toggleNet.addEventListener('change', (e) => {
-                    this.showNet = e.target.checked;
-                    this.redrawChart();
-                });
-            }
+            this.section = P1Section.create({
+                zoomButtonsId: 'zoom-buttons',
+                onLoad: (period, zoom, isCurrent) => this.load(period, zoom, isCurrent)
+            });
 
             const toggleTemp = document.getElementById('toggle-temp');
             if (toggleTemp) {
                 toggleTemp.disabled = false;
                 toggleTemp.addEventListener('change', (e) => {
                     this.showTemp = e.target.checked;
-                    this.toggleTemperatureLegend(e.target.checked);
-                    this.loadData();
+                    this.section.reload();
                 });
             }
+
+            this.section.init();
         },
 
-        async onLoadData() {
+        async load(period, zoom, isCurrent) {
             try {
-                ChartBase.showLoading();
-
-                const data = await window.P1API.getElectricityData(this.currentPeriod, this.currentZoom, this.showTemp);
+                const data = await window.P1API.getElectricityData(period, zoom, this.showTemp);
+                if (!isCurrent()) return;
 
                 if (!data) {
                     ChartBase.showError('Geen data beschikbaar voor deze periode');
@@ -56,200 +54,64 @@
                 }
 
                 this.data = data;
-                this.updateStatistics();
-                this.redrawChart();
+                this.updateStatistics(period, zoom);
+                this.chart.setData(data.chartData, period, { temperature: this.showTemp });
                 ChartBase.hideError();
-
             } catch (error) {
+                if (!isCurrent()) return;
                 P1Logger.error('Error loading electricity data:', error);
                 ChartBase.showError('Fout bij ophalen data');
-            } finally {
-                ChartBase.hideLoading();
             }
         },
 
-        onUpdateStatistics() {
-            if (!this.data) return;
-
+        updateStatistics(period, zoom) {
             const stats = this.data.stats;
-            const periodLabel = ChartBase.periodLabels[this.currentPeriod] || 'periodes';
-            const periodLabelSingular = ChartBase.periodLabelsSingular[this.currentPeriod] || 'periode';
+            const fmt = ChartBase.formatNumber;
+            const rangeLabel = `Laatste ${zoom} ${ChartBase.periodLabels[period] || 'periodes'}`;
 
-            ChartBase.updateElement('stat-total-consumption', ChartBase.formatNumber(stats.totalConsumption, 3) + ' kWh');
-            ChartBase.updateElement('stat-consumption-period', `Laatste ${this.currentZoom} ${periodLabel}`);
+            ChartBase.updateElement('stat-total-consumption', fmt(stats.totalConsumption, 3) + ' kWh');
+            ChartBase.updateElement('stat-consumption-period', rangeLabel);
 
-            ChartBase.updateElement('stat-total-production', ChartBase.formatNumber(stats.totalProduction, 3) + ' kWh');
-            ChartBase.updateElement('stat-production-period', `Laatste ${this.currentZoom} ${periodLabel}`);
+            ChartBase.updateElement('stat-total-production', fmt(stats.totalProduction, 3) + ' kWh');
+            ChartBase.updateElement('stat-production-period', rangeLabel);
 
-            ChartBase.updateElement('stat-net', ChartBase.formatNumber(stats.netConsumption, 3) + ' kWh');
+            ChartBase.updateElement('stat-net', fmt(stats.netConsumption, 3) + ' kWh');
 
-            ChartBase.updateElement('stat-cost', '€ ' + ChartBase.formatNumber(stats.totalCost, 2));
-            ChartBase.updateElement('stat-cost-period', `Laatste ${this.currentZoom} ${periodLabel}`);
+            ChartBase.updateElement('stat-cost', '€ ' + fmt(stats.totalCost, 2));
+            ChartBase.updateElement('stat-cost-period', rangeLabel);
 
-            ChartBase.updateElement('stat-average', ChartBase.formatNumber(stats.average, 3) + ' kWh');
-            ChartBase.updateElement('stat-average-period', `per ${periodLabelSingular}`);
+            ChartBase.updateElement('stat-average', fmt(stats.average, 3) + ' kWh');
+            ChartBase.updateElement('stat-average-period', `per ${ChartBase.periodLabelsSingular[period] || 'periode'}`);
 
-            ChartBase.updateElement('stat-peak-value', ChartBase.formatNumber(stats.peakConsumption.value, 3) + ' kWh');
+            ChartBase.updateElement('stat-peak-value', fmt(stats.peakConsumption.value, 3) + ' kWh');
 
-            // Format peak time
-            let peakTimeFormatted = stats.peakConsumption.time;
-            if (this.currentPeriod === 'hours') {
-                peakTimeFormatted = stats.peakConsumption.time.substring(11, 16);
-            } else if (this.currentPeriod === 'days') {
-                const date = new Date(stats.peakConsumption.time);
-                peakTimeFormatted = `${date.getDate()} ${ChartBase.monthNamesShort[date.getMonth()]}`;
-            }
-            ChartBase.updateElement('stat-peak-time', peakTimeFormatted);
-        },
-
-        onDrawChart(dimensions, theme) {
-            const { paddingLeft, paddingRight, paddingTop, paddingBottom, graphWidth, graphHeight, width, height } = dimensions;
-
-            if (this.data.chartData.length === 0) return;
-
-            // Update features based on current state
-            this.features.showTemp = this.showTemp;
-
-            // Calculate max value for Y-axis
-            const maxConsumption = Math.max(...this.data.chartData.map(d => d.consumption));
-            const maxProduction = Math.max(...this.data.chartData.map(d => d.production));
-            const dataMax = Math.max(maxConsumption, maxProduction, 0.1);
-
-            // Calculate increment
-            let increment = 1;
-            if (dataMax > 5000) increment = 1000;
-            else if (dataMax > 2000) increment = 500;
-            else if (dataMax > 1000) increment = 200;
-            else if (dataMax > 500) increment = 100;
-            else if (dataMax > 200) increment = 50;
-            else if (dataMax > 100) increment = 20;
-            else if (dataMax > 50) increment = 10;
-            else if (dataMax > 20) increment = 5;
-            else if (dataMax > 10) increment = 2;
-
-            const maxValue = Math.ceil(dataMax / increment) * increment;
-
-            // Draw Y-axis grid and labels
-            this.ctx.strokeStyle = theme.gridColor;
-            this.ctx.lineWidth = 1;
-
-            for (let i = 0; i <= maxValue; i += increment) {
-                const y = paddingTop + graphHeight - (graphHeight / maxValue) * i;
-
-                this.ctx.beginPath();
-                this.ctx.moveTo(paddingLeft, y);
-                this.ctx.lineTo(width - paddingRight, y);
-                this.ctx.stroke();
-
-                this.ctx.fillStyle = theme.textColor;
-                this.ctx.font = '12px sans-serif';
-                this.ctx.textAlign = 'right';
-                this.ctx.fillText(i + ' kWh', paddingLeft - 10, y + 4);
-            }
-
-            // Draw X-axis line
-            ChartBase.drawXAxisLine(this.ctx, dimensions, theme);
-
-            // Calculate bar dimensions
-            const dataCount = this.data.chartData.length;
-            const barSpacing = 4;
-            const totalBarWidth = graphWidth / dataCount;
-            const barWidth = Math.max(totalBarWidth - barSpacing, 2);
-
-            // Draw bars and collect net line points
-            const netLinePoints = [];
-
-            this.data.chartData.forEach((point, index) => {
-                const x = paddingLeft + (index * totalBarWidth) + barSpacing / 2;
-                const consHeight = (point.consumption / maxValue) * graphHeight;
-                const prodHeight = (point.production / maxValue) * graphHeight;
-
-                // Draw consumption bar (orange)
-                this.ctx.fillStyle = ChartBase.color('series-import');
-                this.ctx.fillRect(x, paddingTop + graphHeight - consHeight, barWidth, consHeight);
-
-                // Draw production bar (green)
-                if (point.production > 0) {
-                    this.ctx.fillStyle = ChartBase.color('series-export');
-                    this.ctx.fillRect(x, paddingTop + graphHeight - prodHeight, barWidth, prodHeight);
-                }
-
-                // Collect net line points
-                if (this.showNet) {
-                    const netHeight = (point.net / maxValue) * graphHeight;
-                    const netY = paddingTop + graphHeight - netHeight;
-                    netLinePoints.push({ x: x + barWidth / 2, y: netY });
-                }
-            });
-
-            // Draw net consumption line
-            if (this.showNet && netLinePoints.length > 1) {
-                ChartBase.drawSmoothLine(this.ctx, netLinePoints, ChartBase.color('series-net'), 2);
-            }
-
-            // Draw temperature lines if enabled
-            if (this.showTemp) {
-                const tempData = this.data.chartData.map(p => ({
-                    min: p.tempMin,
-                    avg: p.tempAvg,
-                    max: p.tempMax
-                }));
-                const tempScale = ChartBase.calculateTemperatureScale(tempData);
-
-                if (tempScale) {
-                    ChartBase.drawTemperatureLines(this.ctx, dimensions, tempData, tempScale);
-                    ChartBase.drawTemperatureAxis(this.ctx, dimensions, theme, tempScale);
+            let peakTime = stats.peakConsumption.time;
+            if (period === 'hours') {
+                peakTime = peakTime.substring(11, 16);
+            } else if (peakTime) {
+                const date = new Date(peakTime.replace(' ', 'T'));
+                if (period === 'days') {
+                    peakTime = `${date.getDate()} ${ChartBase.monthNamesShort[date.getMonth()]}`;
+                } else if (period === 'months') {
+                    peakTime = `${ChartBase.monthNamesShort[date.getMonth()]} ${date.getFullYear()}`;
+                } else {
+                    peakTime = String(date.getFullYear());
                 }
             }
-
-            // Draw X-axis labels
-            ChartBase.drawXAxisLabels(this.ctx, dimensions, theme, this.data.chartData, this.currentPeriod);
-        },
-
-        onDrawTooltipContent(point, index) {
-            const ts = point.timestamp;
-            const date = new Date(ts);
-            const header = ChartBase.formatTooltipTime(date, this.currentPeriod);
-
-            const lines = [
-                { text: `Verbruik: ${ChartBase.formatNumber(point.consumption, 3)} kWh`, color: ChartBase.color('series-import') },
-                { text: `Productie: ${ChartBase.formatNumber(point.production, 3)} kWh`, color: ChartBase.color('series-export') },
-                { text: `Netto: ${ChartBase.formatNumber(point.net, 3)} kWh`, color: ChartBase.color('series-net') }
-            ];
-
-            // Add temperature if available
-            if (this.showTemp && point.tempMin !== undefined) {
-                lines.push({ text: `Max: ${point.tempMax.toFixed(1)}°C`, color: ChartBase.color('series-temp-max') });
-                lines.push({ text: `Gem: ${point.tempAvg.toFixed(1)}°C`, color: ChartBase.color('series-temp-avg') });
-                lines.push({ text: `Min: ${point.tempMin.toFixed(1)}°C`, color: ChartBase.color('series-temp-min') });
-            }
-
-            return { header, lines };
+            ChartBase.updateElement('stat-peak-time', peakTime);
         }
-    });
-
-    // Add helper method
-    ElectricityManager.toggleTemperatureLegend = function(show) {
-        ['legend-temp-max', 'legend-temp-avg', 'legend-temp-min'].forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.style.display = show ? 'inline-flex' : 'none';
-        });
     };
 
-    // Auto-initialize if on electricity page
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => {
-            if (document.body.dataset.page === 'electricity') {
-                ElectricityManager.init();
-            }
-        });
-    } else {
-        if (document.body.dataset.page === 'electricity') {
-            ElectricityManager.init();
-        }
+    function start() {
+        if (document.body.dataset.page === 'electricity') ElectricityPage.init();
     }
 
-    // Expose globally
-    window.ElectricityManager = ElectricityManager;
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', start);
+    } else {
+        start();
+    }
+
+    window.ElectricityPage = ElectricityPage;
 
 })();

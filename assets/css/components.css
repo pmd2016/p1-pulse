@@ -399,6 +399,31 @@
     color: var(--text-secondary);
 }
 
+/* Legend items rendered by P1Chart are toggle buttons */
+button.legend-item {
+    min-height: 32px;
+    padding: 0 var(--space-1);
+    border: none;
+    border-radius: var(--radius-sm);
+    background: none;
+    font: inherit;
+    font-size: var(--text-sm);
+    cursor: pointer;
+    transition: opacity var(--transition-fast);
+}
+
+button.legend-item:hover {
+    color: var(--text-primary);
+}
+
+button.legend-item[aria-pressed="false"] {
+    opacity: 0.45;
+}
+
+button.legend-item[aria-pressed="false"] .legend-text {
+    text-decoration: line-through;
+}
+
 /* Default swatch: a filled square (bar series) */
 .legend-color {
     width: 12px;
@@ -436,6 +461,7 @@
 .legend-item.temp-min    { --c: var(--series-temp-min); }
 
 .chart-container-large {
+    position: relative;
     height: 320px;
     padding: var(--space-2);
 }
