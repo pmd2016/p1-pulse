@@ -408,7 +408,7 @@ body.sidebar-open::before {
 @media print {
     .app-header,
     .sidebar,
-    .update-timer,
+    .update-status,
     .icon-button {
         display: none;
     }

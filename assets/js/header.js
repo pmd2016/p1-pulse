@@ -1,6 +1,12 @@
 /**
  * Header Manager
  * Handles header widgets: time, weather, and solar production
+ *
+ * The latest weather and solar readings are also published for other
+ * scripts (the dashboard shows them on phones, where the header hides
+ * them): window.P1Live.{weather,solar} plus a 'p1:live' event with
+ * detail { key, value }. solar is { power, todayKWh } or null when the
+ * solar database is unavailable.
  */
 
 (function() {
@@ -11,6 +17,18 @@
 
         init() {
             P1Logger.log('[Header] Initialized');
+            this.start();
+
+            // No polling while the tab is in the background
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) this.destroy();
+                else this.start();
+            });
+        },
+
+        start() {
+            if (this.timers.length) return;
+
             this.updateTime();
             this.loadWeather();
             this.loadSolarWidget();
@@ -29,6 +47,12 @@
                 P1Logger.log('[Header] Refreshing solar widget');
                 this.loadSolarWidget();
             }, 10000));
+        },
+
+        publish(key, value) {
+            window.P1Live = window.P1Live || {};
+            window.P1Live[key] = value;
+            document.dispatchEvent(new CustomEvent('p1:live', { detail: { key, value } }));
         },
 
         updateTime() {
@@ -55,6 +79,7 @@
 
                 // Get most recent weather record (named properties via ?json=object)
                 const latest = data[0];
+                this.publish('weather', latest);
 
                 // Update weather display
                 const tempEl = document.getElementById('weather-temp');
@@ -130,6 +155,7 @@
                         return sum + (parseFloat(point.production) || 0);
                     }, 0);
                     todayEl.textContent = totalEnergy.toFixed(2) + ' kWh';
+                    this.publish('solar', { power: parseFloat(current.power) || 0, todayKWh: totalEnergy });
                 }
                 
                 // Show solar widget
@@ -140,6 +166,7 @@
                 
             } catch (err) {
                 P1Logger.error('Error loading solar widget:', err);
+                this.publish('solar', null);
                 // Don't show widget if solar data unavailable
                 const solarWidget = document.getElementById('solar-widget');
                 if (solarWidget) {

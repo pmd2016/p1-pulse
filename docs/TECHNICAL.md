@@ -681,11 +681,21 @@ toggle buttons; colours are re-read on `themechange`. Chart.js is only loaded on
 - **Live**: `live()` refreshes the "Nu" card every `P1MonConfig.updateInterval` (at least 10 s),
   paused while the tab is hidden.
 
-### dashboard.js (333 lines)
+### dashboard.js
 
-Overview cards for electricity, gas and solar, each with a hand-drawn arc gauge. Refreshes on
-`P1MonConfig.updateInterval` with a visible countdown. Solar figures are filtered to
-today-since-midnight client-side.
+Top row: three live tiles (net power, solar, weather) using the KPI card component
+(`kpi_strip(..., 'is-now')`). Net power is polled from the smart meter; solar and weather are taken
+from `header.js` (`window.P1Live` / `p1:live`) instead of being fetched a second time.
+
+Below, one card per utility (electricity, gas, solar, costs) with the same anatomy: today's total
+from local midnight with the change vs yesterday up to the same time, a sparkline of today in 24
+hourly slots (`P1Chart` with `compact: true`), and two key figures. The costs card uses today's
+`/financial/day` row when P1 Monitor has one, otherwise tariff estimates (marked "geschat"), and a
+bar showing the electricity/gas split when both are positive.
+
+Live tiles refresh every `P1MonConfig.updateInterval` (at least 10 s), the cards every minute;
+nothing is polled while the tab is hidden. The page header shows "Bijgewerkt hh:mm:ss", or a
+no-connection warning with the time of the last successful update.
 
 ### electricity.js
 
@@ -706,7 +716,9 @@ through `P1API`.
 ### header.js (164 lines)
 
 Clock (1s), weather widget (5 min) and solar production widget (10s). Interval IDs are collected in
-`this.timers` and cleared on `beforeunload`.
+`this.timers`, cleared on `beforeunload` and while the tab is hidden. The latest weather record and
+solar reading (`{ power, todayKWh }`, or `null` when the solar database is unavailable) are
+published on `window.P1Live` and as a `p1:live` event for the dashboard.
 
 ### theme.js (245 lines)
 
@@ -889,7 +901,7 @@ For the same underlying data:
 
 - `api/solar.php` divides by `zoom` hours (and approximates months as 30 days, years as 365);
 - `solar.js::totals()` divides by the zoom window, same approximations;
-- `dashboard.js::calculateSolarTotals()` divides by *hours elapsed so far today*.
+- `dashboard.js::showSolar()` divides by *hours elapsed so far today*.
 
 The dashboard card and the solar page will therefore disagree about the same day. There is no single
 agreed definition in the codebase.
@@ -908,11 +920,12 @@ not relocatable, despite the README suggesting `/var/www/html/custom`.
 - The `api_cache` table is created but never used.
 - `P1MonConfig.maxProduction` is emitted but never read.
 
-### Duplicated solar polling
+### Solar is fetched outside `P1API`
 
-`header.js` and `dashboard.js` each poll both solar endpoints on independent 10-second timers, using
-raw `fetch()` outside `P1API`. On the dashboard that is four uncached requests per 10 seconds, and
-the "filter to today since midnight" logic is duplicated in both files.
+`header.js`, `dashboard.js` and `solar.js` call `/custom/api/solar.php` with raw `fetch()`, so those
+requests get neither `P1API`'s caching nor its connection tracking. The dashboard no longer polls
+the live solar reading itself (it reuses the header's), but it still fetches 48 hours of solar data
+every minute next to the header's 24 hours every 10 seconds.
 
 ---
 

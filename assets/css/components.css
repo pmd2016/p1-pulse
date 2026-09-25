@@ -598,59 +598,10 @@ button.legend-item[aria-pressed="false"] .legend-text {
 }
 
 /* ============================================================================
-   GAUGES
-   ============================================================================ */
-
-.gauge-container,
-.gauge-container-small {
-    position: relative;
-    width: 140px;
-    height: 140px;
-    margin: 0 auto var(--space-4) auto;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.gauge-container canvas,
-.gauge-container-small canvas {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100% !important;
-    height: 100% !important;
-}
-
-.gauge-value {
-    position: relative;
-    z-index: 1;
-    text-align: center;
-    padding: 0 var(--space-2);
-    pointer-events: none;
-}
-
-.gauge-number {
-    font-size: var(--text-xl);
-    font-weight: 700;
-    display: block;
-    color: var(--text-primary);
-    line-height: 1.2;
-}
-
-.gauge-unit {
-    font-size: var(--text-xs);
-    color: var(--text-secondary);
-    font-weight: 500;
-    display: block;
-    margin-top: var(--space-1);
-    line-height: 1;
-}
-
-/* ============================================================================
    FEEDBACK: timer, loading, messages
    ============================================================================ */
 
-.update-timer {
+.update-status {
     display: inline-flex;
     align-items: center;
     gap: var(--space-2);
@@ -660,6 +611,28 @@ button.legend-item[aria-pressed="false"] .legend-text {
     font-size: var(--text-xs);
     color: var(--text-secondary);
     border: 1px solid var(--border-color);
+    font-variant-numeric: tabular-nums;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--border-strong);
+    flex-shrink: 0;
+}
+
+.update-status[data-state="ok"] .status-dot {
+    background: var(--accent-success);
+}
+
+.update-status[data-state="stale"] {
+    color: var(--accent-danger);
+    border-color: color-mix(in srgb, var(--accent-danger) 40%, transparent);
+}
+
+.update-status[data-state="stale"] .status-dot {
+    background: var(--accent-danger);
 }
 
 .loading {

@@ -63,10 +63,12 @@ function section_toolbar(array $opts = []) {
 /**
  * @param array $kpis list of ['key', 'label', 'icon', 'tone']
  *                    tone is a series helper class such as 'is-import'
+ * @param string $modifier extra class, e.g. 'is-now' for the dashboard's
+ *                    row of equal live tiles
  */
-function kpi_strip(array $kpis) {
+function kpi_strip(array $kpis, $modifier = '') {
     ?>
-                <div class="kpi-strip">
+                <div class="kpi-strip <?php echo htmlspecialchars($modifier); ?>">
                     <?php foreach ($kpis as $kpi): ?>
                     <div class="kpi-card <?php echo htmlspecialchars($kpi['tone'] ?? 'is-neutral'); ?>" data-kpi="<?php echo htmlspecialchars($kpi['key']); ?>">
                         <div class="kpi-head">
