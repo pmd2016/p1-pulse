@@ -173,22 +173,31 @@
 }
 
 /* ============================================================================
-   SIDEBAR (off-canvas below 1024px)
+   SIDEBAR
+   One menu per width:
+     phones (< 600px)      none: the bottom tab bar is the menu
+     tablets (600-1023px)  off-canvas drawer behind the hamburger
+     desktop (>= 1024px)   always visible
    ============================================================================ */
 
 .sidebar {
     position: fixed;
     left: 0;
     top: calc(var(--header-height) + env(safe-area-inset-top, 0px));
-    /* Phones: stop above the bottom tab bar */
-    bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
+    bottom: 0;
     width: var(--sidebar-width);
     background-color: var(--bg-secondary);
     border-right: 1px solid var(--border-color);
-    display: flex;
+    display: none;
     flex-direction: column;
     transform: translateX(-100%);
-    transition: transform var(--transition-base), width var(--transition-base);
+    /*
+     * A closed drawer is also invisible, so its links are out of the tab
+     * order and the accessibility tree. visibility switches after the
+     * slide-out finishes, and immediately when opening (see below).
+     */
+    visibility: hidden;
+    transition: transform var(--transition-base), width var(--transition-base), visibility 0s linear 200ms;
     z-index: var(--z-sidebar);
     overflow: hidden;
     padding-bottom: env(safe-area-inset-bottom, 0px);
@@ -196,6 +205,18 @@
 
 body.sidebar-open .sidebar {
     transform: translateX(0);
+    visibility: visible;
+    transition: transform var(--transition-base), width var(--transition-base), visibility 0s;
+}
+
+/* Phones have no hamburger: the bottom tab bar is the menu */
+#sidebar-toggle {
+    display: none;
+}
+
+/* Phones: "Inloggen" lives in the header (it is in the sidebar from 600px) */
+.header-login {
+    color: var(--text-primary);
 }
 
 body.sidebar-open::before {
@@ -413,8 +434,17 @@ body.sidebar-open::before {
         padding-bottom: env(safe-area-inset-bottom, 0px);
     }
 
+    /* Tablets: the drawer and its hamburger; Inloggen moves into the drawer */
     .sidebar {
-        bottom: 0;
+        display: flex;
+    }
+
+    #sidebar-toggle {
+        display: inline-flex;
+    }
+
+    .app-header .header-login {
+        display: none;
     }
 
     .app-header {
@@ -459,6 +489,7 @@ body.sidebar-open::before {
 
     .sidebar {
         transform: none;
+        visibility: visible;
     }
 
     body.sidebar-open::before {
