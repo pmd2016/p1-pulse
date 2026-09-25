@@ -3,17 +3,18 @@
     <?php includeJS(); ?>
     
     <?php
-    // Load page-specific JavaScript
+    // Page-specific scripts, relative to /assets
     $currentPage = $currentPage ?? 'dashboard';
-    
-    if ($currentPage === 'solar') {
-        echo "<script src='" . CUSTOM_BASE_URL . "/assets/js/solar.js'></script>\n";
-    } elseif ($currentPage === 'dashboard') {
-        echo "<script src='" . CUSTOM_BASE_URL . "/assets/js/dashboard.js'></script>\n";
-    } elseif ($currentPage === 'electricity') {
-        echo "<script src='" . CUSTOM_BASE_URL . "/assets/js/electricity.js'></script>\n";
-    } elseif ($currentPage === 'gas') {
-        echo "<script src='" . CUSTOM_BASE_URL . "/assets/js/gas.js'></script>\n";
+    $chartScripts = ['vendor/chartjs/chart.umd.min.js', 'js/p1chart.js', 'js/section.js'];
+    $pageScripts = [
+        'dashboard'   => ['js/dashboard.js'],
+        'electricity' => array_merge($chartScripts, ['js/electricity.js']),
+        'gas'         => ['js/gas.js'],
+        'solar'       => ['js/solar.js'],
+    ];
+
+    foreach ($pageScripts[$currentPage] ?? [] as $script) {
+        echo "<script src='" . CUSTOM_BASE_URL . "/assets/{$script}'></script>\n";
     }
     ?>
     
