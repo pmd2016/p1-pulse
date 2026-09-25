@@ -52,6 +52,81 @@
         return (P1Utils.zoomOptions[period] || []).some(o => o.value === zoom);
     }
 
+    /**
+     * Update one KPI card.
+     * @param {string} key - data-kpi attribute
+     * @param {Object} kpi - { value, sub, delta: { current, previous, goodWhen, previousText, format } }
+     *   goodWhen: 'down' (usage, cost) or 'up' (production); omit for neutral
+     *   format: formats an absolute difference, shown instead of a
+     *   percentage when the previous value is zero or below (net costs)
+     *   compareLabel: what `previous` is, for the tooltip (default "de vorige periode")
+     */
+    function setKpi(key, kpi) {
+        const el = document.querySelector(`[data-kpi="${key}"]`);
+        if (!el) return;
+
+        if (kpi.value !== undefined) el.querySelector('.kpi-value').textContent = kpi.value;
+        if (kpi.sub !== undefined) el.querySelector('.kpi-sub').textContent = kpi.sub;
+        if (kpi.tone) {
+            el.classList.remove('is-import', 'is-export', 'is-net', 'is-solar', 'is-gas', 'is-water', 'is-cost', 'is-neutral');
+            el.classList.add(kpi.tone);
+        }
+
+        const deltaEl = el.querySelector('.kpi-delta');
+        if (deltaEl && 'delta' in kpi) renderDelta(deltaEl, kpi.delta);
+    }
+
+    function renderDelta(el, delta) {
+        el.classList.remove('is-better', 'is-worse', 'is-same');
+
+        const hide = () => {
+            el.hidden = true;
+            el.textContent = '';
+            el.removeAttribute('title');
+            el.removeAttribute('aria-label');
+        };
+
+        if (!delta || !Number.isFinite(delta.current) || !Number.isFinite(delta.previous)) {
+            return hide();
+        }
+
+        // A percentage of a zero or negative base means nothing
+        // (net costs can be negative): show the difference instead
+        const diff = delta.current - delta.previous;
+        const percentage = delta.previous > 1e-9;
+        if (!percentage && typeof delta.format !== 'function') {
+            return hide();
+        }
+
+        const change = percentage
+            ? Math.round((diff / delta.previous) * 100)
+            : (Math.abs(diff) < 0.005 ? 0 : diff);
+        const amount = percentage ? `${Math.abs(change)}%` : delta.format(Math.abs(diff));
+
+        let arrow = '→';
+        let direction = 'gelijk aan';
+        let cls = 'is-same';
+
+        if (change !== 0) {
+            const up = change > 0;
+            arrow = up ? '▲' : '▼';
+            direction = up ? 'hoger dan' : 'lager dan';
+            if (delta.goodWhen) {
+                const good = (delta.goodWhen === 'up') === up;
+                cls = good ? 'is-better' : 'is-worse';
+            }
+        }
+
+        el.hidden = false;
+        el.classList.add(cls);
+        el.textContent = `${arrow} ${amount}`;
+
+        const context = `${amount} ${direction} ${delta.compareLabel || 'de vorige periode'}`
+            + (delta.previousText ? ` (${delta.previousText})` : '');
+        el.title = context;
+        el.setAttribute('aria-label', context);
+    }
+
     const P1Section = {
         create(config) {
             const root = document;
@@ -275,78 +350,8 @@
                     }
                 },
 
-                /**
-                 * Update one KPI card.
-                 * @param {string} key - data-kpi attribute
-                 * @param {Object} kpi - { value, sub, delta: { current, previous, goodWhen, previousText, format } }
-                 *   goodWhen: 'down' (usage, cost) or 'up' (production); omit for neutral
-                 *   format: formats an absolute difference, shown instead of a
-                 *   percentage when the previous value is zero or below (net costs)
-                 */
                 setKpi(key, kpi) {
-                    const el = document.querySelector(`[data-kpi="${key}"]`);
-                    if (!el) return;
-
-                    if (kpi.value !== undefined) el.querySelector('.kpi-value').textContent = kpi.value;
-                    if (kpi.sub !== undefined) el.querySelector('.kpi-sub').textContent = kpi.sub;
-                    if (kpi.tone) {
-                        el.classList.remove('is-import', 'is-export', 'is-net', 'is-solar', 'is-gas', 'is-water', 'is-cost', 'is-neutral');
-                        el.classList.add(kpi.tone);
-                    }
-
-                    const deltaEl = el.querySelector('.kpi-delta');
-                    if (deltaEl && 'delta' in kpi) this.renderDelta(deltaEl, kpi.delta);
-                },
-
-                renderDelta(el, delta) {
-                    el.classList.remove('is-better', 'is-worse', 'is-same');
-
-                    const hide = () => {
-                        el.hidden = true;
-                        el.textContent = '';
-                        el.removeAttribute('title');
-                        el.removeAttribute('aria-label');
-                    };
-
-                    if (!delta || !Number.isFinite(delta.current) || !Number.isFinite(delta.previous)) {
-                        return hide();
-                    }
-
-                    // A percentage of a zero or negative base means nothing
-                    // (net costs can be negative): show the difference instead
-                    const diff = delta.current - delta.previous;
-                    const percentage = delta.previous > 1e-9;
-                    if (!percentage && typeof delta.format !== 'function') {
-                        return hide();
-                    }
-
-                    const change = percentage
-                        ? Math.round((diff / delta.previous) * 100)
-                        : (Math.abs(diff) < 0.005 ? 0 : diff);
-                    const amount = percentage ? `${Math.abs(change)}%` : delta.format(Math.abs(diff));
-
-                    let arrow = '→';
-                    let direction = 'gelijk aan';
-                    let cls = 'is-same';
-
-                    if (change !== 0) {
-                        const up = change > 0;
-                        arrow = up ? '▲' : '▼';
-                        direction = up ? 'hoger dan' : 'lager dan';
-                        if (delta.goodWhen) {
-                            const good = (delta.goodWhen === 'up') === up;
-                            cls = good ? 'is-better' : 'is-worse';
-                        }
-                    }
-
-                    el.hidden = false;
-                    el.classList.add(cls);
-                    el.textContent = `${arrow} ${amount}`;
-
-                    const context = `${amount} ${direction} de vorige periode`
-                        + (delta.previousText ? ` (${delta.previousText})` : '');
-                    el.title = context;
-                    el.setAttribute('aria-label', context);
+                    P1Section.setKpi(key, kpi);
                 },
 
                 /**
@@ -376,6 +381,11 @@
 
             return section;
         },
+
+        /**
+         * Update any KPI card (section pages and dashboard), see setKpi() above
+         */
+        setKpi,
 
         /**
          * Error with a message meant for the user (shown in the chart card)

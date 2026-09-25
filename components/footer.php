@@ -7,7 +7,7 @@
     $currentPage = $currentPage ?? 'dashboard';
     $chartScripts = ['vendor/chartjs/chart.umd.min.js', 'js/p1chart.js', 'js/section.js'];
     $pageScripts = [
-        'dashboard'   => ['js/dashboard.js'],
+        'dashboard'   => array_merge($chartScripts, ['js/dashboard.js']),
         'electricity' => array_merge($chartScripts, ['js/electricity.js']),
         'gas'         => array_merge($chartScripts, ['js/gas.js']),
         'solar'       => array_merge($chartScripts, ['js/solar.js']),

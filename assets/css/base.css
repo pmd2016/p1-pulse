@@ -65,8 +65,6 @@ button {
 /* Numbers that update live should not shift horizontally */
 .tabular,
 .stat-value,
-.gauge-number,
-.reading-value,
 .widget-value,
 .header-time,
 .weather-item span {

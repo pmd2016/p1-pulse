@@ -1,358 +1,395 @@
 /**
- * Dashboard Manager
- * Handles real-time data updates for all dashboard cards
+ * Dashboard
+ *
+ * Top row: live values (net power, solar, weather). Net power is polled
+ * here; solar and weather come from the header, which already fetches them
+ * (window.P1Live / 'p1:live' event, see header.js).
+ *
+ * Cards: today from midnight, each with the change vs yesterday up to the
+ * same time, a sparkline per hour (P1Chart compact) and two key figures.
+ *
+ * Refresh: live values every P1MonConfig.updateInterval (at least 10 s),
+ * today's cards every minute, nothing while the tab is hidden.
  */
 
 (function() {
     'use strict';
 
-    const DashboardManager = {
-        updateInterval: null,
-        updateTimer: null,
-        countdown: 0,
-        gauges: {
-            elec: null,
-            gas: null,
-            solar: null,
-            water: null
-        },
+    const LIVE_MIN_INTERVAL = 10000;
+    const TODAY_INTERVAL = 60000;
+    const HOUR = 3600;
+    const COMPARE = 'gisteren tot dit uur';
+
+    const fmt = (v, d) => P1Utils.formatNumber(v, d);
+    const kwh = (v) => `${fmt(v, 2)} kWh`;
+    const m3 = (v) => `${fmt(v, 3)} m³`;
+    const eur = (v) => `€ ${fmt(v, 2)}`;
+    const power = (w) => (Math.abs(w) >= 1000 ? `${fmt(w / 1000, 2)} kW` : `${Math.round(w)} W`);
+
+    const Dashboard = {
+        sparks: {},
+        timers: [],
+        lastUpdate: null,
 
         init() {
-            P1Logger.log('Dashboard initialized');
-            this.initializeGauges();
-            this.loadAllData();
-            this.setupAutoUpdate();
+            this.createSparklines();
+            this.bindLive();
+            this.start();
+
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) this.stop();
+                else this.start();
+            });
+            window.addEventListener('beforeunload', () => this.stop());
         },
 
-        initializeGauges() {
-            // Initialize gauge canvases
-            this.gauges.elec = document.getElementById('elec-gauge');
-            this.gauges.gas = document.getElementById('gas-gauge');
-            this.gauges.solar = document.getElementById('solar-gauge');
-            this.gauges.water = document.getElementById('water-gauge');
+        start() {
+            if (this.timers.length) return;
+            const liveInterval = Math.max(window.P1MonConfig?.updateInterval || LIVE_MIN_INTERVAL, LIVE_MIN_INTERVAL);
 
-            document.addEventListener('themechange', () => {
-                Object.values(this.gauges).forEach(canvas => {
-                    if (canvas && canvas._gaugeArgs) this.drawGauge(canvas, ...canvas._gaugeArgs);
-                });
+            this.refreshLive();
+            this.refreshToday();
+            this.timers.push(setInterval(() => this.refreshLive(), liveInterval));
+            this.timers.push(setInterval(() => this.refreshToday(), TODAY_INTERVAL));
+        },
+
+        stop() {
+            this.timers.forEach(clearInterval);
+            this.timers = [];
+        },
+
+        createSparklines() {
+            const make = (key, unit, series) => {
+                const canvas = document.getElementById(`${key}-spark`);
+                if (!canvas) return;
+                this.sparks[key] = P1Chart.create(canvas, { compact: true, unit, decimals: 3, series });
+            };
+
+            make('elec', 'kWh', [
+                { key: 'consumption', label: 'Verbruik', type: 'bar', token: 'series-import' },
+                { key: 'production', label: 'Teruglevering', type: 'bar', token: 'series-export' }
+            ]);
+            make('gas', 'm³', [{ key: 'gas', label: 'Gas', type: 'bar', token: 'series-gas' }]);
+            make('solar', 'kWh', [{ key: 'production', label: 'Opgewekt', type: 'bar', token: 'series-solar' }]);
+        },
+
+        // ------------------------------------------------------------------
+        // Live values
+        // ------------------------------------------------------------------
+
+        bindLive() {
+            const live = window.P1Live || {};
+            if ('weather' in live) this.showWeather(live.weather);
+            if ('solar' in live) this.showSolarNow(live.solar);
+
+            document.addEventListener('p1:live', (e) => {
+                if (e.detail.key === 'weather') this.showWeather(e.detail.value);
+                if (e.detail.key === 'solar') this.showSolarNow(e.detail.value);
             });
+        },
+
+        async refreshLive() {
+            try {
+                const rows = await window.P1API.getSmartMeter(1);
+                const latest = rows && rows[0];
+                if (!latest) throw new Error('No smart meter reading');
+
+                const net = (parseFloat(latest.CONSUMPTION_W) || 0) - (parseFloat(latest.PRODUCTION_W) || 0);
+                P1Section.setKpi('now-power', {
+                    value: power(Math.abs(net)),
+                    sub: net < 0 ? 'teruglevering' : 'afname van het net',
+                    tone: net < 0 ? 'is-export' : 'is-import'
+                });
+                this.markUpdated(true);
+            } catch (err) {
+                P1Logger.warn('[Dashboard] live update failed:', err);
+                this.markUpdated(false);
+            }
+        },
+
+        showSolarNow(solar) {
+            P1Section.setKpi('now-solar', solar
+                ? { value: power(solar.power), sub: `vandaag ${kwh(solar.todayKWh)}` }
+                : { value: '--', sub: 'niet beschikbaar' });
+        },
+
+        showWeather(weather) {
+            if (!weather || weather.TEMPERATURE === undefined) return;
+            const parts = [];
+            if (weather.WIND_SPEED !== undefined) parts.push(`${fmt(weather.WIND_SPEED, 1)} m/s`);
+            if (weather.HUMIDITY !== undefined) parts.push(`${Math.round(weather.HUMIDITY)}%`);
+            P1Section.setKpi('now-weather', {
+                value: `${Math.round(weather.TEMPERATURE)}°C`,
+                sub: parts.join(' · ')
+            });
+        },
+
+        // ------------------------------------------------------------------
+        // Today
+        // ------------------------------------------------------------------
+
+        /**
+         * Today from local midnight, plus yesterday up to the same time
+         */
+        windows() {
+            const midnight = new Date();
+            midnight.setHours(0, 0, 0, 0);
+            const start = Math.floor(midnight.getTime() / 1000);
+            const now = Math.floor(Date.now() / 1000);
+            return {
+                start,
+                now,
+                isToday: (ts) => ts >= start,
+                isYesterdaySoFar: (ts) => ts >= start - 24 * HOUR && ts < now - 24 * HOUR
+            };
         },
 
         /**
-         * @param {string} colorToken - series token name, e.g. 'series-gas'
+         * 24 hourly slots from midnight; hours still to come stay null so
+         * the sparkline fills up through the day
          */
-        drawGauge(canvas, value, max, colorToken, label) {
-            if (!canvas) return;
-
-            // Remember the arguments so the gauge can be repainted on theme change
-            canvas._gaugeArgs = [value, max, colorToken, label];
-            const color = P1Utils.color(colorToken);
-            
-            const ctx = canvas.getContext('2d');
-            const width = canvas.offsetWidth;
-            const height = canvas.offsetHeight;
-            
-            // Set canvas resolution
-            canvas.width = width * 2;
-            canvas.height = height * 2;
-            ctx.scale(2, 2);
-            
-            const centerX = width / 2;
-            const centerY = height / 2;
-            const radius = Math.min(width, height) / 2 - 10;
-            const lineWidth = 12;
-            
-            // Clear canvas
-            ctx.clearRect(0, 0, width, height);
-            
-            // Draw background arc
-            ctx.beginPath();
-            ctx.arc(centerX, centerY, radius, 0.75 * Math.PI, 2.25 * Math.PI);
-            ctx.strokeStyle = P1Utils.color('border-color');
-            ctx.lineWidth = lineWidth;
-            ctx.lineCap = 'round';
-            ctx.stroke();
-            
-            // Calculate angle for value
-            const percentage = Math.min(Math.max(value / max, 0), 1);
-            const angle = 0.75 * Math.PI + (percentage * 1.5 * Math.PI);
-            
-            // Draw value arc
-            ctx.beginPath();
-            ctx.arc(centerX, centerY, radius, 0.75 * Math.PI, angle);
-            ctx.strokeStyle = color;
-            ctx.lineWidth = lineWidth;
-            ctx.lineCap = 'round';
-            ctx.stroke();
-        },
-
-        setupAutoUpdate() {
-            // Update every 10 seconds (or based on P1MonConfig)
-            const interval = (window.P1MonConfig && window.P1MonConfig.updateInterval) || 10000;
-            this.countdown = interval / 1000;
-            
-            P1Logger.log(`[Dashboard] Auto-update initialized: ${interval}ms (${this.countdown}s)`);
-            
-            this.updateInterval = setInterval(() => {
-                P1Logger.log('[Dashboard] Auto-refresh triggered - loading all data');
-                this.loadAllData();
-                this.countdown = interval / 1000;
-            }, interval);
-
-            // Update countdown timer every second
-            this.updateTimer = setInterval(() => {
-                this.countdown--;
-                const timerEl = document.getElementById('timer-text');
-                if (timerEl) {
-                    timerEl.textContent = `Update over ${this.countdown}s`;
-                }
-                if (this.countdown === 5) {
-                    P1Logger.log('[Dashboard] Refresh in 5 seconds...');
-                }
-            }, 1000);
-        },
-
-        async loadAllData() {
-            try {
-                await Promise.all([
-                    this.loadElectricityData(),
-                    this.loadGasData(),
-                    this.loadSolarData()
-                ]);
-                this.hideError();
-            } catch (err) {
-                P1Logger.error('Error loading dashboard data:', err);
-                this.showError('Fout bij ophalen dashboard gegevens');
+        daySlots(points, start, keys) {
+            const slots = [];
+            for (let h = 0; h < 24; h++) {
+                const slot = { unixTimestamp: start + h * HOUR };
+                keys.forEach(k => { slot[k] = null; });
+                slots.push(slot);
             }
-        },
-
-        async loadElectricityData() {
-            try {
-                // Get real-time power from smart meter (CONSUMPTION_W / PRODUCTION_W)
-                const smartMeter = await window.P1API.getSmartMeter(1);
-                if (smartMeter && smartMeter.length > 0) {
-                    const latest = smartMeter[0];
-                    const consumptionW = parseFloat(latest.CONSUMPTION_W) || 0;
-                    const productionW = parseFloat(latest.PRODUCTION_W) || 0;
-                    const netWatts = consumptionW - productionW;
-
-                    this.updateElement('elec-current-power', this.formatPower(netWatts));
-
-                    // Draw gauge (max from P1MonConfig or default 10kW)
-                    const maxPower = (window.P1MonConfig && window.P1MonConfig.maxConsumption) || 10;
-                    const maxWatts = maxPower * 1000;
-                    const gaugeValue = Math.abs(netWatts);
-                    const gaugeColor = netWatts < 0 ? 'series-export' : 'series-import';
-                    this.drawGauge(this.gauges.elec, gaugeValue, maxWatts, gaugeColor, 'Elektriciteit');
-                }
-
-                // Get today's hourly data for energy totals
-                const today = await window.P1API.getElectricityData('hours', 24, false);
-                if (today && today.chartData && today.chartData.length > 0) {
-                    const totals = this.calculateElectricityTotals(today.chartData);
-                    this.updateElement('elec-consumption-today', this.formatEnergy(totals.consumption));
-                    this.updateElement('elec-production-today', this.formatEnergy(totals.production));
-                    this.updateElement('elec-net-today', this.formatEnergy(totals.net));
-                }
-            } catch (err) {
-                P1Logger.error('Error loading electricity data:', err);
-            }
-        },
-
-        async loadGasData() {
-            const gasEl = document.getElementById('gas-current-flow');
-            if (!gasEl) return; // Gas is hidden in config
-            
-            try {
-                // Get electricity data which includes gas
-                const data = await window.P1API.getElectricityData('hours', 24, false);
-                if (data && data.chartData && data.chartData.length > 0) {
-                    // Current flow = most recent hourly delta value
-                    const latest = data.chartData[data.chartData.length - 1];
-                    const flow = parseFloat(latest.gas) || 0;
-                    this.updateElement('gas-current-flow', this.formatNumber(flow, 3) + ' m³/h');
-
-                    // Draw gauge (max 5 m³/h typical residential)
-                    this.drawGauge(this.gauges.gas, flow, 5, 'series-gas', 'Gas');
-
-                    // Calculate today's total
-                    const gasValues = data.chartData.map(d => parseFloat(d.gas) || 0);
-                    const total = this.calculateGasTotal(gasValues);
-                    this.updateElement('gas-consumption-today', this.formatNumber(total, 3) + ' m³');
-                    // Gas cost uses config value from config.php (default: €1.50/m³)
-                    const gasCost = window.P1MonConfig?.gasCostPerM3 ?? 1.50;
-                    this.updateElement('gas-cost-today', '€ ' + this.formatNumber(total * gasCost, 2));
-                }
-            } catch (err) {
-                P1Logger.error('Error loading gas data:', err);
-            }
-        },
-
-        async loadSolarData() {
-            try {
-                // Get current production
-                const response = await fetch('/custom/api/solar.php?action=current');
-                if (!response.ok) throw new Error('Solar API error');
-                const current = await response.json();
-
-                // Reported by the API when the database is missing, unreadable
-                // or uninitialised. Raising here reaches the catch below, which
-                // blanks the card rather than showing a confident zero.
-                if (current && current.error) {
-                    throw new Error(current.error);
-                }
-
-                if (current && current.power !== undefined) {
-                    const power = parseFloat(current.power) || 0;
-                    this.updateElement('solar-current-power', this.formatPower(power));
-
-                    // Draw gauge using system capacity from config.php
-                    const systemCapacity = window.P1MonConfig?.systemCapacityW ?? 3780;
-                    this.drawGauge(this.gauges.solar, power, systemCapacity, 'series-solar', 'Zonneenergie');
-                }
-
-                // Get today's totals (last 24 hours, but we'll filter to today only)
-                const todayResponse = await fetch('/custom/api/solar.php?period=hours&zoom=24');
-                if (!todayResponse.ok) throw new Error('Solar today API error');
-                const today = await todayResponse.json();
-
-                if (today && today.error) {
-                    throw new Error(today.error);
-                }
-
-                if (today && today.chartData) {
-                    // Get midnight of today (00:00:00) as Unix timestamp
-                    const now = new Date();
-                    const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-                    const midnightTimestamp = Math.floor(todayMidnight.getTime() / 1000);
-                    
-                    // Filter data to only include records from today (after midnight)
-                    const todayData = today.chartData.filter(point => {
-                        const pointTimestamp = point.unixTimestamp || 0;
-                        return pointTimestamp >= midnightTimestamp;
-                    });
-                    
-                    // Calculate totals using today's data only
-                    const totals = this.calculateSolarTotals(todayData);
-                    this.updateElement('solar-energy-today', this.formatEnergy(totals.energy));
-                    this.updateElement('solar-peak-today', this.formatPower(totals.peak));
-                    this.updateElement('solar-capacity-today', this.formatNumber(totals.capacityFactor, 1) + '%');
-                    
-                    // Update costs card with solar savings (today only)
-                    // Uses electricity cost from config.php
-                    const electricityCost = window.P1MonConfig?.electricityCostPerKwh ?? 0.30;
-                    const savings = totals.energy * electricityCost;
-                    this.updateElement('costs-solar-savings', '€ ' + this.formatNumber(savings, 2));
-                }
-            } catch (err) {
-                P1Logger.error('Error loading solar data:', err);
-                // Don't show error - solar might not be available yet
-                this.updateElement('solar-current-power', '-- W');
-                this.updateElement('solar-energy-today', '-- kWh');
-                this.updateElement('solar-peak-today', '-- W');
-                this.updateElement('solar-capacity-today', '--%');
-            }
-        },
-
-        calculateElectricityTotals(data) {
-            let consumption = 0;
-            let production = 0;
-            
-            data.forEach(point => {
-                consumption += parseFloat(point.consumption) || 0;
-                production += parseFloat(point.production) || 0;
+            points.forEach(p => {
+                const h = Math.floor((p.unixTimestamp - start) / HOUR);
+                if (h >= 0 && h < 24) keys.forEach(k => { slots[h][k] = p[k]; });
             });
-            
+            return slots;
+        },
+
+        async refreshToday() {
+            const w = this.windows();
+            const [hours, solar, financial] = await Promise.allSettled([
+                window.P1API.getHistoryHour(48),
+                this.fetchSolarHours(),
+                window.P1API.getFinancial(1)
+            ]);
+
+            const p1Rows = hours.status === 'fulfilled' && Array.isArray(hours.value) ? hours.value : null;
+            const solarPoints = solar.status === 'fulfilled' ? solar.value : null;
+            const todayCosts = financial.status === 'fulfilled' ? this.todayFinancial(financial.value) : null;
+
+            const energy = p1Rows ? this.showEnergy(p1Rows, w) : null;
+            const solarToday = this.showSolar(solarPoints, w);
+            this.showCosts(energy, solarToday, todayCosts);
+
+            this.markUpdated(!!p1Rows);
+        },
+
+        async fetchSolarHours() {
+            const response = await fetch('/custom/api/solar.php?period=hours&zoom=48');
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const payload = await response.json();
+            if (payload.error) throw new Error(payload.error);
+            return payload.chartData || [];
+        },
+
+        /**
+         * Electricity and gas cards from the P1 hourly history
+         */
+        showEnergy(rows, w) {
+            const points = rows.map(r => ({
+                unixTimestamp: parseInt(r.TIMESTAMP_UTC),
+                consumption: parseFloat(r.CONSUMPTION_DELTA_KWH) || 0,
+                production: parseFloat(r.PRODUCTION_DELTA_KWH) || 0,
+                gas: parseFloat(r.CONSUMPTION_GAS_DELTA_M3) || 0
+            }));
+
+            const sum = (list, key) => list.reduce((s, p) => s + p[key], 0);
+            const today = points.filter(p => w.isToday(p.unixTimestamp));
+            const yesterday = points.filter(p => w.isYesterdaySoFar(p.unixTimestamp));
+
+            const t = {
+                consumption: sum(today, 'consumption'),
+                production: sum(today, 'production'),
+                gas: sum(today, 'gas')
+            };
+            const y = {
+                consumption: yesterday.length ? sum(yesterday, 'consumption') : undefined,
+                gas: yesterday.length ? sum(yesterday, 'gas') : undefined
+            };
+
+            P1Section.setKpi('elec-today', {
+                value: kwh(t.consumption),
+                delta: { current: t.consumption, previous: y.consumption, goodWhen: 'down', compareLabel: COMPARE }
+            });
+            P1Utils.updateElement('elec-export-today', kwh(t.production));
+            P1Utils.updateElement('elec-net-today', kwh(t.consumption - t.production));
+            this.setSpark('elec', today, w.start, ['consumption', 'production']);
+
+            P1Section.setKpi('gas-today', {
+                value: m3(t.gas),
+                delta: { current: t.gas, previous: y.gas, goodWhen: 'down', compareLabel: COMPARE }
+            });
+            const newest = points[0];
+            P1Utils.updateElement('gas-last-hour', newest ? m3(newest.gas) : '--');
+            this.setSpark('gas', today, w.start, ['gas']);
+
+            return t;
+        },
+
+        /**
+         * Solar card; blanks itself when the solar database is unavailable
+         */
+        showSolar(points, w) {
+            if (!points) {
+                P1Section.setKpi('solar-today', { value: '--', sub: 'niet beschikbaar', delta: null });
+                P1Utils.updateElement('solar-peak-today', '--');
+                P1Utils.updateElement('solar-capacity-today', '--');
+                this.setSpark('solar', [], w.start, ['production']);
+                return null;
+            }
+
+            const today = points.filter(p => w.isToday(p.unixTimestamp));
+            const yesterday = points.filter(p => w.isYesterdaySoFar(p.unixTimestamp));
+            const sum = (list) => list.reduce((s, p) => s + (parseFloat(p.production) || 0), 0);
+            const energy = sum(today);
+
+            P1Section.setKpi('solar-today', {
+                value: kwh(energy),
+                sub: 'opgewekt vandaag',
+                delta: { current: energy, previous: yesterday.length ? sum(yesterday) : undefined, goodWhen: 'up', compareLabel: COMPARE }
+            });
+
+            const peak = today.reduce((best, p) => {
+                const v = parseFloat(p.powerMax) || parseFloat(p.power) || 0;
+                return v > best.value ? { value: v, time: p.unixTimestamp } : best;
+            }, { value: 0, time: null });
+            P1Utils.updateElement('solar-peak-today', peak.time ? `${power(peak.value)} · ${P1Utils.formatPeakTime(peak.time, 'hours')}` : '--');
+
+            // Share of what the panels could have produced since midnight
+            const capacityKW = (window.P1MonConfig?.systemCapacityW ?? 3780) / 1000;
+            const hoursSoFar = (w.now - w.start) / HOUR;
+            const factor = hoursSoFar > 0 ? (energy / (capacityKW * hoursSoFar)) * 100 : 0;
+            P1Utils.updateElement('solar-capacity-today', `${fmt(factor, 1)}%`);
+
+            this.setSpark('solar', today, w.start, ['production']);
+            return energy;
+        },
+
+        /**
+         * Today's row from /financial/day, if P1 Monitor has one for today
+         */
+        todayFinancial(rows) {
+            const row = Array.isArray(rows) ? rows[0] : null;
+            if (!row) return null;
+            const date = P1Utils.toDate(row.TIMESTAMP_lOCAL);
+            if (!date || date.toDateString() !== new Date().toDateString()) return null;
+
             return {
-                consumption: consumption,
-                production: production,
-                net: consumption - production
+                electricity: (parseFloat(row.CONSUMPTION_COST_ELECTRICITY_HIGH) || 0)
+                    + (parseFloat(row.CONSUMPTION_COST_ELECTRICITY_LOW) || 0)
+                    - (parseFloat(row.PRODUCTION_REVENUES_ELECTRICITY_HIGH) || 0)
+                    - (parseFloat(row.PRODUCTION_REVENUES_ELECTRICITY_LOW) || 0),
+                gas: parseFloat(row.CONSUMPTION_COST_GAS) || 0
             };
         },
 
-        calculateGasTotal(values) {
-            // API returns per-period deltas (CONSUMPTION_GAS_DELTA_M3), just sum them
-            return values.reduce((sum, v) => sum + v, 0);
-        },
+        showCosts(energy, solarKWh, financial) {
+            const tariff = window.P1MonConfig?.electricityCostPerKwh ?? 0.30;
+            const gasTariff = window.P1MonConfig?.gasCostPerM3 ?? 1.50;
+            const hasGas = !!document.getElementById('costs-gas-today');
 
-        calculateSolarTotals(data) {
-            let totalEnergy = 0;
-            let peakPower = 0;
-            
-            data.forEach(point => {
-                const energy = parseFloat(point.production) || 0;
-                const power = parseFloat(point.powerMax) || parseFloat(point.power) || 0;
-                totalEnergy += energy;
-                if (power > peakPower) peakPower = power;
-            });
-            
-            // Calculate capacity factor: (actual / theoretical) × 100
-            const systemCapacityKw = (window.P1MonConfig?.systemCapacityW ?? 3780) / 1000;
-            const now = new Date();
-            const hoursElapsedToday = now.getHours() + (now.getMinutes() / 60);
-            const theoreticalMax = systemCapacityKw * hoursElapsedToday;
-            const capacityFactor = theoreticalMax > 0 ? (totalEnergy / theoreticalMax) * 100 : 0;
-            
-            return {
-                energy: totalEnergy,
-                peak: peakPower,
-                capacityFactor: capacityFactor
-            };
-        },
-
-        formatPower(watts) {
-            const w = parseFloat(watts) || 0;
-            if (w >= 1000) {
-                return this.formatNumber(w / 1000, 2) + ' kW';
+            let elec = null;
+            let gas = null;
+            let estimated = false;
+            if (financial) {
+                elec = financial.electricity;
+                gas = financial.gas;
+            } else if (energy) {
+                elec = (energy.consumption - energy.production) * tariff;
+                gas = energy.gas * gasTariff;
+                estimated = true;
             }
-            return Math.round(w) + ' W';
+
+            if (elec === null) {
+                P1Section.setKpi('costs-today', { value: '--', sub: 'totaal vandaag' });
+                return;
+            }
+
+            const total = elec + (hasGas ? gas : 0);
+            P1Section.setKpi('costs-today', {
+                value: eur(total),
+                sub: estimated ? 'totaal vandaag · geschat' : 'totaal vandaag'
+            });
+            P1Utils.updateElement('costs-elec-today', eur(elec));
+            if (hasGas) {
+                P1Utils.updateElement('costs-gas-today', eur(gas));
+                P1Utils.updateElement('gas-cost-today', eur(gas));
+            }
+            P1Utils.updateElement('costs-solar-today', solarKWh === null ? '--' : eur(solarKWh * tariff));
+
+            this.showCostSplit(elec, hasGas ? gas : 0);
         },
 
-        formatEnergy(kwh) {
-            return this.formatNumber(kwh, 2) + ' kWh';
+        /**
+         * Bar showing how today's costs split between electricity and gas.
+         * Only meaningful when both are costs: with net export revenue
+         * (negative electricity) a share would mislead, so it is hidden.
+         */
+        showCostSplit(elec, gas) {
+            const bar = document.getElementById('cost-split');
+            if (!bar) return;
+
+            const total = elec + gas;
+            bar.replaceChildren();
+            bar.hidden = !(elec > 0 && gas > 0);
+            if (bar.hidden) return;
+
+            [['is-import', elec], ['is-gas', gas]].forEach(([tone, value]) => {
+                const seg = document.createElement('span');
+                seg.className = tone;
+                seg.style.flexGrow = value / total;
+                bar.appendChild(seg);
+            });
         },
 
-        formatNumber(value, decimals = 2) {
-            const v = parseFloat(value) || 0;
-            return v.toFixed(decimals);
+        setSpark(key, points, start, keys) {
+            const chart = this.sparks[key];
+            if (!chart) return;
+            chart.setData(this.daySlots(points, start, keys), 'hours');
+            chart.canvas.closest('.sparkline').dataset.state = points.length ? 'ready' : 'empty';
         },
 
-        updateElement(id, value) {
-            const el = document.getElementById(id);
-            if (el) el.textContent = value;
-        },
+        // ------------------------------------------------------------------
+        // Update status
+        // ------------------------------------------------------------------
 
-        showError(msg) {
-            const el = document.getElementById('error-container');
-            if (!el) return;
-            el.textContent = '';
-            const div = document.createElement('div');
-            div.className = 'error';
-            div.textContent = msg;
-            el.appendChild(div);
-        },
+        markUpdated(ok) {
+            const el = document.getElementById('update-status');
+            const text = document.getElementById('update-status-text');
+            if (!el || !text) return;
 
-        hideError() {
-            const el = document.getElementById('error-container');
-            if (el) el.textContent = '';
-        },
+            const time = (d) => d.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
-        destroy() {
-            if (this.updateInterval) clearInterval(this.updateInterval);
-            if (this.updateTimer) clearInterval(this.updateTimer);
+            if (ok) {
+                this.lastUpdate = new Date();
+                el.dataset.state = 'ok';
+                text.textContent = `Bijgewerkt ${time(this.lastUpdate)}`;
+            } else {
+                el.dataset.state = 'stale';
+                text.textContent = this.lastUpdate
+                    ? `Geen verbinding · laatste update ${time(this.lastUpdate)}`
+                    : 'Geen verbinding met P1 Monitor';
+            }
         }
     };
 
-    // Auto-init when on dashboard page
-    document.addEventListener('DOMContentLoaded', () => {
-        if (window.P1MonConfig && window.P1MonConfig.currentPage === 'dashboard') {
-            DashboardManager.init();
-        }
-    });
+    function start() {
+        if (document.body.dataset.page === 'dashboard') Dashboard.init();
+    }
 
-    // Cleanup on page unload
-    window.addEventListener('beforeunload', () => {
-        DashboardManager.destroy();
-    });
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', start);
+    } else {
+        start();
+    }
+
+    window.Dashboard = Dashboard;
 
 })();

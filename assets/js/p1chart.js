@@ -25,7 +25,10 @@
  *   });
  *   chart.setData(points, 'hours', { temperature: true });
  *
- * Each point needs `unixTimestamp` (seconds) plus one field per series key.
+ * Each point needs `unixTimestamp` (seconds) plus one field per series key;
+ * a value of null leaves that slot empty (e.g. the rest of today).
+ *
+ * `compact: true` draws a sparkline: no axes, grid or legend, tooltips kept.
  * With temperature enabled, points may carry tempMin, tempAvg and tempMax.
  */
 
@@ -141,9 +144,9 @@
                         type: 'bar',
                         backgroundColor: c,
                         hoverBackgroundColor: c,
-                        borderRadius: 3,
-                        categoryPercentage: 0.8,
-                        barPercentage: 0.9,
+                        borderRadius: this.config.compact ? 2 : 3,
+                        categoryPercentage: this.config.compact ? 0.9 : 0.8,
+                        barPercentage: this.config.compact ? 0.95 : 0.9,
                         order: 2
                     });
                 }
@@ -185,12 +188,12 @@
             const y2 = Object.assign({ unit: '', decimals: 2 }, cfg.axes.y2 || {});
             const y2Visible = cfg.series.some(s => s.axis === 'y2' && !this.hidden.has(s.key));
 
-            return {
+            const options = {
                 responsive: true,
                 maintainAspectRatio: false,
                 animation: prefersReducedMotion() ? false : { duration: 250 },
                 interaction: { mode: 'index', intersect: false },
-                layout: { padding: { top: 4 } },
+                layout: { padding: cfg.compact ? 0 : { top: 4 } },
                 plugins: {
                     legend: { display: false },
                     // Area fills (the temperature band) go behind the bars
@@ -276,6 +279,15 @@
                     }
                 }
             };
+
+            if (cfg.compact) {
+                Object.values(options.scales).forEach(scale => {
+                    scale.display = false;
+                });
+                options.scales.y.grace = '5%';
+            }
+
+            return options;
         },
 
         /**
