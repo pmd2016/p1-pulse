@@ -165,12 +165,12 @@
                 const prodHeight = (point.production / maxValue) * graphHeight;
 
                 // Draw consumption bar (orange)
-                this.ctx.fillStyle = '#f59e0b';
+                this.ctx.fillStyle = ChartBase.color('series-import');
                 this.ctx.fillRect(x, paddingTop + graphHeight - consHeight, barWidth, consHeight);
 
                 // Draw production bar (green)
                 if (point.production > 0) {
-                    this.ctx.fillStyle = '#10b981';
+                    this.ctx.fillStyle = ChartBase.color('series-export');
                     this.ctx.fillRect(x, paddingTop + graphHeight - prodHeight, barWidth, prodHeight);
                 }
 
@@ -184,7 +184,7 @@
 
             // Draw net consumption line
             if (this.showNet && netLinePoints.length > 1) {
-                ChartBase.drawSmoothLine(this.ctx, netLinePoints, '#64748b', 2);
+                ChartBase.drawSmoothLine(this.ctx, netLinePoints, ChartBase.color('series-net'), 2);
             }
 
             // Draw temperature lines if enabled
@@ -212,16 +212,16 @@
             const header = ChartBase.formatTooltipTime(date, this.currentPeriod);
 
             const lines = [
-                { text: `Verbruik: ${ChartBase.formatNumber(point.consumption, 3)} kWh`, color: '#f59e0b' },
-                { text: `Productie: ${ChartBase.formatNumber(point.production, 3)} kWh`, color: '#10b981' },
-                { text: `Netto: ${ChartBase.formatNumber(point.net, 3)} kWh`, color: '#64748b' }
+                { text: `Verbruik: ${ChartBase.formatNumber(point.consumption, 3)} kWh`, color: ChartBase.color('series-import') },
+                { text: `Productie: ${ChartBase.formatNumber(point.production, 3)} kWh`, color: ChartBase.color('series-export') },
+                { text: `Netto: ${ChartBase.formatNumber(point.net, 3)} kWh`, color: ChartBase.color('series-net') }
             ];
 
             // Add temperature if available
             if (this.showTemp && point.tempMin !== undefined) {
-                lines.push({ text: `Max: ${point.tempMax.toFixed(1)}°C`, color: '#ef4444' });
-                lines.push({ text: `Gem: ${point.tempAvg.toFixed(1)}°C`, color: '#374151' });
-                lines.push({ text: `Min: ${point.tempMin.toFixed(1)}°C`, color: '#3b82f6' });
+                lines.push({ text: `Max: ${point.tempMax.toFixed(1)}°C`, color: ChartBase.color('series-temp-max') });
+                lines.push({ text: `Gem: ${point.tempAvg.toFixed(1)}°C`, color: ChartBase.color('series-temp-avg') });
+                lines.push({ text: `Min: ${point.tempMin.toFixed(1)}°C`, color: ChartBase.color('series-temp-min') });
             }
 
             return { header, lines };

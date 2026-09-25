@@ -1,57 +1,96 @@
 /**
- * CSS Variables for Theme System
- * Supports both light and dark themes
+ * Design tokens
+ *
+ * Theme resolution:
+ *   html[data-theme="light"|"dark"]  explicit choice (stored in localStorage)
+ *   no data-theme attribute          follows prefers-color-scheme
+ *
+ * Breakpoints (use min-width, mobile first):
+ *   phone   < 600px
+ *   tablet  600px - 1023px   (sidebar is off-canvas below 1024px)
+ *   desktop >= 1024px
  */
 
 :root {
-    /* Light theme colors */
-    --bg-primary-light: #f8fafc;
-    --bg-secondary-light: #ffffff;
-    --bg-card-light: #ffffff;
-    --bg-hover-light: #f1f5f9;
-    --text-primary-light: #0f172a;
-    --text-secondary-light: #64748b;
-    --border-color-light: #e2e8f0;
-    --shadow-light: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
-    --shadow-hover-light: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
-    
-    /* Dark theme colors */
-    --bg-primary-dark: #0f172a;
-    --bg-secondary-dark: #1e293b;
-    --bg-card-dark: #1e293b;
-    --bg-hover-dark: #334155;
-    --text-primary-dark: #f1f5f9;
-    --text-secondary-dark: #94a3b8;
-    --border-color-dark: #334155;
-    --shadow-dark: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
-    --shadow-hover-dark: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
-    
-    /* Accent colors (same for both themes) */
-    --accent-consumption: #f59e0b;
-    --accent-consumption-light: #fef3c7;
-    --accent-consumption-dark: #78350f;
-    
-    --accent-production: #10b981;
-    --accent-production-light: #d1fae5;
-    --accent-production-dark: #064e3b;
-    
-    --accent-gas: #3b82f6;
-    --accent-gas-light: #dbeafe;
-    --accent-gas-dark: #1e3a8a;
-    
-    --accent-water: #06b6d4;
-    --accent-water-light: #cffafe;
-    --accent-water-dark: #164e63;
-    
-    --accent-solar: #f59e0b;
-    --accent-cost: #8b5cf6;
-    
+    /* ---- Palette: light ---- */
+    --bg-primary: #f8fafc;
+    --bg-secondary: #ffffff;
+    --bg-card: #ffffff;
+    --bg-hover: #f1f5f9;
+    --text-primary: #0f172a;
+    --text-secondary: #64748b;
+    --border-color: #e2e8f0;
+    --border-strong: #cbd5e1;
+    --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+    --shadow-hover: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+    --overlay: rgba(15, 23, 42, 0.5);
+
+    /* ---- Brand / UI accents ---- */
+    --accent-primary: #10b981;
+    --accent-primary-hover: #059669;
+    --accent-on-primary: #ffffff;
     --accent-danger: #ef4444;
     --accent-warning: #f59e0b;
     --accent-success: #10b981;
     --accent-info: #3b82f6;
-    
-    /* Spacing scale */
+
+    /*
+     * ---- Data series ----
+     * One colour per meaning, used by CSS (legends, icons, values) and read
+     * by the charts via ChartBase.color('series-…'). Never hard-code these
+     * in JS.
+     */
+    --series-import: #f59e0b;        /* electricity taken from the grid */
+    --series-export: #10b981;        /* electricity delivered to the grid */
+    --series-net: #64748b;           /* import - export */
+    --series-solar: #10b981;         /* solar production (energy) */
+    --series-solar-power: #047857;   /* solar production (rate, W) */
+    --series-gas: #3b82f6;
+    --series-water: #06b6d4;
+    --series-cost: #8b5cf6;
+    --series-degreedays: #a855f7;
+    --series-temp-max: #ef4444;
+    --series-temp-avg: #dc2626;
+    --series-temp-min: #f87171;
+    --series-temp-band: rgba(239, 68, 68, 0.08);
+
+    /* Soft tints for icon backgrounds */
+    --tint-import: #fef3c7;
+    --tint-export: #d1fae5;
+    --tint-solar: #d1fae5;
+    --tint-gas: #dbeafe;
+    --tint-water: #cffafe;
+    --tint-cost: #ede9fe;
+    --tint-neutral: #f1f5f9;
+
+    /* Chart chrome */
+    --chart-grid: #e2e8f0;
+    --chart-text: #64748b;
+    --chart-tooltip-bg: #ffffff;
+    --chart-tooltip-border: #e2e8f0;
+    --chart-hover-line: #94a3b8;
+
+    /* ---- Legacy aliases (kept so older selectors keep working) ---- */
+    --accent-consumption: var(--series-import);
+    --accent-production: var(--accent-primary);
+    --accent-production-dark: var(--accent-primary-hover);
+    --accent-gas: var(--series-gas);
+    --accent-water: var(--series-water);
+    --accent-solar: var(--series-solar);
+    --accent-cost: var(--series-cost);
+
+    /* ---- Typography ---- */
+    --font-sans: "Outfit", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --text-xs: 0.75rem;     /* 12px */
+    --text-sm: 0.875rem;    /* 14px */
+    --text-base: 1rem;      /* 16px */
+    --text-lg: 1.125rem;    /* 18px */
+    --text-xl: 1.25rem;     /* 20px */
+    --text-2xl: 1.5rem;     /* 24px */
+    --text-3xl: 1.75rem;    /* 28px */
+    --text-4xl: 2.25rem;    /* 36px */
+
+    /* ---- Spacing ---- */
     --space-1: 0.25rem;  /* 4px */
     --space-2: 0.5rem;   /* 8px */
     --space-3: 0.75rem;  /* 12px */
@@ -61,68 +100,106 @@
     --space-8: 2rem;     /* 32px */
     --space-10: 2.5rem;  /* 40px */
     --space-12: 3rem;    /* 48px */
-    
-    /* Border radius */
-    --radius-sm: 0.375rem;  /* 6px */
-    --radius-md: 0.5rem;    /* 8px */
-    --radius-lg: 0.75rem;   /* 12px */
-    --radius-xl: 1rem;      /* 16px */
+
+    /* ---- Radius ---- */
+    --radius-sm: 0.375rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 0.75rem;
+    --radius-xl: 1rem;
     --radius-full: 9999px;
-    
-    /* Transitions */
+
+    /* ---- Motion ---- */
     --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
     --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
     --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
-    
-    /* Sidebar */
+
+    /* ---- Layout ---- */
     --sidebar-width: 240px;
     --sidebar-collapsed-width: 80px;
     --header-height: 64px;
-    
-    /* Z-index scale */
+    --touch-target: 44px;
+
+    /* ---- Z-index ---- */
     --z-header: 100;
     --z-sidebar: 90;
     --z-modal: 1000;
     --z-tooltip: 1100;
+
+    color-scheme: light;
 }
 
-/* Light theme (default) */
-.light-theme {
-    --bg-primary: var(--bg-primary-light);
-    --bg-secondary: var(--bg-secondary-light);
-    --bg-card: var(--bg-card-light);
-    --bg-hover: var(--bg-hover-light);
-    --text-primary: var(--text-primary-light);
-    --text-secondary: var(--text-secondary-light);
-    --border-color: var(--border-color-light);
-    --shadow: var(--shadow-light);
-    --shadow-hover: var(--shadow-hover-light);
+/* ---- Palette: dark ---- */
+/* Declared twice: once for an explicit choice, once for the system fallback. */
+:root[data-theme="dark"] {
+    --bg-primary: #0f172a;
+    --bg-secondary: #1e293b;
+    --bg-card: #1e293b;
+    --bg-hover: #334155;
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --border-color: #334155;
+    --border-strong: #475569;
+    --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
+    --shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
+    --overlay: rgba(0, 0, 0, 0.6);
+
+    --series-net: #94a3b8;
+    --series-solar-power: #6ee7b7;
+    --series-temp-avg: #f87171;
+    --series-temp-min: #fca5a5;
+    --series-temp-band: rgba(248, 113, 113, 0.10);
+
+    --tint-import: #78350f;
+    --tint-export: #064e3b;
+    --tint-solar: #064e3b;
+    --tint-gas: #1e3a8a;
+    --tint-water: #164e63;
+    --tint-cost: #4c1d95;
+    --tint-neutral: #334155;
+
+    --chart-grid: #334155;
+    --chart-text: #94a3b8;
+    --chart-tooltip-bg: #1e293b;
+    --chart-tooltip-border: #475569;
+    --chart-hover-line: #64748b;
+
+    color-scheme: dark;
 }
 
-/* Dark theme */
-.dark-theme {
-    --bg-primary: var(--bg-primary-dark);
-    --bg-secondary: var(--bg-secondary-dark);
-    --bg-card: var(--bg-card-dark);
-    --bg-hover: var(--bg-hover-dark);
-    --text-primary: var(--text-primary-dark);
-    --text-secondary: var(--text-secondary-dark);
-    --border-color: var(--border-color-dark);
-    --shadow: var(--shadow-dark);
-    --shadow-hover: var(--shadow-hover-dark);
-}
-
-/* Respect user's system preference if no theme is set */
 @media (prefers-color-scheme: dark) {
-    :root {
-        --bg-primary: var(--bg-primary-dark);
-        --bg-secondary: var(--bg-secondary-dark);
-        --bg-card: var(--bg-card-dark);
-        --bg-hover: var(--bg-hover-dark);
-        --text-primary: var(--text-primary-dark);
-        --text-secondary: var(--text-secondary-dark);
-        --border-color: var(--border-color-dark);
-        --shadow: var(--shadow-dark);
-        --shadow-hover: var(--shadow-hover-dark);
+    :root:not([data-theme]) {
+        --bg-primary: #0f172a;
+        --bg-secondary: #1e293b;
+        --bg-card: #1e293b;
+        --bg-hover: #334155;
+        --text-primary: #f1f5f9;
+        --text-secondary: #94a3b8;
+        --border-color: #334155;
+        --border-strong: #475569;
+        --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
+        --shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
+        --overlay: rgba(0, 0, 0, 0.6);
+
+        --series-net: #94a3b8;
+        --series-solar-power: #6ee7b7;
+        --series-temp-avg: #f87171;
+        --series-temp-min: #fca5a5;
+        --series-temp-band: rgba(248, 113, 113, 0.10);
+
+        --tint-import: #78350f;
+        --tint-export: #064e3b;
+        --tint-solar: #064e3b;
+        --tint-gas: #1e3a8a;
+        --tint-water: #164e63;
+        --tint-cost: #4c1d95;
+        --tint-neutral: #334155;
+
+        --chart-grid: #334155;
+        --chart-text: #94a3b8;
+        --chart-tooltip-bg: #1e293b;
+        --chart-tooltip-border: #475569;
+        --chart-hover-line: #64748b;
+
+        color-scheme: dark;
     }
 }

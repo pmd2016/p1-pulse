@@ -11,19 +11,19 @@
                 <!-- Period selector tabs -->
                 <div class="period-tabs">
                     <button class="period-tab active" data-period="hours">
-                        <span class="tab-icon">🕐</span>
+                        <span class="tab-icon"><?php echo icon('clock', 16); ?></span>
                         <span class="tab-label">Uren</span>
                     </button>
                     <button class="period-tab" data-period="days">
-                        <span class="tab-icon">📅</span>
+                        <span class="tab-icon"><?php echo icon('calendar', 16); ?></span>
                         <span class="tab-label">Dagen</span>
                     </button>
                     <button class="period-tab" data-period="months">
-                        <span class="tab-icon">📆</span>
+                        <span class="tab-icon"><?php echo icon('calendar-range', 16); ?></span>
                         <span class="tab-label">Maanden</span>
                     </button>
                     <button class="period-tab" data-period="years">
-                        <span class="tab-icon">📈</span>
+                        <span class="tab-icon"><?php echo icon('trending-up', 16); ?></span>
                         <span class="tab-label">Jaren</span>
                     </button>
                 </div>
@@ -31,8 +31,8 @@
                 <!-- Statistics cards -->
                 <div class="stats-section">
                     <div class="stats-grid" id="solar-stats">
-                        <div class="stat-card production">
-                            <div class="stat-icon">☀️</div>
+                        <div class="stat-card is-solar">
+                            <div class="stat-icon"><?php echo icon('activity'); ?></div>
                             <div class="stat-content">
                                 <div class="stat-label">Huidig Vermogen</div>
                                 <div class="stat-value" id="stat-current-power">-- W</div>
@@ -40,8 +40,8 @@
                             </div>
                         </div>
                         
-                        <div class="stat-card energy">
-                            <div class="stat-icon">⚡</div>
+                        <div class="stat-card is-solar">
+                            <div class="stat-icon"><?php echo icon('sun'); ?></div>
                             <div class="stat-content">
                                 <div class="stat-label">Totaal Opgewekt</div>
                                 <div class="stat-value" id="stat-total-energy">-- kWh</div>
@@ -49,8 +49,8 @@
                             </div>
                         </div>
                         
-                        <div class="stat-card peak">
-                            <div class="stat-icon">🔼</div>
+                        <div class="stat-card is-neutral">
+                            <div class="stat-icon"><?php echo icon('arrow-up'); ?></div>
                             <div class="stat-content">
                                 <div class="stat-label">Piek Vermogen</div>
                                 <div class="stat-value" id="stat-peak-power">-- W</div>
@@ -58,8 +58,8 @@
                             </div>
                         </div>
                         
-                        <div class="stat-card capacity">
-                            <div class="stat-icon">📊</div>
+                        <div class="stat-card is-neutral">
+                            <div class="stat-icon"><?php echo icon('percent'); ?></div>
                             <div class="stat-content">
                                 <div class="stat-label">Capaciteitsfactor</div>
                                 <div class="stat-value" id="stat-capacity-factor">--%</div>
@@ -67,8 +67,8 @@
                             </div>
                         </div>
                         
-                        <div class="stat-card sunlight">
-                            <div class="stat-icon">🌤️</div>
+                        <div class="stat-card is-neutral">
+                            <div class="stat-icon"><?php echo icon('cloud-sun'); ?></div>
                             <div class="stat-content">
                                 <div class="stat-label">Zonuren</div>
                                 <div class="stat-value" id="stat-sunlight-hours">-- uur</div>
@@ -114,24 +114,24 @@
                         <div class="chart-header">
                             <h3 class="chart-title">Zonne-energie Productie</h3>
                             <div class="chart-legend">
-                                <span class="legend-item production">
+                                <span class="legend-item solar">
                                     <span class="legend-color"></span>
                                     <span class="legend-text">Productie (kWh)</span>
                                 </span>
-                                <span class="legend-item power">
+                                <span class="legend-item power line">
                                     <span class="legend-color"></span>
                                     <span class="legend-text">Vermogen (W)</span>
                                 </span>
-                                <span class="legend-item temp-max" id="legend-temp-max" style="display: none;">
-                                    <span class="legend-color" style="background: #ef4444; border-style: dashed;"></span>
+                                <span class="legend-item temp-max line dashed" id="legend-temp-max" style="display: none;">
+                                    <span class="legend-color"></span>
                                     <span class="legend-text">Temp Max</span>
                                 </span>
-                                <span class="legend-item temp-avg" id="legend-temp-avg" style="display: none;">
-                                    <span class="legend-color" style="background: #f59e0b;"></span>
+                                <span class="legend-item temp-avg line" id="legend-temp-avg" style="display: none;">
+                                    <span class="legend-color"></span>
                                     <span class="legend-text">Temp Gem</span>
                                 </span>
-                                <span class="legend-item temp-min" id="legend-temp-min" style="display: none;">
-                                    <span class="legend-color" style="background: #3b82f6; border-style: dashed;"></span>
+                                <span class="legend-item temp-min line dashed" id="legend-temp-min" style="display: none;">
+                                    <span class="legend-color"></span>
                                     <span class="legend-text">Temp Min</span>
                                 </span>
                             </div>

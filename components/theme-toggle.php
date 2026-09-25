@@ -1,4 +1,4 @@
-<button id="theme-toggle" class="icon-button theme-toggle" aria-label="Toggle theme">
+<button id="theme-toggle" class="icon-button theme-toggle" aria-label="Wissel licht/donker thema" title="Wissel thema">
             <svg class="sun-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="12" cy="12" r="5"></circle>
                 <line x1="12" y1="1" x2="12" y2="3"></line>

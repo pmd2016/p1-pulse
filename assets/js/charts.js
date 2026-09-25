@@ -114,6 +114,7 @@
                     this.loadData();
 
                     window.addEventListener('resize', () => this.redrawChart());
+                    document.addEventListener('themechange', () => this.redrawChart());
                 },
 
                 /**
@@ -272,15 +273,29 @@
          * Get current theme colors
          */
         getThemeColors() {
-            const isDark = document.body.classList.contains('dark-theme');
             return {
-                isDark,
-                gridColor: isDark ? '#334155' : '#e2e8f0',
-                textColor: isDark ? '#94a3b8' : '#64748b',
-                tooltipBg: isDark ? '#1e293b' : '#ffffff',
-                tooltipBorder: isDark ? '#475569' : '#e2e8f0',
-                hoverLine: isDark ? '#64748b' : '#94a3b8'
+                isDark: window.ThemeManager ? window.ThemeManager.getCurrentTheme() === 'dark' : false,
+                gridColor: this.color('chart-grid'),
+                textColor: this.color('chart-text'),
+                tooltipBg: this.color('chart-tooltip-bg'),
+                tooltipBorder: this.color('chart-tooltip-border'),
+                hoverLine: this.color('chart-hover-line')
             };
+        },
+
+        /**
+         * Read a design token from CSS, e.g. color('series-gas').
+         * Series colours live in variables.css; never hard-code them in JS.
+         */
+        color(name) {
+            return getComputedStyle(document.documentElement).getPropertyValue('--' + name).trim();
+        },
+
+        /**
+         * Phone breakpoint, matches the 600px breakpoint in the CSS
+         */
+        isPhone() {
+            return window.innerWidth < 600;
         },
 
         /**
@@ -387,7 +402,7 @@
             const { paddingLeft, paddingBottom, graphWidth, height } = dimensions;
             const dataCount = data.length;
             const totalBarWidth = graphWidth / dataCount;
-            const isMobile = window.innerWidth <= 768;
+            const isMobile = this.isPhone();
 
             ctx.fillStyle = theme.textColor;
             ctx.textAlign = 'center';
@@ -670,7 +685,7 @@
 
             // Fill area between min and max
             if (maxPoints.length > 1 && minPoints.length > 1) {
-                ctx.fillStyle = 'rgba(59, 130, 246, 0.1)';
+                ctx.fillStyle = this.color('series-temp-band');
                 ctx.beginPath();
                 ctx.moveTo(minPoints[0].x, minPoints[0].y);
 
@@ -706,9 +721,9 @@
             }
 
             // Draw lines
-            this.drawSmoothLine(ctx, maxPoints, '#ef4444', 2, true);  // Red, dashed
-            this.drawSmoothLine(ctx, avgPoints, '#374151', 2.5, false); // Dark gray, solid
-            this.drawSmoothLine(ctx, minPoints, '#3b82f6', 2, true);  // Blue, dashed
+            this.drawSmoothLine(ctx, maxPoints, this.color('series-temp-max'), 2, true);
+            this.drawSmoothLine(ctx, avgPoints, this.color('series-temp-avg'), 2.5, false);
+            this.drawSmoothLine(ctx, minPoints, this.color('series-temp-min'), 2, true);
         },
 
         /**
@@ -719,7 +734,7 @@
 
             const { paddingLeft, paddingTop, graphWidth, graphHeight } = dimensions;
             const rightX = paddingLeft + graphWidth;
-            const isMobile = window.innerWidth <= 768;
+            const isMobile = this.isPhone();
 
             // Draw axis line
             ctx.strokeStyle = theme.textColor;

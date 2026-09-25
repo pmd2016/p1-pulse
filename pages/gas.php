@@ -11,19 +11,19 @@
                 <!-- Period selector tabs -->
                 <div class="period-tabs">
                     <button class="period-tab active" data-period="hours">
-                        <span class="tab-icon">🕐</span>
+                        <span class="tab-icon"><?php echo icon('clock', 16); ?></span>
                         <span class="tab-label">Uren</span>
                     </button>
                     <button class="period-tab" data-period="days">
-                        <span class="tab-icon">📅</span>
+                        <span class="tab-icon"><?php echo icon('calendar', 16); ?></span>
                         <span class="tab-label">Dagen</span>
                     </button>
                     <button class="period-tab" data-period="months">
-                        <span class="tab-icon">📆</span>
+                        <span class="tab-icon"><?php echo icon('calendar-range', 16); ?></span>
                         <span class="tab-label">Maanden</span>
                     </button>
                     <button class="period-tab" data-period="years">
-                        <span class="tab-icon">📈</span>
+                        <span class="tab-icon"><?php echo icon('trending-up', 16); ?></span>
                         <span class="tab-label">Jaren</span>
                     </button>
                 </div>
@@ -31,8 +31,8 @@
                 <!-- Statistics cards -->
                 <div class="stats-section">
                     <div class="stats-grid" id="gas-stats">
-                        <div class="stat-card consumption">
-                            <div class="stat-icon">🔥</div>
+                        <div class="stat-card is-gas">
+                            <div class="stat-icon"><?php echo icon('flame'); ?></div>
                             <div class="stat-content">
                                 <div class="stat-label">Totaal Verbruik</div>
                                 <div class="stat-value" id="stat-total-gas">-- m³</div>
@@ -40,8 +40,8 @@
                             </div>
                         </div>
                         
-                        <div class="stat-card cost">
-                            <div class="stat-icon">💰</div>
+                        <div class="stat-card is-cost">
+                            <div class="stat-icon"><?php echo icon('euro'); ?></div>
                             <div class="stat-content">
                                 <div class="stat-label">Kosten</div>
                                 <div class="stat-value" id="stat-gas-cost">€ --</div>
@@ -49,8 +49,8 @@
                             </div>
                         </div>
                         
-                        <div class="stat-card average">
-                            <div class="stat-icon">📊</div>
+                        <div class="stat-card is-neutral">
+                            <div class="stat-icon"><?php echo icon('bar-chart'); ?></div>
                             <div class="stat-content">
                                 <div class="stat-label">Gemiddeld</div>
                                 <div class="stat-value" id="stat-gas-average">-- m³</div>
@@ -58,8 +58,8 @@
                             </div>
                         </div>
                         
-                        <div class="stat-card flow">
-                            <div class="stat-icon">💨</div>
+                        <div class="stat-card is-gas">
+                            <div class="stat-icon"><?php echo icon('activity'); ?></div>
                             <div class="stat-content">
                                 <div class="stat-label">Huidige Debiet</div>
                                 <div class="stat-value" id="stat-gas-flow">-- m³/h</div>
@@ -67,8 +67,8 @@
                             </div>
                         </div>
                         
-                        <div class="stat-card peak">
-                            <div class="stat-icon">🔼</div>
+                        <div class="stat-card is-neutral">
+                            <div class="stat-icon"><?php echo icon('arrow-up'); ?></div>
                             <div class="stat-content">
                                 <div class="stat-label">Piek Moment</div>
                                 <div class="stat-value" id="stat-gas-peak">-- m³</div>
@@ -114,23 +114,23 @@
                         <div class="chart-header">
                             <h3 class="chart-title">Gasverbruik</h3>
                             <div class="chart-legend">
-                                <span class="legend-item consumption">
+                                <span class="legend-item gas">
                                     <span class="legend-color"></span>
                                     <span class="legend-text">Verbruik (m³)</span>
                                 </span>
-                                <span class="legend-item degree-days" id="legend-degree-days">
+                                <span class="legend-item degree-days line" id="legend-degree-days">
                                     <span class="legend-color"></span>
                                     <span class="legend-text">Graaddagen</span>
                                 </span>
-                                <span class="legend-item temp-max" id="legend-temp-max" style="display: none;">
+                                <span class="legend-item temp-max line dashed" id="legend-temp-max" style="display: none;">
                                     <span class="legend-color"></span>
                                     <span class="legend-text">Temp Max</span>
                                 </span>
-                                <span class="legend-item temp-avg" id="legend-temp-avg" style="display: none;">
+                                <span class="legend-item temp-avg line" id="legend-temp-avg" style="display: none;">
                                     <span class="legend-color"></span>
                                     <span class="legend-text">Temp Gem</span>
                                 </span>
-                                <span class="legend-item temp-min" id="legend-temp-min" style="display: none;">
+                                <span class="legend-item temp-min line dashed" id="legend-temp-min" style="display: none;">
                                     <span class="legend-color"></span>
                                     <span class="legend-text">Temp Min</span>
                                 </span>

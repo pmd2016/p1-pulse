@@ -18,7 +18,7 @@
                     <div class="dashboard-card electricity-card">
                         <div class="card-header">
                             <h3 class="card-title">
-                                <span class="card-icon">⚡</span>
+                                <span class="card-icon"><?php echo icon('zap', 22); ?></span>
                                 Elektriciteit
                             </h3>
                             <a href="?page=electricity" class="card-link">Details →</a>
@@ -53,7 +53,7 @@
                     <div class="dashboard-card gas-card">
                         <div class="card-header">
                             <h3 class="card-title">
-                                <span class="card-icon">🔥</span>
+                                <span class="card-icon"><?php echo icon('flame', 22); ?></span>
                                 Gas
                             </h3>
                             <a href="?page=gas" class="card-link">Details →</a>
@@ -84,7 +84,7 @@
                     <div class="dashboard-card solar-card">
                         <div class="card-header">
                             <h3 class="card-title">
-                                <span class="card-icon">☀️</span>
+                                <span class="card-icon"><?php echo icon('sun', 22); ?></span>
                                 Zonnepanelen
                             </h3>
                             <a href="?page=solar" class="card-link">Details →</a>
@@ -119,7 +119,7 @@
                     <div class="dashboard-card water-card">
                         <div class="card-header">
                             <h3 class="card-title">
-                                <span class="card-icon">💧</span>
+                                <span class="card-icon"><?php echo icon('droplet', 22); ?></span>
                                 Water
                             </h3>
                             <a href="?page=water" class="card-link">Details →</a>
@@ -150,7 +150,7 @@
                     <div class="dashboard-card costs-card">
                         <div class="card-header">
                             <h3 class="card-title">
-                                <span class="card-icon">💰</span>
+                                <span class="card-icon"><?php echo icon('euro', 22); ?></span>
                                 Kosten Overzicht
                             </h3>
                             <a href="?page=costs" class="card-link">Details →</a>

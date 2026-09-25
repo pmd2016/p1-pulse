@@ -110,16 +110,12 @@
             ChartBase.drawYAxis(this.ctx, dimensions, theme, ticks, niceMax, 'kWh');
             ChartBase.drawXAxisLine(this.ctx, dimensions, theme);
 
-            // Draw production bars with gradient
+            // Draw production bars
             const count = values.length;
             const totalBarWidth = graphWidth / count;
             const barWidth = Math.max(totalBarWidth - 2, 1);
 
-            const gradient = this.ctx.createLinearGradient(0, paddingTop, 0, height - paddingBottom);
-            gradient.addColorStop(0, '#fbbf24');
-            gradient.addColorStop(1, '#f59e0b');
-
-            this.ctx.fillStyle = gradient;
+            this.ctx.fillStyle = ChartBase.color('series-solar');
 
             values.forEach((v, idx) => {
                 const x = paddingLeft + idx * totalBarWidth + 1;
@@ -150,8 +146,8 @@
             const power = parseFloat(point.power) || 0;
 
             const lines = [
-                { text: `Productie: ${ChartBase.formatNumber(production, 3)} kWh`, color: '#f59e0b' },
-                { text: `Vermogen: ${ChartBase.formatNumber(power, 0)} W`, color: '#ea580c' }
+                { text: `Productie: ${ChartBase.formatNumber(production, 3)} kWh`, color: ChartBase.color('series-solar') },
+                { text: `Vermogen: ${ChartBase.formatNumber(power, 0)} W`, color: ChartBase.color('series-solar-power') }
             ];
 
             if (this.showTemp && this.temperatureData) {
@@ -159,7 +155,7 @@
                 if (tempData) {
                     lines.push({
                         text: `Temp: ${ChartBase.formatNumber(tempData.min, 1)}°C - ${ChartBase.formatNumber(tempData.max, 1)}°C`,
-                        color: '#666'
+                        color: ChartBase.color('series-temp-avg')
                     });
                 }
             }
@@ -340,7 +336,7 @@
                 y: paddingTop + graphHeight - ((power / maxPower) * graphHeight * 0.7)
             }));
 
-            this.ctx.strokeStyle = '#ea580c';
+            this.ctx.strokeStyle = ChartBase.color('series-solar-power');
             this.ctx.lineWidth = 2;
             this.ctx.beginPath();
 
@@ -358,94 +354,13 @@
         drawTemperatureOverlay(dimensions, theme) {
             if (!this.temperatureData) return;
 
-            const { paddingLeft, paddingTop, paddingRight, graphWidth, graphHeight } = dimensions;
+            // Align weather readings with the bars; gaps stay null
+            const tempData = this.data.map(point => this.temperatureData[point.unixTimestamp] || null);
+            const tempScale = ChartBase.calculateTemperatureScale(tempData);
+            if (!tempScale) return;
 
-            // Find temperature range
-            let minTemp = Infinity;
-            let maxTemp = -Infinity;
-
-            this.data.forEach(point => {
-                const ts = point.unixTimestamp;
-                const tempData = this.temperatureData[ts];
-                if (tempData) {
-                    minTemp = Math.min(minTemp, tempData.min);
-                    maxTemp = Math.max(maxTemp, tempData.max);
-                }
-            });
-
-            if (!isFinite(minTemp) || !isFinite(maxTemp)) return;
-
-            const tempPadding = (maxTemp - minTemp) * 0.1;
-            minTemp -= tempPadding;
-            maxTemp += tempPadding;
-            const tempRange = maxTemp - minTemp;
-            const tempScale = { min: minTemp, max: maxTemp, range: tempRange };
-
-            // Draw temperature axis
-            const rightX = paddingLeft + graphWidth;
-            this.ctx.strokeStyle = '#666';
-            this.ctx.lineWidth = 1;
-            this.ctx.beginPath();
-            this.ctx.moveTo(rightX, paddingTop);
-            this.ctx.lineTo(rightX, paddingTop + graphHeight);
-            this.ctx.stroke();
-
-            this.ctx.fillStyle = '#666';
-            this.ctx.font = '11px sans-serif';
-            this.ctx.textAlign = 'left';
-
-            for (let i = 0; i <= 4; i++) {
-                const ratio = i / 4;
-                const temp = minTemp + (tempRange * ratio);
-                const y = paddingTop + graphHeight - (ratio * graphHeight);
-
-                this.ctx.beginPath();
-                this.ctx.moveTo(rightX, y);
-                this.ctx.lineTo(rightX + 5, y);
-                this.ctx.stroke();
-
-                this.ctx.fillText(`${Math.round(temp)}°C`, rightX + 8, y + 4);
-            }
-
-            const getTempY = (temp) => {
-                const ratio = (temp - minTemp) / tempRange;
-                return paddingTop + graphHeight - (ratio * graphHeight);
-            };
-
-            const totalBarWidth = graphWidth / this.data.length;
-
-            // Draw temperature lines
-            ['max', 'avg', 'min'].forEach(type => {
-                const colors = { max: '#ef4444', avg: '#f59e0b', min: '#3b82f6' };
-                const dashed = type !== 'avg';
-
-                this.ctx.strokeStyle = colors[type];
-                this.ctx.lineWidth = 2;
-                this.ctx.setLineDash(dashed ? [5, 5] : []);
-                this.ctx.beginPath();
-
-                let started = false;
-                this.data.forEach((point, idx) => {
-                    const ts = point.unixTimestamp;
-                    const tempData = this.temperatureData[ts];
-
-                    if (tempData && tempData[type] !== undefined) {
-                        const x = paddingLeft + (idx * totalBarWidth) + totalBarWidth / 2;
-                        const y = getTempY(tempData[type]);
-
-                        if (!started) {
-                            this.ctx.moveTo(x, y);
-                            started = true;
-                        } else {
-                            this.ctx.lineTo(x, y);
-                        }
-                    }
-                });
-
-                this.ctx.stroke();
-            });
-
-            this.ctx.setLineDash([]);
+            ChartBase.drawTemperatureLines(this.ctx, dimensions, tempData, tempScale);
+            ChartBase.drawTemperatureAxis(this.ctx, dimensions, theme, tempScale);
         }
     });
 

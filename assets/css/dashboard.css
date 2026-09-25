@@ -1,0 +1,164 @@
+/**
+ * Dashboard page
+ */
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-3);
+}
+
+.dashboard-card {
+    --c: var(--text-secondary);
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+}
+
+.dashboard-card .card-header {
+    justify-content: space-between;
+    margin: 0;
+    padding: var(--space-4);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.dashboard-card .card-title {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin: 0;
+}
+
+.dashboard-card .card-icon {
+    display: flex;
+    color: var(--c);
+}
+
+.dashboard-card .card-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--touch-target);
+    color: var(--accent-primary);
+    font-size: var(--text-sm);
+    font-weight: 500;
+}
+
+.dashboard-card .card-link:hover {
+    color: var(--accent-primary-hover);
+}
+
+.dashboard-card .card-body {
+    padding: var(--space-4);
+}
+
+/* Big number (costs card) */
+.dashboard-card .current-reading {
+    text-align: center;
+    margin-bottom: var(--space-5);
+    padding-bottom: var(--space-5);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.dashboard-card .reading-value {
+    font-size: var(--text-4xl);
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--c);
+    margin-bottom: var(--space-2);
+}
+
+.dashboard-card .reading-label {
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Key/value rows */
+.dashboard-card .card-stats {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.dashboard-card .card-stats .stat-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-3);
+    font-size: var(--text-sm);
+    background: transparent;
+    border: none;
+    padding: 0;
+}
+
+.dashboard-card .card-stats .stat-label {
+    color: var(--text-secondary);
+    font-size: inherit;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: normal;
+    margin: 0;
+}
+
+.dashboard-card .card-stats .stat-value {
+    font-weight: 600;
+    font-size: inherit;
+    color: var(--text-primary);
+}
+
+.dashboard-card .stat-value.consumption { color: var(--series-import); }
+.dashboard-card .stat-value.production  { color: var(--series-export); }
+.dashboard-card .stat-value.net         { color: var(--series-net); }
+.dashboard-card.solar-card .stat-value.production { color: var(--series-solar); }
+
+/* Card accent per section */
+.dashboard-card.electricity-card { --c: var(--series-import); }
+.dashboard-card.gas-card         { --c: var(--series-gas); }
+.dashboard-card.solar-card       { --c: var(--series-solar); }
+.dashboard-card.water-card       { --c: var(--series-water); }
+.dashboard-card.costs-card       { --c: var(--series-cost); }
+
+/* Loading state */
+.dashboard-card.loading {
+    opacity: 0.6;
+    pointer-events: none;
+    position: relative;
+}
+
+.dashboard-card.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 24px;
+    height: 24px;
+    margin: -12px 0 0 -12px;
+    border: 3px solid var(--border-color);
+    border-top-color: var(--accent-primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@media (min-width: 600px) {
+    .dashboard-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: var(--space-4);
+    }
+
+    .dashboard-card .card-header,
+    .dashboard-card .card-body {
+        padding: var(--space-5);
+    }
+
+    .dashboard-card .card-stats .stat-item {
+        font-size: 0.9375rem;
+    }
+}
+
+@media (min-width: 1280px) {
+    .dashboard-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
