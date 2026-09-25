@@ -62,7 +62,7 @@ Pages are **fragments**. `header.php` opens the document and `footer.php` closes
 - **Module managers**: each JS file is an IIFE exposing one object with `init()` /
   `setupEventListeners()` / `destroy()`, auto-initialising on `DOMContentLoaded` when
   `window.P1MonConfig.currentPage` matches.
-- **Section pages**: electricity, gas and solar share one template. The PHP page calls
+- **Section pages**: electricity, gas, solar and costs share one template. The PHP page calls
   `section_toolbar()`, `kpi_strip()` and `chart_card()` from `components/section.php`; KPI cards are
   always Nu, Totaal, Kosten, Gemiddeld, Piek, plus one section-specific card. `P1Section`
   (`section.js`) drives that markup and calls the page's `load(state, isCurrent)`; the page fetches
@@ -644,7 +644,14 @@ available for comparisons. It returns:
 It is used by the electricity page, the gas page (for `chartData[].gas`) and the dashboard.
 Costs come from the financial rows inside each window. `totalCost` is electricity only (costs
 minus export revenue); `gasCost` is gas. Without financial data (always for hours) they are
-estimated from `P1MonConfig.electricityCostPerKwh` and `gasCostPerM3`, and `costIsEstimate` is set.
+estimated from the configured tariffs (`P1Utils.estimateElectricityCost()`: bought × purchase
+tariff − delivered × export tariff; gas × gas tariff), and `costIsEstimate` is set.
+
+`getCostData(period, limit, { page })` does the same windowing over `/financial/{day,month,year}`
+(there is no hourly financial data) for the costs page. Points are `{ timestamp, unixTimestamp,
+electricity, gas, water, revenue, net }` with `revenue` negative so it stacks below zero; stats are
+`{ electricity, gas, water, gross, revenue, net, average, peak, from, to }`. P1 Monitor's financial
+figures exclude fixed charges (vastrecht).
 
 ### utils.js
 
@@ -659,7 +666,9 @@ and the `updateElement()` / `showError()` / `hideError()` DOM helpers.
 declared as `{ key, label, type: 'bar'|'line', token, axis? }`; amounts per bucket are bars (grouped
 side by side), rates and derived values are lines. An optional right-hand axis (`axes.y2`) carries a
 second unit (W, degree days). `setData(points, period, { temperature })` adds a shared temperature
-overlay (min–max band behind the bars, average line) on its own axis. The legend is rendered as HTML
+overlay (min–max band behind the bars, average line) on its own axis. Options: `compact` (sparkline,
+no axes), `stacked` (bars stack, negatives below zero; lines stay unstacked) and `prefix` (currency
+before values, e.g. `'€ '`). The legend is rendered as HTML
 toggle buttons; colours are re-read on `themechange`. Chart.js is only loaded on pages that use it
 (see the script map in `footer.php`).
 
@@ -670,7 +679,9 @@ toggle buttons; colours are re-read on `themechange`. Chart.js is only loaded on
 - **State** `{ period, zoom, page, temperature }` lives in the URL (`period`, `range`, `offset`,
   `temp`) so a view can be shared or reloaded; period, range and temperature are also remembered
   per section in `localStorage` (`p1pulse.section.<id>`).
-- **Toolbar**: period tabs (arrow keys move between them), back/forward through history (`page`),
+- **Toolbar**: period tabs (arrow keys move between them; a page can offer fewer with
+  `section_toolbar(['periods' => [...]])`, and URL or stored values outside that set fall back to
+  the first one), back/forward through history (`page`),
   range as buttons from 600px and a `<select>` below, and the temperature chip.
 - **Loading**: every load gets an `isCurrent()` check so a slow response never overwrites a newer
   one. The chart card shows `data-state="loading | ready | empty | error"`; errors offer a retry.
@@ -706,6 +717,13 @@ Electricity page: consumption and export bars, net line, optional temperature, s
 Gas page: consumption bars and degree days (right-hand axis), optional temperature, gap-filling for
 missing periods. Sources its data from `P1API.getElectricityData()` (the `gas` field) and weather via
 `P1API.attachWeather()`.
+
+### costs.js
+
+Costs page on the section template, days/months/years only (`section_toolbar(['periods' => …])`).
+Stacked bars per utility with export revenue below zero and a net line, all from P1 Monitor's
+financial data. KPIs: Nu (current cost per hour, estimated from live power and last hour's gas),
+Netto, Kosten, Gemiddeld, Duurste, Opbrengst.
 
 ### solar.js
 
@@ -768,13 +786,19 @@ Emitted by `components/footer.php`; the only server→client configuration chann
   updateInterval,           // ms: 1000 in fast mode, else 10000
   visibility,               // { hide_gas, hide_water, hide_peak_kw, show_phase_info }
   systemCapacityW,          // 3780
-  electricityCostPerKwh,    // 0.30
-  gasCostPerM3              // 1.50
+  electricityCostPerKwh,    // EUR/kWh bought    (P1 config 1 + 2, averaged; default 0.30)
+  electricityExportPerKwh,  // EUR/kWh delivered (P1 config 3 + 4, averaged; default 0.30)
+  gasCostPerM3,             // EUR/m³            (P1 config 15; default 1.50)
+  waterCostPerM3            // EUR/m³            (P1 config 104; default 0)
 }
 ```
 
-Cost and capacity values come from `P1Config::getEnergyConfig()` in `config.php`; edit them there.
-They are fallbacks used when P1 Monitor's financial API is unavailable.
+These come from `P1Config::getEnergyConfig()` in `config.php`. Tariffs are read from P1 Monitor's
+own configuration via `config_read()`, the same values its financial data is calculated with; dal
+and piek are averaged because hourly data is not split by tariff. The defaults apply only when
+P1 Monitor is unreachable (local development) or a tariff is unset. JS reads them through
+`P1Utils.tariffs()`, and only for estimates where P1 Monitor has no financial data (hours, today).
+`systemCapacityW` is not in P1 Monitor's configuration; edit it in `config.php`.
 
 ### User Preferences
 
@@ -914,7 +938,9 @@ not relocatable, despite the README suggesting `/var/www/html/custom`.
 
 ### Unimplemented pages and unused surface
 
-- `pages/water.php` and `pages/costs.php` are placeholders.
+- `pages/water.php` is a placeholder. Building it waits for an installation with an active water
+  meter: on the reference device water measurement is off (config 96 = 0) and
+  `/api/v2/watermeter/*` returns `[]`, so the field names cannot be verified.
 - Peak kW display and three-phase info are read from config and passed to the browser but never
   rendered; `P1API.getPhases()`, `getStatus()` and both watermeter methods have no callers.
 - The `api_cache` table is created but never used.

@@ -11,6 +11,7 @@
         'electricity' => array_merge($chartScripts, ['js/electricity.js']),
         'gas'         => array_merge($chartScripts, ['js/gas.js']),
         'solar'       => array_merge($chartScripts, ['js/solar.js']),
+        'costs'       => array_merge($chartScripts, ['js/costs.js']),
     ];
 
     foreach ($pageScripts[$currentPage] ?? [] as $script) {
@@ -30,7 +31,9 @@
             // Energy configuration (configurable in config.php)
             systemCapacityW: <?php echo $energyConfig['system_capacity_w'] ?? 3780; ?>,
             electricityCostPerKwh: <?php echo $energyConfig['electricity_cost_per_kwh'] ?? 0.30; ?>,
-            gasCostPerM3: <?php echo $energyConfig['gas_cost_per_m3'] ?? 1.50; ?>
+            electricityExportPerKwh: <?php echo $energyConfig['electricity_export_per_kwh'] ?? 0.30; ?>,
+            gasCostPerM3: <?php echo $energyConfig['gas_cost_per_m3'] ?? 1.50; ?>,
+            waterCostPerM3: <?php echo $energyConfig['water_cost_per_m3'] ?? 0; ?>
         };
     </script>
 </body>

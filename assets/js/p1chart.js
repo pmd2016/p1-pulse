@@ -29,6 +29,8 @@
  * a value of null leaves that slot empty (e.g. the rest of today).
  *
  * `compact: true` draws a sparkline: no axes, grid or legend, tooltips kept.
+ * `stacked: true` stacks the bar series (negative values below zero);
+ * line series stay unstacked. `prefix: '€ '` puts a currency before values.
  * With temperature enabled, points may carry tempMin, tempAvg and tempMax.
  */
 
@@ -45,15 +47,19 @@
         return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     }
 
-    function formatTick(value, unit) {
-        // Axis ticks: at most 2 decimals, trailing zeros dropped
-        const n = +Number(value).toFixed(2);
-        return unit ? `${n} ${unit}` : `${n}`;
+    // prefix is for currencies ("€ 1.23"), unit for quantities ("1.23 kWh")
+    function withUnit(n, unit, prefix) {
+        const text = unit ? `${n} ${unit}` : `${n}`;
+        return prefix ? `${prefix}${text}` : text;
     }
 
-    function formatValue(value, decimals, unit) {
-        const n = P1Utils.formatNumber(value, decimals);
-        return unit ? `${n} ${unit}` : n;
+    function formatTick(value, unit, prefix) {
+        // Axis ticks: at most 2 decimals, trailing zeros dropped
+        return withUnit(+Number(value).toFixed(2), unit, prefix);
+    }
+
+    function formatValue(value, decimals, unit, prefix) {
+        return withUnit(P1Utils.formatNumber(value, decimals), unit, prefix);
     }
 
     function toDate(point) {
@@ -147,6 +153,7 @@
                         borderRadius: this.config.compact ? 2 : 3,
                         categoryPercentage: this.config.compact ? 0.9 : 0.8,
                         barPercentage: this.config.compact ? 0.95 : 0.9,
+                        stack: this.config.stacked ? 'bars' : undefined,
                         order: 2
                     });
                 }
@@ -219,7 +226,7 @@
                                 if (axis === 'y2') {
                                     return ` ${item.dataset.label}: ${formatValue(item.raw, y2.decimals, y2.unit)}`;
                                 }
-                                return ` ${item.dataset.label}: ${formatValue(item.raw, cfg.decimals, cfg.unit)}`;
+                                return ` ${item.dataset.label}: ${formatValue(item.raw, cfg.decimals, cfg.unit, cfg.prefix)}`;
                             },
                             labelPointStyle: (item) => ({
                                 pointStyle: item.dataset.type === 'bar' ? 'rectRounded' : 'line',
@@ -250,7 +257,7 @@
                         ticks: {
                             color: text,
                             maxTicksLimit: isPhone ? 5 : 7,
-                            callback: (value) => formatTick(value, cfg.unit)
+                            callback: (value) => formatTick(value, cfg.unit, cfg.prefix)
                         }
                     },
                     y2: {
@@ -279,6 +286,12 @@
                     }
                 }
             };
+
+            if (cfg.stacked) {
+                options.scales.x.stacked = true;
+                options.scales.y.stacked = true;
+                options.scales.y.beginAtZero = true;
+            }
 
             if (cfg.compact) {
                 Object.values(options.scales).forEach(scale => {

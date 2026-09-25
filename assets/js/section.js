@@ -159,9 +159,10 @@
                 initialState() {
                     const params = new URLSearchParams(window.location.search);
                     const stored = readStorage(STORAGE_PREFIX + config.id) || {};
+                    const periods = this.periods();
 
-                    let period = params.get('period') || stored.period || 'hours';
-                    if (!PERIODS.includes(period)) period = 'hours';
+                    let period = params.get('period') || stored.period || periods[0];
+                    if (!periods.includes(period)) period = periods[0];
 
                     let zoom = parseInt(params.get('range') || stored.zoom, 10);
                     if (!validZoom(period, zoom)) zoom = P1Utils.defaultZooms[period];
@@ -173,6 +174,15 @@
                         : !!stored.temperature;
 
                     return { period, zoom, page, temperature };
+                },
+
+                /**
+                 * Periods this page offers: the tabs section_toolbar() rendered
+                 */
+                periods() {
+                    const tabs = toolbar ? [...toolbar.querySelectorAll('.period-tab')].map(t => t.dataset.period) : [];
+                    const offered = PERIODS.filter(p => tabs.includes(p));
+                    return offered.length ? offered : PERIODS;
                 },
 
                 persistState() {
@@ -271,7 +281,7 @@
                 },
 
                 setPeriod(period) {
-                    if (period === this.state.period || !PERIODS.includes(period)) return;
+                    if (period === this.state.period || !this.periods().includes(period)) return;
                     this.state.period = period;
                     this.state.zoom = P1Utils.defaultZooms[period];
                     this.state.page = 0;

@@ -291,8 +291,7 @@
         },
 
         showCosts(energy, solarKWh, financial) {
-            const tariff = window.P1MonConfig?.electricityCostPerKwh ?? 0.30;
-            const gasTariff = window.P1MonConfig?.gasCostPerM3 ?? 1.50;
+            const tariffs = P1Utils.tariffs();
             const hasGas = !!document.getElementById('costs-gas-today');
 
             let elec = null;
@@ -302,8 +301,8 @@
                 elec = financial.electricity;
                 gas = financial.gas;
             } else if (energy) {
-                elec = (energy.consumption - energy.production) * tariff;
-                gas = energy.gas * gasTariff;
+                elec = P1Utils.estimateElectricityCost(energy.consumption, energy.production);
+                gas = energy.gas * tariffs.gas;
                 estimated = true;
             }
 
@@ -322,7 +321,7 @@
                 P1Utils.updateElement('costs-gas-today', eur(gas));
                 P1Utils.updateElement('gas-cost-today', eur(gas));
             }
-            P1Utils.updateElement('costs-solar-today', solarKWh === null ? '--' : eur(solarKWh * tariff));
+            P1Utils.updateElement('costs-solar-today', solarKWh === null ? '--' : eur(solarKWh * tariffs.import));
 
             this.showCostSplit(elec, hasGas ? gas : 0);
         },
