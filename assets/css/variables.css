@@ -37,7 +37,7 @@
     /*
      * ---- Data series ----
      * One colour per meaning, used by CSS (legends, icons, values) and read
-     * by the charts via ChartBase.color('series-…'). Never hard-code these
+     * by the charts via P1Utils.color('series-…'). Never hard-code these
      * in JS.
      */
     --series-import: #f59e0b;        /* electricity taken from the grid */

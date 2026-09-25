@@ -46,7 +46,7 @@
 
             // Remember the arguments so the gauge can be repainted on theme change
             canvas._gaugeArgs = [value, max, colorToken, label];
-            const color = ChartBase.color(colorToken);
+            const color = P1Utils.color(colorToken);
             
             const ctx = canvas.getContext('2d');
             const width = canvas.offsetWidth;
@@ -68,7 +68,7 @@
             // Draw background arc
             ctx.beginPath();
             ctx.arc(centerX, centerY, radius, 0.75 * Math.PI, 2.25 * Math.PI);
-            ctx.strokeStyle = ChartBase.color('border-color');
+            ctx.strokeStyle = P1Utils.color('border-color');
             ctx.lineWidth = lineWidth;
             ctx.lineCap = 'round';
             ctx.stroke();

@@ -447,18 +447,6 @@ button.legend-item[aria-pressed="false"] .legend-text {
     border-top-width: 2px;
 }
 
-/* Legend series (map legacy class names onto series tokens) */
-.legend-item.consumption { --c: var(--series-import); }
-.legend-item.production  { --c: var(--series-export); }
-.legend-item.net         { --c: var(--series-net); }
-.legend-item.solar       { --c: var(--series-solar); }
-.legend-item.power       { --c: var(--series-solar-power); }
-.legend-item.gas         { --c: var(--series-gas); }
-.legend-item.water       { --c: var(--series-water); }
-.legend-item.degree-days { --c: var(--series-degreedays); }
-.legend-item.temp-max    { --c: var(--series-temp-max); }
-.legend-item.temp-avg    { --c: var(--series-temp-avg); }
-.legend-item.temp-min    { --c: var(--series-temp-min); }
 
 .chart-container-large {
     position: relative;

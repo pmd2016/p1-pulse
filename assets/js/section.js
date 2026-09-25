@@ -25,7 +25,7 @@
                 loadId: 0,
 
                 init() {
-                    this.zoom = ChartBase.defaultZooms[this.period];
+                    this.zoom = P1Utils.defaultZooms[this.period];
 
                     document.querySelectorAll('.period-tab').forEach(tab => {
                         tab.setAttribute('aria-selected', tab.dataset.period === this.period ? 'true' : 'false');
@@ -45,7 +45,7 @@
                 setPeriod(period) {
                     if (period === this.period) return;
                     this.period = period;
-                    this.zoom = ChartBase.defaultZooms[period];
+                    this.zoom = P1Utils.defaultZooms[period];
 
                     document.querySelectorAll('.period-tab').forEach(tab => {
                         const active = tab.dataset.period === period;
@@ -69,7 +69,7 @@
                     if (!container) return;
 
                     container.replaceChildren();
-                    (ChartBase.zoomOptions[this.period] || []).forEach(opt => {
+                    (P1Utils.zoomOptions[this.period] || []).forEach(opt => {
                         const btn = document.createElement('button');
                         btn.type = 'button';
                         btn.className = 'control-button';

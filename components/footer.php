@@ -9,8 +9,8 @@
     $pageScripts = [
         'dashboard'   => ['js/dashboard.js'],
         'electricity' => array_merge($chartScripts, ['js/electricity.js']),
-        'gas'         => ['js/gas.js'],
-        'solar'       => ['js/solar.js'],
+        'gas'         => array_merge($chartScripts, ['js/gas.js']),
+        'solar'       => array_merge($chartScripts, ['js/solar.js']),
     ];
 
     foreach ($pageScripts[$currentPage] ?? [] as $script) {

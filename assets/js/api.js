@@ -360,9 +360,7 @@
                 const timestamp = parseInt(record.TIMESTAMP_UTC);
                 if (isNaN(timestamp)) return;
 
-                const key = ChartBase.getPeriodKey
-                    ? ChartBase.getPeriodKey(timestamp, period)
-                    : timestamp;
+                const key = P1Utils.getPeriodKey(timestamp, period);
 
                 const min = parseFloat(record.TEMPERATURE_LOW);
                 const max = parseFloat(record.TEMPERATURE_HIGH);
@@ -370,14 +368,40 @@
 
                 if (isNaN(min) && isNaN(max) && isNaN(avg)) return;
 
+                const degreeDays = parseFloat(record.DEGREE_DAYS);
+
                 tempMap[key] = {
                     min: isNaN(min) ? avg : min,
                     max: isNaN(max) ? avg : max,
-                    avg: isNaN(avg) ? (min + max) / 2 : avg
+                    avg: isNaN(avg) ? (min + max) / 2 : avg,
+                    degreeDays: isNaN(degreeDays) ? null : degreeDays
                 };
             });
 
             return tempMap;
+        },
+
+        /**
+         * Join weather onto chart points (one weather request per call).
+         * Returns new point objects with tempMin, tempAvg, tempMax and
+         * degreeDays where the weather history has a matching bucket.
+         * @param {Array} points - chart points with unixTimestamp
+         * @param {string} period - 'hours', 'days', 'months', 'years'
+         * @param {number} limit - number of buckets
+         */
+        async attachWeather(points, period, limit) {
+            const weather = this.processTemperatureData(await this.getWeatherHistory(period, limit), period);
+
+            return points.map(point => {
+                const w = weather[P1Utils.getPeriodKey(point.unixTimestamp, period)];
+                if (!w) return point;
+                return Object.assign({}, point, {
+                    tempMin: w.min,
+                    tempAvg: w.avg,
+                    tempMax: w.max,
+                    degreeDays: w.degreeDays
+                });
+            });
         },
 
         // ========================================================================
@@ -509,9 +533,7 @@
                     const unixTimestamp = parseInt(row.TIMESTAMP_UTC);
                     let tempData = {};
                     if (temperatureMap && unixTimestamp) {
-                        const key = ChartBase.getPeriodKey
-                            ? ChartBase.getPeriodKey(unixTimestamp, period)
-                            : unixTimestamp;
+                        const key = P1Utils.getPeriodKey(unixTimestamp, period);
                         const temps = temperatureMap[key];
                         if (temps) {
                             tempData = {

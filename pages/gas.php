@@ -91,13 +91,8 @@
                         </div>
                         
                         <div class="control-group">
-                            <label class="control-label">Toon:</label>
+                            <label class="control-label">Extra:</label>
                             <div class="toggle-group">
-                                <label class="toggle-switch">
-                                    <input type="checkbox" id="toggle-gas-degree-days" checked>
-                                    <span class="toggle-slider"></span>
-                                    <span class="toggle-label">Graaddagen</span>
-                                </label>
                                 <label class="toggle-switch">
                                     <input type="checkbox" id="toggle-gas-temp">
                                     <span class="toggle-slider"></span>
@@ -113,31 +108,10 @@
                     <div class="card chart-card">
                         <div class="chart-header">
                             <h3 class="chart-title">Gasverbruik</h3>
-                            <div class="chart-legend">
-                                <span class="legend-item gas">
-                                    <span class="legend-color"></span>
-                                    <span class="legend-text">Verbruik (m³)</span>
-                                </span>
-                                <span class="legend-item degree-days line" id="legend-degree-days">
-                                    <span class="legend-color"></span>
-                                    <span class="legend-text">Graaddagen</span>
-                                </span>
-                                <span class="legend-item temp-max line dashed" id="legend-temp-max" style="display: none;">
-                                    <span class="legend-color"></span>
-                                    <span class="legend-text">Temp Max</span>
-                                </span>
-                                <span class="legend-item temp-avg line" id="legend-temp-avg" style="display: none;">
-                                    <span class="legend-color"></span>
-                                    <span class="legend-text">Temp Gem</span>
-                                </span>
-                                <span class="legend-item temp-min line dashed" id="legend-temp-min" style="display: none;">
-                                    <span class="legend-color"></span>
-                                    <span class="legend-text">Temp Min</span>
-                                </span>
-                            </div>
+                            <div class="chart-legend" id="gas-legend" aria-label="Reeksen tonen of verbergen"></div>
                         </div>
                         <div class="chart-container-large">
-                            <canvas id="gas-chart"></canvas>
+                            <canvas id="gas-chart" role="img" aria-label="Grafiek van gasverbruik en graaddagen"></canvas>
                         </div>
                     </div>
                 </div>

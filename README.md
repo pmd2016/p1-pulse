@@ -73,11 +73,15 @@ A modern, responsive web dashboard for monitoring real-time energy, gas, water, 
     ├── css/                     # Stylesheets
     │   ├── variables.css        # CSS custom properties for theming
     │   ├── base.css             # Base styles and resets
-    │   ├── components.css       # Component-specific styles
-    │   └── layout.css           # Layout and grid system
+    │   ├── layout.css           # App shell: header, sidebar, content
+    │   ├── components.css       # Cards, controls, charts, feedback
+    │   └── dashboard.css        # Dashboard page
+    ├── vendor/chartjs/          # Chart.js (served locally)
     └── js/                      # JavaScript modules
         ├── api.js               # P1 Monitor API wrapper
-        ├── charts.js            # Chart utilities
+        ├── utils.js             # Shared formatting and helpers
+        ├── p1chart.js           # Chart component (on Chart.js)
+        ├── section.js           # Period and range controls
         ├── dashboard.js         # Dashboard functionality
         ├── electricity.js       # Electricity page logic
         ├── gas.js               # Gas page logic
