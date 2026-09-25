@@ -46,6 +46,8 @@ A modern, responsive web dashboard for monitoring real-time energy, gas, water, 
 │   ├── header.php               # Top navigation and branding
 │   ├── sidebar.php              # Navigation menu
 │   ├── footer.php               # Page footer
+│   ├── icon.php                 # Inline SVG icon set
+│   ├── section.php              # Section page template (toolbar, KPIs, chart card)
 │   └── theme-toggle.php         # Theme switcher
 ├── config/
 │   └── solplanet.ini.example    # Credentials template — copy OUTSIDE the web root
@@ -81,7 +83,7 @@ A modern, responsive web dashboard for monitoring real-time energy, gas, water, 
         ├── api.js               # P1 Monitor API wrapper
         ├── utils.js             # Shared formatting and helpers
         ├── p1chart.js           # Chart component (on Chart.js)
-        ├── section.js           # Period and range controls
+        ├── section.js           # Section page controller (toolbar, KPIs, states)
         ├── dashboard.js         # Dashboard functionality
         ├── electricity.js       # Electricity page logic
         ├── gas.js               # Gas page logic

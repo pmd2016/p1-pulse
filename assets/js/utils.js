@@ -138,6 +138,47 @@
         },
 
         /**
+         * Label for the window shown in the toolbar, from the first and last
+         * bucket timestamps (unix seconds):
+         *   hours   "14 jan 10:00 – 15 jan 09:00" (one date if on the same day)
+         *   days    "8 – 14 jan", "28 dec 2025 – 3 jan 2026"
+         *   months  "jan – dec 2025", "feb 2024 – jan 2025"
+         *   years   "2021 – 2025"
+         */
+        formatRange(from, to, period) {
+            const a = this.toDate(from);
+            const b = this.toDate(to);
+            if (!a || !b) return '';
+
+            const nowYear = new Date().getFullYear();
+            const mon = (d) => this.monthNamesShort[d.getMonth()];
+            const hm = (d) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+            const sameDay = a.toDateString() === b.toDateString();
+            const sameYear = a.getFullYear() === b.getFullYear();
+
+            if (period === 'hours') {
+                return sameDay
+                    ? `${a.getDate()} ${mon(a)} ${hm(a)} – ${hm(b)}`
+                    : `${a.getDate()} ${mon(a)} ${hm(a)} – ${b.getDate()} ${mon(b)} ${hm(b)}`;
+            }
+            if (period === 'days') {
+                if (sameYear && a.getMonth() === b.getMonth()) {
+                    return `${a.getDate()} – ${b.getDate()} ${mon(b)}${b.getFullYear() !== nowYear ? ' ' + b.getFullYear() : ''}`;
+                }
+                if (sameYear) {
+                    return `${a.getDate()} ${mon(a)} – ${b.getDate()} ${mon(b)}${b.getFullYear() !== nowYear ? ' ' + b.getFullYear() : ''}`;
+                }
+                return `${a.getDate()} ${mon(a)} ${a.getFullYear()} – ${b.getDate()} ${mon(b)} ${b.getFullYear()}`;
+            }
+            if (period === 'months') {
+                return sameYear
+                    ? `${mon(a)} – ${mon(b)} ${b.getFullYear()}`
+                    : `${mon(a)} ${a.getFullYear()} – ${mon(b)} ${b.getFullYear()}`;
+            }
+            return a.getFullYear() === b.getFullYear() ? `${a.getFullYear()}` : `${a.getFullYear()} – ${b.getFullYear()}`;
+        },
+
+        /**
          * Key that identifies the bucket a timestamp falls in, used to join
          * weather data onto energy data
          */

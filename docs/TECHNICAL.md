@@ -62,10 +62,12 @@ Pages are **fragments**. `header.php` opens the document and `footer.php` closes
 - **Module managers**: each JS file is an IIFE exposing one object with `init()` /
   `setupEventListeners()` / `destroy()`, auto-initialising on `DOMContentLoaded` when
   `window.P1MonConfig.currentPage` matches.
-- **Section pages**: electricity, gas and solar are each three pieces: `P1Section`
-  (`section.js`) drives the period tabs and range buttons and calls `onLoad(period, zoom,
-  isCurrent)`; the page fetches data and fills its KPI cards; `P1Chart` (`p1chart.js`) draws the
-  chart and its legend. New chart pages should follow the same shape.
+- **Section pages**: electricity, gas and solar share one template. The PHP page calls
+  `section_toolbar()`, `kpi_strip()` and `chart_card()` from `components/section.php`; KPI cards are
+  always Nu, Totaal, Kosten, Gemiddeld, Piek, plus one section-specific card. `P1Section`
+  (`section.js`) drives that markup and calls the page's `load(state, isCurrent)`; the page fetches
+  data, fills its KPIs and hands points to `P1Chart` (`p1chart.js`). New chart pages should
+  follow the same shape.
 - **Design tokens**: all colours are CSS custom properties in `variables.css`, one per data series
   (`--series-import`, `--series-gas`, …). JS reads them with `P1Utils.color()`; nothing hard-codes
   a colour. The theme is `<html data-theme="light|dark">`; without it the CSS follows
@@ -163,15 +165,18 @@ header widget blank themselves rather than claim zero production.
 #### Historical data
 
 ```
-GET /custom/api/solar.php?period={hours|days|months|years}&zoom={N}
+GET /custom/api/solar.php?period={hours|days|months|years}&zoom={N}&offset={M}
 ```
 
 `zoom` is clamped server-side: below 1 → 24; hours ≤ 168, days ≤ 365, months ≤ 24, years ≤ 10.
+`offset` (default 0, clamped to 0…100000) skips the newest M buckets, for paging back through
+history; `stats` cover only the returned window. Both are echoed back.
 
 ```json
 {
   "period": "hours",
   "zoom": 24,
+  "offset": 0,
   "chartData": [
     { "timestamp": "2026-01-16 12:00:00", "unixTimestamp": 1768564800,
       "production": 1.234, "power": 820, "powerMax": 1430 }
@@ -620,20 +625,26 @@ Load order is fixed by `config.php::includeJS()`: `logger`, `theme`, `sidebar`, 
 ### api.js (582 lines)
 
 `P1API`. See [API Reference](#api-reference) for the full method list. The one method doing real
-work is `getElectricityData(period, limit, includeTemperature)`, which fetches power/gas history plus
-optional financial and weather data and returns:
+work is `getElectricityData(period, limit, includeTemperature, { page })`, which fetches power/gas
+history plus optional financial and weather data. Windows are counted in buckets back from the
+newest: page 0 is the latest `limit` buckets, page 1 the `limit` before that. It fetches
+`limit × (page + 2)` rows and slices them client-side, so the window before the requested one is
+available for comparisons. It returns:
 
 ```javascript
 {
-  period, limit,
+  period, limit, page, hasOlder,
   chartData: [{ timestamp, unixTimestamp, consumption, production, net, gas, tempMin?, tempMax?, tempAvg? }],
-  stats: { totalConsumption, totalProduction, netConsumption, totalCost, average, peakConsumption: { value, time } }
+  stats:    { totalConsumption, totalProduction, netConsumption, totalGas, totalCost, gasCost,
+              costIsEstimate, average, peakConsumption: { value, time }, from, to },
+  previous: { ...same shape as stats } | null   // null unless a full previous window exists
 }
 ```
 
 It is used by the electricity page, the gas page (for `chartData[].gas`) and the dashboard.
-When financial data is unavailable, `totalCost` falls back to
-`net × P1MonConfig.electricityCostPerKwh`.
+Costs come from the financial rows inside each window. `totalCost` is electricity only (costs
+minus export revenue); `gasCost` is gas. Without financial data (always for hours) they are
+estimated from `P1MonConfig.electricityCostPerKwh` and `gasCostPerM3`, and `costIsEstimate` is set.
 
 ### utils.js
 
@@ -654,9 +665,21 @@ toggle buttons; colours are re-read on `themechange`. Chart.js is only loaded on
 
 ### section.js
 
-`P1Section.create({ zoomButtonsId, onLoad })` — period tabs and range buttons for a section page.
-Every load gets an `isCurrent()` check so a slow response for an old period never overwrites a newer
-one.
+`P1Section.create({ id, load, live })` — controller for the section template:
+
+- **State** `{ period, zoom, page, temperature }` lives in the URL (`period`, `range`, `offset`,
+  `temp`) so a view can be shared or reloaded; period, range and temperature are also remembered
+  per section in `localStorage` (`p1pulse.section.<id>`).
+- **Toolbar**: period tabs (arrow keys move between them), back/forward through history (`page`),
+  range as buttons from 600px and a `<select>` below, and the temperature chip.
+- **Loading**: every load gets an `isCurrent()` check so a slow response never overwrites a newer
+  one. The chart card shows `data-state="loading | ready | empty | error"`; errors offer a retry.
+  Throw `P1Section.userError(message)` to show a specific message.
+- **KPIs**: `setKpi(key, { value, sub, tone, delta: { current, previous, goodWhen, format } })`
+  renders the change vs the previous window as a percentage, or as an absolute difference
+  (`format`) when the previous value is zero or negative (net costs).
+- **Live**: `live()` refreshes the "Nu" card every `P1MonConfig.updateInterval` (at least 10 s),
+  paused while the tab is hidden.
 
 ### dashboard.js (333 lines)
 
@@ -865,7 +888,7 @@ file opened fine from a CLI shell.
 For the same underlying data:
 
 - `api/solar.php` divides by `zoom` hours (and approximates months as 30 days, years as 365);
-- `solar.js::capacityFactor()` divides by the zoom window, same approximations;
+- `solar.js::totals()` divides by the zoom window, same approximations;
 - `dashboard.js::calculateSolarTotals()` divides by *hours elapsed so far today*.
 
 The dashboard card and the solar page will therefore disagree about the same day. There is no single

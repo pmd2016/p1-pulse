@@ -1,18 +1,20 @@
 /**
  * Electricity page
  *
- * Data comes from P1API.getElectricityData; P1Section handles the period
- * and range controls, P1Chart draws the chart and its legend.
+ * Data comes from P1API.getElectricityData; P1Section drives the toolbar,
+ * KPI cards and chart states, P1Chart draws the chart and its legend.
  */
 
 (function() {
     'use strict';
 
+    const fmt = (v, d) => P1Utils.formatNumber(v, d);
+    const kwh = (v) => `${fmt(v, 3)} kWh`;
+    const eur = (v) => `€ ${fmt(v, 2)}`;
+
     const ElectricityPage = {
         chart: null,
         section: null,
-        data: null,
-        showTemp: false,
 
         init() {
             this.chart = P1Chart.create(document.getElementById('electricity-chart'), {
@@ -27,65 +29,80 @@
             });
 
             this.section = P1Section.create({
-                zoomButtonsId: 'zoom-buttons',
-                onLoad: (period, zoom, isCurrent) => this.load(period, zoom, isCurrent)
+                id: 'electricity',
+                load: (state, isCurrent) => this.load(state, isCurrent),
+                live: () => this.loadLive()
             });
-
-            const toggleTemp = document.getElementById('toggle-temp');
-            if (toggleTemp) {
-                toggleTemp.disabled = false;
-                toggleTemp.addEventListener('change', (e) => {
-                    this.showTemp = e.target.checked;
-                    this.section.reload();
-                });
-            }
 
             this.section.init();
         },
 
-        async load(period, zoom, isCurrent) {
-            try {
-                const data = await window.P1API.getElectricityData(period, zoom, this.showTemp);
-                if (!isCurrent()) return;
+        async load({ period, zoom, page, temperature }, isCurrent) {
+            const data = await window.P1API.getElectricityData(period, zoom, temperature, { page });
+            if (!isCurrent()) return null;
 
-                if (!data) {
-                    P1Utils.showError('Geen data beschikbaar voor deze periode');
-                    return;
-                }
-
-                this.data = data;
-                this.updateStatistics(period, zoom);
-                this.chart.setData(data.chartData, period, { temperature: this.showTemp });
-                P1Utils.hideError();
-            } catch (error) {
-                if (!isCurrent()) return;
-                P1Logger.error('Error loading electricity data:', error);
-                P1Utils.showError('Fout bij ophalen data');
+            if (!data) {
+                this.chart.setData([], period);
+                return { empty: true, hasOlder: false };
             }
+
+            this.chart.setData(data.chartData, period, { temperature });
+            this.updateKpis(data, period);
+
+            return { from: data.stats.from, to: data.stats.to, hasOlder: data.hasOlder };
         },
 
-        updateStatistics(period, zoom) {
-            const stats = this.data.stats;
-            const fmt = P1Utils.formatNumber;
-            const rangeLabel = P1Utils.rangeLabel(period, zoom);
+        updateKpis({ stats, previous }, period) {
+            const s = this.section;
+            const per = P1Utils.periodLabelsSingular[period] || 'periode';
+            const prev = previous || {};
 
-            P1Utils.updateElement('stat-total-consumption', fmt(stats.totalConsumption, 3) + ' kWh');
-            P1Utils.updateElement('stat-consumption-period', rangeLabel);
+            s.setKpi('total', {
+                value: kwh(stats.totalConsumption),
+                sub: previous ? `vorige: ${kwh(prev.totalConsumption)}` : '',
+                delta: { current: stats.totalConsumption, previous: prev.totalConsumption, goodWhen: 'down' }
+            });
 
-            P1Utils.updateElement('stat-total-production', fmt(stats.totalProduction, 3) + ' kWh');
-            P1Utils.updateElement('stat-production-period', rangeLabel);
+            s.setKpi('cost', {
+                value: eur(stats.totalCost),
+                sub: [stats.costIsEstimate ? 'geschat' : '', previous ? `vorige: ${eur(prev.totalCost)}` : '']
+                    .filter(Boolean).join(' · '),
+                delta: { current: stats.totalCost, previous: prev.totalCost, goodWhen: 'down', format: eur }
+            });
 
-            P1Utils.updateElement('stat-net', fmt(stats.netConsumption, 3) + ' kWh');
+            s.setKpi('average', {
+                value: kwh(stats.average),
+                sub: `per ${per}`,
+                delta: { current: stats.average, previous: prev.average, goodWhen: 'down' }
+            });
 
-            P1Utils.updateElement('stat-cost', '€ ' + fmt(stats.totalCost, 2));
-            P1Utils.updateElement('stat-cost-period', rangeLabel);
+            s.setKpi('peak', {
+                value: kwh(stats.peakConsumption.value),
+                sub: P1Utils.formatPeakTime(stats.peakConsumption.time, period),
+                delta: null
+            });
 
-            P1Utils.updateElement('stat-average', fmt(stats.average, 3) + ' kWh');
-            P1Utils.updateElement('stat-average-period', `per ${P1Utils.periodLabelsSingular[period] || 'periode'}`);
+            s.setKpi('extra', {
+                value: kwh(stats.totalProduction),
+                sub: `netto ${kwh(stats.netConsumption)}`,
+                delta: { current: stats.totalProduction, previous: prev.totalProduction, goodWhen: 'up' }
+            });
+        },
 
-            P1Utils.updateElement('stat-peak-value', fmt(stats.peakConsumption.value, 3) + ' kWh');
+        /**
+         * Live net power from the smart meter: positive is import
+         */
+        async loadLive() {
+            const rows = await window.P1API.getSmartMeter(1);
+            const latest = rows && rows[0];
+            if (!latest) return;
 
-            P1Utils.updateElement('stat-peak-time', P1Utils.formatPeakTime(stats.peakConsumption.time, period));
+            const net = (parseFloat(latest.CONSUMPTION_W) || 0) - (parseFloat(latest.PRODUCTION_W) || 0);
+            this.section.setKpi('now', {
+                value: `${fmt(Math.abs(net), 0)} W`,
+                sub: net < 0 ? 'teruglevering' : 'afname van het net',
+                tone: net < 0 ? 'is-export' : 'is-import'
+            });
         }
     };
 

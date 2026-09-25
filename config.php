@@ -19,6 +19,7 @@ define('CUSTOM_BASE_PATH', dirname(__FILE__));
 define('CUSTOM_BASE_URL', '/custom');
 
 require_once CUSTOM_BASE_PATH . '/components/icon.php';
+require_once CUSTOM_BASE_PATH . '/components/section.php';
 
 // Configuration settings
 class P1Config {
