@@ -30,6 +30,7 @@
 
             this.section = P1Section.create({
                 id: 'electricity',
+                chart: this.chart,
                 load: (state, isCurrent) => this.load(state, isCurrent),
                 live: () => this.loadLive()
             });

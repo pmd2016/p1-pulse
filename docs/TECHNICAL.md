@@ -657,8 +657,10 @@ figures exclude fixed charges (vastrecht).
 
 `P1Utils` — shared helpers: range options per period (`zoomOptions`, `defaultZooms`), Dutch date
 formatting (`formatXAxisLabel()`, `formatTooltipTime()`, `formatPeakTime()`), `getPeriodKey()` for
-joining weather onto energy buckets, `formatNumber()`, `color()` (reads a CSS token), `isPhone()`,
-and the `updateElement()` / `showError()` / `hideError()` DOM helpers.
+joining weather onto energy buckets, `formatNumber()` / `formatCompact()` (Dutch notation via
+`Intl.NumberFormat('nl-NL')`: `1.234,56`; display only, never parse the result), `tariffs()`,
+`color()` (reads a CSS token), `isPhone()`, and the `updateElement()` / `showError()` /
+`hideError()` DOM helpers.
 
 ### p1chart.js
 
@@ -668,7 +670,9 @@ side by side), rates and derived values are lines. An optional right-hand axis (
 second unit (W, degree days). `setData(points, period, { temperature })` adds a shared temperature
 overlay (min–max band behind the bars, average line) on its own axis. Options: `compact` (sparkline,
 no axes), `stacked` (bars stack, negatives below zero; lines stay unstacked) and `prefix` (currency
-before values, e.g. `'€ '`). The legend is rendered as HTML
+before values, e.g. `'€ '`). `showTable(el)` renders the same data as a `<table>` (one row per
+bucket, one column per visible series) and keeps it in sync; the chart card's "Toon als tabel"
+button uses it (via `P1Section`, remembered per section). The legend is rendered as HTML
 toggle buttons; colours are re-read on `themechange`. Chart.js is only loaded on pages that use it
 (see the script map in `footer.php`).
 
@@ -748,7 +752,9 @@ dispatches a `themechange` event (charts and gauges redraw on it), and binds Ctr
 ### sidebar.js (412 lines)
 
 Collapse/expand with `localStorage` persistence (`p1mon_sidebar_collapsed`), mobile drawer behaviour
-below 1024px, click-outside-to-close, and hiding of nav items per `P1MonConfig.visibility`.
+below 1024px, click-outside-to-close. Keeps the menu button's `aria-expanded` in sync. Hidden pages
+(gas, water) are left out server-side by `nav_items()` in `components/nav.php`, which also feeds
+the phone bottom tab bar (`components/bottom-nav.php`, first five pages, below 600px).
 
 ---
 
@@ -833,13 +839,28 @@ for `:root[data-theme="dark"]` and, as the system fallback, for `:root:not([data
 --series-gas, --series-water, --series-cost, --series-degreedays,
 --series-temp-max, --series-temp-avg, --series-temp-min, --series-temp-band
 
+/* The same series as text and icon colours (WCAG AA on cards, both themes) */
+--series-import-text, --series-export-text, --series-net-text, --series-solar-text,
+--series-gas-text, --series-water-text, --series-cost-text
+
+/* Accents: --accent-primary is the filled green (white text 5.5:1); *-text for text */
+--accent-primary, --accent-primary-hover, --accent-on-primary,
+--accent-success-text, --accent-danger-text, --accent-warning-text
+
 /* Icon tints and chart chrome */
 --tint-*, --chart-grid, --chart-text, --chart-tooltip-bg, --chart-tooltip-border
 ```
 
+**Contrast rule.** The `--series-*` fills are for bars, lines and swatches; many of them are too
+light to read as text (amber on white is 2.2:1). Anything that is read (numbers, labels, icons,
+links) uses a `*-text` token. The `.is-import` / `.is-gas` / … helpers set `--c` (fill), `--ct`
+(text) and `--t` (tint) for their children: use `--ct` for text. Every page passes axe-core
+(WCAG 2.1 AA) at phone and desktop width in both themes.
+
 Also defines a type scale (`--text-xs` … `--text-4xl`), spacing (`--space-1` … `--space-12`),
-radii, transitions, layout dimensions, `--touch-target` and a z-index scale. CSS is mobile first
-with two breakpoints: 600px (tablet) and 1024px (desktop, sidebar in the flow).
+radii, transitions, layout dimensions (`--header-height`, `--bottom-nav-height`),
+`--touch-target` and a z-index scale. CSS is mobile first with two breakpoints: 600px (tablet, the
+bottom tab bar gives way to the hamburger drawer) and 1024px (desktop, sidebar in the flow).
 
 ---
 
@@ -972,9 +993,11 @@ every minute next to the header's 24 hours every 10 seconds.
 
 ### Adding a New Page
 
-1. Create `pages/newpage.php` as a fragment (no `<html>`/`<body>`; 8-space base indent to match).
+1. Create `pages/newpage.php` as a fragment (no `<html>`/`<body>`; 8-space base indent to match),
+   with `<main class="main-content" id="main" tabindex="-1">` so the skip link lands there.
 2. Add the page name to `$validPages` in `p1mon.php`.
-3. Add a navigation link in `components/sidebar.php`.
+3. Add it to `nav_items()` in `components/nav.php`; the sidebar, the phone tab bar and the page
+   title all read from there.
 4. Create `assets/js/newpage.js` as an IIFE exposing a manager that auto-inits when
    `P1MonConfig.currentPage` matches.
 5. Register the script in the page-specific block in `components/footer.php`

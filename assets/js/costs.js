@@ -44,6 +44,7 @@
 
             this.section = P1Section.create({
                 id: 'costs',
+                chart: this.chart,
                 load: (state, isCurrent) => this.load(state, isCurrent),
                 live: () => this.loadLive()
             });

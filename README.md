@@ -44,7 +44,9 @@ A modern, responsive web dashboard for monitoring real-time energy, gas, water, 
 │   └── solar.php                # Solar data API (Solplanet Cloud integration)
 ├── components/                  # Reusable UI components
 │   ├── header.php               # Top navigation and branding
-│   ├── sidebar.php              # Navigation menu
+│   ├── nav.php                  # The page list, shared by both menus
+│   ├── sidebar.php              # Navigation menu (drawer below 1024px)
+│   ├── bottom-nav.php           # Tab bar on phones
 │   ├── footer.php               # Page footer
 │   ├── icon.php                 # Inline SVG icon set
 │   ├── section.php              # Section page template (toolbar, KPIs, chart card)
@@ -256,8 +258,10 @@ Charts are powered by Chart.js with support for:
 1. Create a new file in `pages/` directory
 2. Add page name to `$validPages` array in `p1mon.php`
 3. Create corresponding JavaScript file in `assets/js/`
-4. Add navigation link in `components/sidebar.php`
-5. Link JavaScript in `config.php` `includeJS()` function
+4. Add the page to `nav_items()` in `components/nav.php`
+5. Register the JavaScript in the page script map in `components/footer.php`
+
+See [docs/TECHNICAL.md](docs/TECHNICAL.md#adding-a-new-page) for the section page template.
 
 ### Modifying Styling
 

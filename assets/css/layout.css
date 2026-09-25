@@ -67,7 +67,7 @@
 
 .header-icon {
     display: flex;
-    color: var(--series-import);
+    color: var(--series-import-text);
 }
 
 /* Header widgets (solar, weather, clock) */
@@ -95,9 +95,9 @@
     justify-content: center;
     width: 28px;
     height: 28px;
-    background: var(--series-solar);
+    background: var(--accent-primary);
     border-radius: var(--radius-sm);
-    color: #ffffff;
+    color: var(--accent-on-primary);
 }
 
 .solar-widget .widget-content {
@@ -109,7 +109,7 @@
 .solar-widget .widget-value {
     font-size: var(--text-sm);
     font-weight: 700;
-    color: var(--series-solar);
+    color: var(--series-solar-text);
     line-height: 1.2;
 }
 
@@ -134,7 +134,7 @@
 }
 
 .solar-widget.error .widget-value {
-    color: var(--accent-danger);
+    color: var(--accent-danger-text);
 }
 
 @keyframes pulse-opacity {
@@ -180,7 +180,8 @@
     position: fixed;
     left: 0;
     top: calc(var(--header-height) + env(safe-area-inset-top, 0px));
-    bottom: 0;
+    /* Phones: stop above the bottom tab bar */
+    bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
     width: var(--sidebar-width);
     background-color: var(--bg-secondary);
     border-right: 1px solid var(--border-color);
@@ -296,7 +297,85 @@ body.sidebar-open::before {
     margin-top: calc(var(--header-height) + env(safe-area-inset-top, 0px));
     min-height: calc(100vh - var(--header-height));
     transition: margin-left var(--transition-base);
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    /* Room for the bottom tab bar on phones */
+    padding-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
+}
+
+.main-content:focus {
+    outline: none;
+}
+
+/* Skip link: first focusable element, visible only when focused */
+.skip-link {
+    position: fixed;
+    top: var(--space-2);
+    left: var(--space-2);
+    z-index: calc(var(--z-header) + 1);
+    padding: var(--space-2) var(--space-4);
+    border-radius: var(--radius-md);
+    background: var(--accent-primary);
+    color: var(--accent-on-primary);
+    font-weight: 600;
+    transform: translateY(-200%);
+    transition: transform var(--transition-fast);
+}
+
+.skip-link:focus {
+    transform: none;
+    color: var(--accent-on-primary);
+}
+
+/* ============================================================================
+   BOTTOM TAB BAR (phones only)
+   ============================================================================ */
+
+.bottom-nav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: var(--z-header);
+    display: flex;
+    height: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
+    padding: 0 env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+    background-color: color-mix(in srgb, var(--bg-secondary) 92%, transparent);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-top: 1px solid var(--border-color);
+}
+
+.bottom-nav-item {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    color: var(--text-secondary);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    text-decoration: none;
+}
+
+.bottom-nav-item span {
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.bottom-nav-item:hover {
+    color: var(--text-primary);
+}
+
+.bottom-nav-item.active {
+    color: var(--accent-success-text);
+    font-weight: 700;
+}
+
+.bottom-nav-item.active .icon {
+    stroke-width: 2.5;
 }
 
 .page-header {
@@ -326,6 +405,18 @@ body.sidebar-open::before {
    ============================================================================ */
 
 @media (min-width: 600px) {
+    .bottom-nav {
+        display: none;
+    }
+
+    .main-content {
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    .sidebar {
+        bottom: 0;
+    }
+
     .app-header {
         gap: var(--space-4);
     }
@@ -407,6 +498,8 @@ body.sidebar-open::before {
 /* Print styles */
 @media print {
     .app-header,
+    .bottom-nav,
+    .skip-link,
     .sidebar,
     .update-status,
     .icon-button {

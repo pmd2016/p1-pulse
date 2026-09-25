@@ -33,29 +33,12 @@
             
             // Watch for window resize
             this.watchResize();
-            
-            // Hide nav items based on visibility settings
-            this.applyVisibilitySettings();
-            
+
+            // Sync the menu button's aria-expanded with the initial state
+            // (hidden pages are left out server-side, see components/nav.php)
+            this.dispatchStateChangeEvent();
+
             P1Logger.log('Sidebar system initialized');
-        },
-        
-        /**
-         * Apply visibility settings to navigation items
-         */
-        applyVisibilitySettings() {
-            const config = window.P1MonConfig || {};
-            
-            // Hide water nav item if not available
-            if (config.visibility && config.visibility.hide_water) {
-                const navItems = document.querySelectorAll('.nav-item');
-                navItems.forEach(item => {
-                    const href = item.getAttribute('href');
-                    if (href && href.includes('page=water')) {
-                        item.style.display = 'none';
-                    }
-                });
-            }
         },
         
         /**
@@ -337,6 +320,14 @@
          * Dispatch custom state change event
          */
         dispatchStateChangeEvent() {
+            // Menu button tells assistive tech whether the menu is showing:
+            // the drawer on mobile, the full (not collapsed) sidebar on desktop
+            const toggle = document.getElementById('sidebar-toggle');
+            if (toggle) {
+                const expanded = this.isMobile ? this.isOpen : !this.isCollapsed;
+                toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+            }
+
             const event = new CustomEvent('sidebarchange', {
                 detail: this.getState()
             });

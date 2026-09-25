@@ -219,8 +219,37 @@
             return importKWh * t.import - exportKWh * t.export;
         },
 
+        /**
+         * Dutch number formatting with a fixed number of decimals:
+         * formatNumber(1234.5, 2) → "1.234,50". For display only; never
+         * parse the result back into a number.
+         */
         formatNumber(value, decimals = 2) {
-            return (Math.round((value || 0) * Math.pow(10, decimals)) / Math.pow(10, decimals)).toFixed(decimals);
+            const n = Number(value) || 0;
+            // Values that round to zero print as 0, not -0
+            const rounded = Math.abs(n) < 0.5 * Math.pow(10, -decimals) ? 0 : n;
+            return this.numberFormat(decimals, decimals).format(rounded);
+        },
+
+        /**
+         * Axis ticks and other compact numbers: at most `maxDecimals`,
+         * trailing zeros dropped ("1,5", "2")
+         */
+        formatCompact(value, maxDecimals = 2) {
+            const n = Number(value) || 0;
+            return this.numberFormat(0, maxDecimals).format(Math.abs(n) < 1e-9 ? 0 : n);
+        },
+
+        numberFormat(min, max) {
+            const key = `${min}-${max}`;
+            this._formats = this._formats || {};
+            if (!this._formats[key]) {
+                this._formats[key] = new Intl.NumberFormat('nl-NL', {
+                    minimumFractionDigits: min,
+                    maximumFractionDigits: max
+                });
+            }
+            return this._formats[key];
         },
 
         /**

@@ -36,6 +36,7 @@
 
             this.section = P1Section.create({
                 id: 'solar',
+                chart: this.chart,
                 load: (state, isCurrent) => this.load(state, isCurrent),
                 live: () => this.loadLive()
             });

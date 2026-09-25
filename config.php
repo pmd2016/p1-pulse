@@ -20,6 +20,7 @@ define('CUSTOM_BASE_URL', '/custom');
 
 require_once CUSTOM_BASE_PATH . '/components/icon.php';
 require_once CUSTOM_BASE_PATH . '/components/section.php';
+require_once CUSTOM_BASE_PATH . '/components/nav.php';
 
 // Configuration settings
 class P1Config {
@@ -147,6 +148,9 @@ function renderPage($page, $data = []) {
         echo "<div class='error'>Page not found: {$page}</div>";
     }
     
+    // Phone tab bar: after the page content, so it comes last in reading order
+    include CUSTOM_BASE_PATH . '/components/bottom-nav.php';
+
     if (file_exists($footerPath)) {
         include $footerPath;
     } else {
