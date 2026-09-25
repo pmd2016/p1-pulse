@@ -196,6 +196,29 @@
             return timestamp;
         },
 
+        /**
+         * Tariffs in EUR, as configured in P1 Monitor (see config.php):
+         * { import, export } per kWh, { gas, water } per m³.
+         * Used only for estimates when P1 Monitor has no financial data.
+         */
+        tariffs() {
+            const c = window.P1MonConfig || {};
+            return {
+                import: c.electricityCostPerKwh ?? 0.30,
+                export: c.electricityExportPerKwh ?? c.electricityCostPerKwh ?? 0.30,
+                gas: c.gasCostPerM3 ?? 1.50,
+                water: c.waterCostPerM3 ?? 0
+            };
+        },
+
+        /**
+         * Estimated net electricity cost: bought minus delivered back
+         */
+        estimateElectricityCost(importKWh, exportKWh) {
+            const t = this.tariffs();
+            return importKWh * t.import - exportKWh * t.export;
+        },
+
         formatNumber(value, decimals = 2) {
             return (Math.round((value || 0) * Math.pow(10, decimals)) / Math.pow(10, decimals)).toFixed(decimals);
         },

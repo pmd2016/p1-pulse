@@ -91,8 +91,8 @@
             const energy = stats && stats.totalEnergy !== undefined
                 ? stats.totalEnergy
                 : points.reduce((sum, d) => sum + (parseFloat(d.production) || 0), 0);
-            // Estimated value of the energy at the configured tariff
-            const tariff = window.P1MonConfig?.electricityCostPerKwh ?? 0.30;
+            // Estimated value of the energy at the configured purchase tariff
+            const tariff = P1Utils.tariffs().import;
             const maxKWh = (this.systemCapacity / 1000) * zoom * (HOURS_PER[period] || 1);
 
             return {

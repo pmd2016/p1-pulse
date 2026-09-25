@@ -13,6 +13,8 @@
 
 /**
  * @param array $opts ['temperature' => bool]  show the temperature toggle
+ *                    ['periods' => ['days', ...]] limit the period tabs
+ *                    (default: hours, days, months, years)
  */
 function section_toolbar(array $opts = []) {
     $periods = [
@@ -21,6 +23,9 @@ function section_toolbar(array $opts = []) {
         'months' => ['Maanden', 'calendar-range'],
         'years'  => ['Jaren', 'trending-up'],
     ];
+    if (!empty($opts['periods'])) {
+        $periods = array_intersect_key($periods, array_flip($opts['periods']));
+    }
     ?>
                 <div class="section-toolbar" data-section-toolbar>
                     <div class="period-tabs" role="tablist" aria-label="Periode">

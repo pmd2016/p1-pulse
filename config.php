@@ -76,20 +76,40 @@ class P1Config {
         return self::get(154) == 1;
     }
 
+    // Read a positive number from P1 Monitor's configuration, or null
+    private static function tariff($id) {
+        $value = self::get($id);
+        return is_numeric($value) && (float)$value > 0 ? (float)$value : null;
+    }
+
+    // Average of two tariffs (dal/piek); either may be missing
+    private static function averageTariff($lowId, $highId) {
+        $values = array_filter([self::tariff($lowId), self::tariff($highId)], fn($v) => $v !== null);
+        return $values ? array_sum($values) / count($values) : null;
+    }
+
     // Get energy configuration values
-    // These are used as defaults when P1 Monitor financial data is unavailable
+    // Tariffs come from P1 Monitor's own configuration (the same values its
+    // financial data is calculated with). The defaults below apply only when
+    // P1 Monitor is not reachable (e.g. local development) or a tariff is unset.
+    // Estimates average dal and piek because hourly data is not split by tariff.
     public static function getEnergyConfig() {
         return [
             // Solar system capacity in Watts (14 × 270Wp panels = 3780W)
             // Adjust this value to match your installation
             'system_capacity_w' => 3780,
 
-            // Electricity cost in EUR per kWh (used as fallback when financial API unavailable)
-            // The P1 Monitor financial API uses configured tariffs when available
-            'electricity_cost_per_kwh' => 0.30,
+            // Electricity bought, EUR per kWh (P1 Monitor config 1 = dal, 2 = piek)
+            'electricity_cost_per_kwh' => self::averageTariff(1, 2) ?? 0.30,
 
-            // Gas cost in EUR per m³ (used as fallback when financial API unavailable)
-            'gas_cost_per_m3' => 1.50
+            // Electricity delivered back, EUR per kWh (config 3 = dal, 4 = piek)
+            'electricity_export_per_kwh' => self::averageTariff(3, 4) ?? 0.30,
+
+            // Gas, EUR per m³ (config 15)
+            'gas_cost_per_m3' => self::tariff(15) ?? 1.50,
+
+            // Drinking water, EUR per m³ (config 104)
+            'water_cost_per_m3' => self::tariff(104) ?? 0,
         ];
     }
 }

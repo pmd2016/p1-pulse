@@ -528,6 +528,95 @@
         },
 
         /**
+         * Costs per bucket from P1 Monitor's financial data, windowed like
+         * getElectricityData(): page 0 is the newest `limit` buckets, and the
+         * window before it is returned as `previous` for comparisons.
+         *
+         * P1 Monitor has financial data per day, month and year (no hours).
+         * Its figures exclude fixed charges (vastrecht).
+         *
+         * @param {string} period - 'days', 'months', 'years'
+         * @param {number} limit - Buckets per window
+         * @param {Object} options - { page: 0 }
+         * @returns {Promise<Object|null>} { period, limit, page, chartData, stats, previous, hasOlder }
+         *   chartData: [{ timestamp, unixTimestamp, electricity, gas, water, revenue, net }]
+         *   revenue is negative (money received), so it stacks below zero.
+         */
+        async getCostData(period = 'days', limit = 7, options = {}) {
+            const page = Math.max(0, options.page || 0);
+            const fetchLimit = limit * (page + 2);
+
+            const fetchers = {
+                days: () => this.getFinancial(fetchLimit),
+                months: () => this.getFinancialMonth(fetchLimit),
+                years: () => this.getFinancialYear(fetchLimit)
+            };
+            if (!fetchers[period]) throw new Error('No financial data for period: ' + period);
+
+            const rows = await fetchers[period]();
+            if (!Array.isArray(rows) || rows.length === 0) return null;
+
+            // Newest first from the API; slice windows, then make them chronological
+            const current = rows.slice(page * limit, (page + 1) * limit).reverse().map(r => this.costPoint(r));
+            const previous = rows.slice((page + 1) * limit, (page + 2) * limit).reverse().map(r => this.costPoint(r));
+            if (current.length === 0) return null;
+
+            return {
+                period,
+                limit,
+                page,
+                chartData: current,
+                stats: this.costStats(current),
+                previous: previous.length === limit ? this.costStats(previous) : null,
+                hasOlder: previous.length > 0
+            };
+        },
+
+        costPoint(row) {
+            const num = (key) => parseFloat(row[key] || 0) || 0;
+            const electricity = num('CONSUMPTION_COST_ELECTRICITY_HIGH') + num('CONSUMPTION_COST_ELECTRICITY_LOW');
+            const gas = num('CONSUMPTION_COST_GAS');
+            const water = num('CONSUMPTION_COST_WATER');
+            const revenue = -(num('PRODUCTION_REVENUES_ELECTRICITY_HIGH') + num('PRODUCTION_REVENUES_ELECTRICITY_LOW'));
+
+            return {
+                timestamp: row.TIMESTAMP_lOCAL,
+                unixTimestamp: parseInt(row.TIMESTAMP_UTC),
+                electricity,
+                gas,
+                water,
+                revenue,
+                net: electricity + gas + water + revenue
+            };
+        },
+
+        /**
+         * Totals for a window of cost points. revenue is returned positive.
+         */
+        costStats(points) {
+            const sum = (key) => points.reduce((s, p) => s + p[key], 0);
+            const peak = points.reduce((best, p) => (p.net > best.value ? { value: p.net, time: p.timestamp } : best),
+                { value: -Infinity, time: null });
+
+            const gross = sum('electricity') + sum('gas') + sum('water');
+            const revenue = -sum('revenue');
+            const net = gross - revenue;
+
+            return {
+                electricity: sum('electricity'),
+                gas: sum('gas'),
+                water: sum('water'),
+                gross,
+                revenue,
+                net,
+                average: points.length ? net / points.length : 0,
+                peak: peak.time ? peak : { value: 0, time: null },
+                from: points[0].unixTimestamp,
+                to: points[points.length - 1].unixTimestamp
+            };
+        },
+
+        /**
          * One chart point from a powergas row
          */
         electricityPoint(row, period, temperatureMap) {
@@ -559,7 +648,7 @@
         /**
          * Totals for a window of powergas rows (chronological).
          * Costs come from the financial rows that fall inside the window;
-         * without them they are estimated from P1MonConfig.electricityCostPerKwh.
+         * without them they are estimated from the configured tariffs (P1Utils.tariffs).
          */
         electricityStats(rows, financialData) {
             let totalConsumption = 0;
@@ -596,10 +685,9 @@
                     - parseFloat(row.PRODUCTION_REVENUES_ELECTRICITY_HIGH || 0)
                     - parseFloat(row.PRODUCTION_REVENUES_ELECTRICITY_LOW || 0), 0);
             } else {
-                // Estimate from the configured tariff (config.php, default €0.30/kWh)
-                const estimatedCostPerKwh = window.P1MonConfig?.electricityCostPerKwh ?? 0.30;
-                totalCost = (totalConsumption - totalProduction) * estimatedCostPerKwh;
-                gasCost = totalGas * (window.P1MonConfig?.gasCostPerM3 ?? 1.50);
+                // Estimate from the tariffs configured in P1 Monitor (P1Utils.tariffs)
+                totalCost = P1Utils.estimateElectricityCost(totalConsumption, totalProduction);
+                gasCost = totalGas * P1Utils.tariffs().gas;
             }
 
             return {
