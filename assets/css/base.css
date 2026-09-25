@@ -55,7 +55,7 @@ a {
 }
 
 a:hover {
-    color: var(--accent-primary);
+    color: var(--accent-success-text);
 }
 
 button {
@@ -94,10 +94,10 @@ button {
 /* Utility classes */
 .text-primary { color: var(--text-primary); }
 .text-secondary { color: var(--text-secondary); }
-.text-consumption { color: var(--series-import); }
-.text-production { color: var(--series-export); }
-.text-gas { color: var(--series-gas); }
-.text-water { color: var(--series-water); }
+.text-consumption { color: var(--series-import-text); }
+.text-production { color: var(--series-export-text); }
+.text-gas { color: var(--series-gas-text); }
+.text-water { color: var(--series-water-text); }
 
 .bg-consumption { background-color: var(--series-import); }
 .bg-production { background-color: var(--series-export); }
@@ -131,7 +131,7 @@ button {
 
 button:focus-visible,
 a:focus-visible {
-    outline-color: var(--accent-primary);
+    outline-color: var(--accent-success-text);
 }
 
 @media (prefers-reduced-motion: reduce) {

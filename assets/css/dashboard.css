@@ -21,7 +21,7 @@
 .kpi-strip.is-now .kpi-value,
 .kpi-strip.is-now .kpi-card:first-child .kpi-value {
     font-size: var(--text-lg);
-    color: var(--c, var(--text-primary));
+    color: var(--ct, var(--text-primary));
 }
 
 .kpi-strip.is-now .kpi-icon {
@@ -65,7 +65,7 @@
 
 .dashboard-card .card-icon {
     display: flex;
-    color: var(--c);
+    color: var(--ct);
 }
 
 .dashboard-card .card-link {
@@ -75,14 +75,14 @@
     min-height: var(--touch-target);
     padding: 0 var(--space-2);
     border-radius: var(--radius-md);
-    color: var(--accent-primary);
+    color: var(--accent-success-text);
     font-size: var(--text-sm);
     font-weight: 500;
 }
 
 .dashboard-card .card-link:hover {
     background: var(--bg-hover);
-    color: var(--accent-primary-hover);
+    color: var(--text-primary);
 }
 
 .dashboard-card .card-body {
@@ -102,7 +102,7 @@
 
 .dash-figure .kpi-value {
     font-size: var(--text-3xl);
-    color: var(--c, var(--text-primary));
+    color: var(--ct, var(--text-primary));
 }
 
 /* Sparkline of today, 24 hourly slots */

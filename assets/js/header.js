@@ -94,7 +94,7 @@
                     humidityEl.textContent = `${Math.round(latest.HUMIDITY)}%`;
                 }
                 if (windEl && latest.WIND_SPEED !== undefined) {
-                    windEl.textContent = `${latest.WIND_SPEED.toFixed(1)} m/s`;
+                    windEl.textContent = `${P1Utils.formatNumber(latest.WIND_SPEED, 1)} m/s`;
                 }
                 if (pressureEl && latest.PRESSURE !== undefined) {
                     pressureEl.textContent = `${Math.round(latest.PRESSURE)} hPa`;
@@ -154,7 +154,7 @@
                     const totalEnergy = todayData.reduce((sum, point) => {
                         return sum + (parseFloat(point.production) || 0);
                     }, 0);
-                    todayEl.textContent = totalEnergy.toFixed(2) + ' kWh';
+                    todayEl.textContent = P1Utils.formatNumber(totalEnergy, 2) + ' kWh';
                     this.publish('solar', { power: parseFloat(current.power) || 0, todayKWh: totalEnergy });
                 }
                 
@@ -178,7 +178,7 @@
         formatPower(watts) {
             const w = parseFloat(watts) || 0;
             if (w >= 1000) {
-                return (w / 1000).toFixed(2) + ' kW';
+                return P1Utils.formatNumber(w / 1000, 2) + ' kW';
             }
             return Math.round(w) + ' W';
         },

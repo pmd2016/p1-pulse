@@ -26,13 +26,19 @@
     --overlay: rgba(15, 23, 42, 0.5);
 
     /* ---- Brand / UI accents ---- */
-    --accent-primary: #10b981;
-    --accent-primary-hover: #059669;
+    /* Filled buttons, active tabs and nav: white text on it is 5.5:1 (AA) */
+    --accent-primary: #047857;
+    --accent-primary-hover: #065f46;
     --accent-on-primary: #ffffff;
     --accent-danger: #ef4444;
     --accent-warning: #f59e0b;
     --accent-success: #10b981;
     --accent-info: #3b82f6;
+
+    /* Accents as text (WCAG AA 4.5:1 on cards and page background) */
+    --accent-danger-text: #b91c1c;
+    --accent-warning-text: #92400e;
+    --accent-success-text: #047857;
 
     /*
      * ---- Data series ----
@@ -53,6 +59,19 @@
     --series-temp-avg: #dc2626;
     --series-temp-min: #f87171;
     --series-temp-band: rgba(239, 68, 68, 0.08);
+
+    /*
+     * The same series as text and icons. The fills above are too light to
+     * read as text on white (amber is 2.2:1); these meet 4.5:1 on white and
+     * on the tints below. Charts keep using the fills.
+     */
+    --series-import-text: #b45309;
+    --series-export-text: #047857;
+    --series-net-text: #475569;
+    --series-solar-text: #047857;
+    --series-gas-text: #1d4ed8;
+    --series-water-text: #0e7490;
+    --series-cost-text: #6d28d9;
 
     /* Soft tints for icon backgrounds */
     --tint-import: #fef3c7;
@@ -117,6 +136,7 @@
     --sidebar-width: 240px;
     --sidebar-collapsed-width: 80px;
     --header-height: 64px;
+    --bottom-nav-height: 56px;
     --touch-target: 44px;
 
     /* ---- Z-index ---- */
@@ -148,6 +168,17 @@
     --series-temp-avg: #f87171;
     --series-temp-min: #fca5a5;
     --series-temp-band: rgba(248, 113, 113, 0.10);
+
+    --series-import-text: #fbbf24;
+    --series-export-text: #34d399;
+    --series-net-text: #cbd5e1;
+    --series-solar-text: #34d399;
+    --series-gas-text: #60a5fa;
+    --series-water-text: #22d3ee;
+    --series-cost-text: #a78bfa;
+    --accent-danger-text: #f87171;
+    --accent-warning-text: #fbbf24;
+    --accent-success-text: #34d399;
 
     --tint-import: #78350f;
     --tint-export: #064e3b;
@@ -185,6 +216,17 @@
         --series-temp-avg: #f87171;
         --series-temp-min: #fca5a5;
         --series-temp-band: rgba(248, 113, 113, 0.10);
+
+        --series-import-text: #fbbf24;
+        --series-export-text: #34d399;
+        --series-net-text: #cbd5e1;
+        --series-solar-text: #34d399;
+        --series-gas-text: #60a5fa;
+        --series-water-text: #22d3ee;
+        --series-cost-text: #a78bfa;
+        --accent-danger-text: #f87171;
+        --accent-warning-text: #fbbf24;
+        --accent-success-text: #34d399;
 
         --tint-import: #78350f;
         --tint-export: #064e3b;

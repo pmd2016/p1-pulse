@@ -45,7 +45,7 @@ function dashboard_card($key, $title, $icon, $link, $tone, $totalLabel, array $r
 }
 ?>
 <!-- Main content area -->
-        <main class="main-content">
+        <main class="main-content" id="main" tabindex="-1">
             <div class="page-header">
                 <h2 class="page-title">Dashboard</h2>
                 <div class="update-status" id="update-status" data-state="loading" aria-live="polite">

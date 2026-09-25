@@ -1,4 +1,4 @@
-        <main class="main-content">
+        <main class="main-content" id="main" tabindex="-1">
             <div class="page-header">
                 <h2 class="page-title">Water</h2>
             </div>

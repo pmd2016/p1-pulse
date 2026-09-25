@@ -1,5 +1,5 @@
 <!-- Main content area -->
-        <main class="main-content">
+        <main class="main-content" id="main" tabindex="-1">
             <div class="page-header">
                 <h2 class="page-title">Gas</h2>
             </div>

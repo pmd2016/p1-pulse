@@ -54,7 +54,7 @@ function section_toolbar(array $opts = []) {
                             <div class="button-group range-buttons" data-range-buttons role="group" aria-label="Bereik"></div>
 
                             <?php if (!empty($opts['temperature'])): ?>
-                            <button type="button" class="chip-toggle" data-toggle="temperature" aria-pressed="false" title="Temperatuur tonen">
+                            <button type="button" class="chip-toggle" data-toggle="temperature" aria-pressed="false" aria-label="Temperatuur" title="Temperatuur tonen">
                                 <?php echo icon('thermometer', 16); ?>
                                 <span class="chip-label">Temperatuur</span>
                             </button>
@@ -100,12 +100,20 @@ function chart_card(array $opts) {
                 <div class="card chart-card" data-chart-card data-state="loading">
                     <div class="chart-header">
                         <h3 class="chart-title"><?php echo htmlspecialchars($opts['title']); ?></h3>
+                        <button type="button" class="chip-toggle chart-table-toggle" data-table-toggle
+                                aria-pressed="false" aria-controls="<?php echo $id; ?>-table"
+                                aria-label="Toon als tabel" title="Toon als tabel">
+                            <?php echo icon('table', 16); ?>
+                            <span class="chip-label">Tabel</span>
+                        </button>
                         <div class="chart-legend" id="<?php echo $id; ?>-legend" aria-label="Reeksen tonen of verbergen"></div>
                     </div>
                     <div class="chart-body">
                         <div class="chart-container-large">
                             <canvas id="<?php echo $id; ?>-chart" role="img" aria-label="<?php echo htmlspecialchars($opts['aria']); ?>"></canvas>
                         </div>
+                        <div class="chart-table" id="<?php echo $id; ?>-table" data-chart-table hidden
+                             tabindex="0" role="region" aria-label="<?php echo htmlspecialchars($opts['title']); ?> als tabel"></div>
                         <div class="chart-state chart-state-loading" aria-hidden="true">
                             <div class="skeleton-bars"><?php for ($i = 0; $i < 12; $i++): ?><span></span><?php endfor; ?></div>
                         </div>

@@ -14,6 +14,7 @@
  * Usage:
  *   const section = P1Section.create({
  *       id: 'gas',
+ *       chart,                 // the page's P1Chart, for "Toon als tabel"
  *       load: async (state, isCurrent) => {
  *           // fetch, then if (!isCurrent()) return; render chart + KPIs
  *           return { empty: false, from, to, hasOlder: true };
@@ -147,10 +148,37 @@
                     if (card) {
                         const retry = card.querySelector('[data-retry]');
                         if (retry) retry.addEventListener('click', () => this.reload());
+                        this.bindTableToggle();
                     }
 
                     this.reload();
                     this.startLive();
+                },
+
+                /**
+                 * "Toon als tabel": swap the canvas for a table of the same
+                 * data (config.chart), remembered per section
+                 */
+                bindTableToggle() {
+                    const button = card.querySelector('[data-table-toggle]');
+                    const tableEl = card.querySelector('[data-chart-table]');
+                    if (!button || !tableEl || !config.chart) return;
+
+                    const apply = (on) => {
+                        button.setAttribute('aria-pressed', on ? 'true' : 'false');
+                        card.classList.toggle('shows-table', on);
+                        tableEl.hidden = !on;
+                        config.chart.showTable(on ? tableEl : null);
+                    };
+
+                    apply(!!(readStorage(STORAGE_PREFIX + config.id) || {}).table);
+
+                    button.addEventListener('click', () => {
+                        const on = button.getAttribute('aria-pressed') !== 'true';
+                        apply(on);
+                        const stored = readStorage(STORAGE_PREFIX + config.id) || {};
+                        writeStorage(STORAGE_PREFIX + config.id, { ...stored, table: on });
+                    });
                 },
 
                 /**
@@ -187,7 +215,8 @@
 
                 persistState() {
                     const { period, zoom, page, temperature } = this.state;
-                    writeStorage(STORAGE_PREFIX + config.id, { period, zoom, temperature });
+                    const stored = readStorage(STORAGE_PREFIX + config.id) || {};
+                    writeStorage(STORAGE_PREFIX + config.id, { ...stored, period, zoom, temperature });
 
                     const params = new URLSearchParams(window.location.search);
                     params.set('period', period);

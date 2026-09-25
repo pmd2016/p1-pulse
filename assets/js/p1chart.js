@@ -55,7 +55,7 @@
 
     function formatTick(value, unit, prefix) {
         // Axis ticks: at most 2 decimals, trailing zeros dropped
-        return withUnit(+Number(value).toFixed(2), unit, prefix);
+        return withUnit(P1Utils.formatCompact(value, 2), unit, prefix);
     }
 
     function formatValue(value, decimals, unit, prefix) {
@@ -325,6 +325,63 @@
             }
 
             this.renderLegend();
+            if (this.tableEl) this.renderTable(this.tableEl);
+        },
+
+        /**
+         * Show the data as a table in `el` (and keep it in sync with data
+         * and legend changes), or stop with null. The accessible alternative
+         * to the canvas.
+         */
+        showTable(el) {
+            this.tableEl = el || null;
+            if (this.tableEl) this.renderTable(this.tableEl);
+        },
+
+        /**
+         * One row per bucket, one column per visible series, values formatted
+         * as in the tooltip.
+         */
+        renderTable(el) {
+            const cfg = this.config;
+            const y2 = Object.assign({ unit: '', decimals: 2 }, cfg.axes.y2 || {});
+            const series = this.activeSeries().filter(s => !this.hidden.has(s.key));
+
+            const format = (s, v) => {
+                if (v === undefined || v === null || isNaN(v)) return '–';
+                if (s.axis === 'temp') return formatValue(v, 1, '°C');
+                if (s.axis === 'y2') return formatValue(v, y2.decimals, y2.unit);
+                return formatValue(v, cfg.decimals, cfg.unit, cfg.prefix);
+            };
+
+            const table = document.createElement('table');
+            table.className = 'data-table';
+
+            const head = table.createTHead().insertRow();
+            const corner = document.createElement('th');
+            corner.scope = 'col';
+            corner.textContent = 'Periode';
+            head.appendChild(corner);
+            series.forEach(s => {
+                const th = document.createElement('th');
+                th.scope = 'col';
+                th.textContent = s.label;
+                head.appendChild(th);
+            });
+
+            const body = table.createTBody();
+            this.points.forEach(p => {
+                const row = body.insertRow();
+                const th = document.createElement('th');
+                th.scope = 'row';
+                th.textContent = P1Utils.formatTooltipTime(toDate(p), this.period);
+                row.appendChild(th);
+                series.forEach(s => {
+                    row.insertCell().textContent = format(s, p[s.key]);
+                });
+            });
+
+            el.replaceChildren(table);
         },
 
         /**
