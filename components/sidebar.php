@@ -2,36 +2,36 @@
         <aside class="sidebar" id="sidebar">
             <nav class="sidebar-nav">
                 <a href="?page=dashboard" class="nav-item <?php echo ($currentPage === 'dashboard') ? 'active' : ''; ?>">
-                    <span class="nav-icon">🏠</span>
+                    <span class="nav-icon"><?php echo icon('home', 22); ?></span>
                     <span class="nav-label">Dashboard</span>
                 </a>
                 
                 <a href="?page=electricity" class="nav-item <?php echo ($currentPage === 'electricity') ? 'active' : ''; ?>">
-                    <span class="nav-icon">⚡</span>
+                    <span class="nav-icon"><?php echo icon('zap', 22); ?></span>
                     <span class="nav-label">Elektriciteit</span>
                 </a>
                 
                 <?php if (!$visibility['hide_gas']): ?>
                 <a href="?page=gas" class="nav-item <?php echo ($currentPage === 'gas') ? 'active' : ''; ?>">
-                    <span class="nav-icon">🔥</span>
+                    <span class="nav-icon"><?php echo icon('flame', 22); ?></span>
                     <span class="nav-label">Gas</span>
                 </a>
                 <?php endif; ?>
                 
                 <?php if (!$visibility['hide_water']): ?>
                 <a href="?page=water" class="nav-item <?php echo ($currentPage === 'water') ? 'active' : ''; ?>">
-                    <span class="nav-icon">💧</span>
+                    <span class="nav-icon"><?php echo icon('droplet', 22); ?></span>
                     <span class="nav-label">Water</span>
                 </a>
                 <?php endif; ?>
                 
                 <a href="?page=solar" class="nav-item <?php echo ($currentPage === 'solar') ? 'active' : ''; ?>">
-                    <span class="nav-icon">☀️</span>
+                    <span class="nav-icon"><?php echo icon('sun', 22); ?></span>
                     <span class="nav-label">Zonnepanelen</span>
                 </a>
                 
                 <a href="?page=costs" class="nav-item <?php echo ($currentPage === 'costs') ? 'active' : ''; ?>">
-                    <span class="nav-icon">💰</span>
+                    <span class="nav-icon"><?php echo icon('euro', 22); ?></span>
                     <span class="nav-label">Kosten</span>
                 </a>
             </nav>

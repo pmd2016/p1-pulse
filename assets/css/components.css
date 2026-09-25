@@ -1,19 +1,22 @@
 /**
- * Reusable component styles
+ * Reusable components: buttons, cards, KPI cards, controls, charts, feedback.
+ * Mobile first. Breakpoints: 600px (tablet), 1024px (desktop).
  */
 
-/* Buttons */
+/* ============================================================================
+   BUTTONS
+   ============================================================================ */
+
 .button, .icon-button {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     padding: var(--space-2) var(--space-4);
-    border: none;
     border-radius: var(--radius-md);
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
     font-weight: 500;
     cursor: pointer;
-    transition: all var(--transition-fast);
+    transition: background-color var(--transition-fast), color var(--transition-fast);
     background-color: var(--bg-secondary);
     color: var(--text-primary);
     border: 1px solid var(--border-color);
@@ -21,38 +24,34 @@
 
 .button:hover, .icon-button:hover {
     background-color: var(--bg-hover);
-    transform: translateY(-1px);
 }
 
 .icon-button {
     padding: var(--space-2);
-    width: 40px;
-    height: 40px;
+    width: var(--touch-target);
+    height: var(--touch-target);
 }
 
 .button-primary {
-    background-color: var(--accent-production);
-    color: white;
-    border-color: var(--accent-production);
+    background-color: var(--accent-primary);
+    color: var(--accent-on-primary);
+    border-color: var(--accent-primary);
 }
 
 .button-primary:hover {
-    background-color: var(--accent-production-dark);
+    background-color: var(--accent-primary-hover);
 }
 
-/* Cards */
+/* ============================================================================
+   CARDS
+   ============================================================================ */
+
 .card {
     background-color: var(--bg-card);
     border-radius: var(--radius-xl);
-    padding: var(--space-6);
+    padding: var(--space-4);
     box-shadow: var(--shadow);
     border: 1px solid var(--border-color);
-    transition: all var(--transition-base);
-}
-
-.card:hover {
-    box-shadow: var(--shadow-hover);
-    transform: translateY(-2px);
 }
 
 .card-header {
@@ -61,73 +60,106 @@
     gap: var(--space-3);
     margin-bottom: var(--space-5);
     padding-bottom: var(--space-4);
-    border-bottom: 2px solid var(--border-color);
-}
-
-.card-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: var(--radius-lg);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.5rem;
-    flex-shrink: 0;
-}
-
-.card-icon.consumption {
-    background-color: var(--accent-consumption-light);
-    color: var(--accent-consumption);
-}
-
-.dark-theme .card-icon.consumption {
-    background-color: var(--accent-consumption-dark);
-}
-
-.card-icon.production {
-    background-color: var(--accent-production-light);
-    color: var(--accent-production);
-}
-
-.dark-theme .card-icon.production {
-    background-color: var(--accent-production-dark);
-}
-
-.card-icon.gas {
-    background-color: var(--accent-gas-light);
-    color: var(--accent-gas);
-}
-
-.dark-theme .card-icon.gas {
-    background-color: var(--accent-gas-dark);
-}
-
-.card-icon.water {
-    background-color: var(--accent-water-light);
-    color: var(--accent-water);
-}
-
-.dark-theme .card-icon.water {
-    background-color: var(--accent-water-dark);
+    border-bottom: 1px solid var(--border-color);
 }
 
 .card-title {
-    font-size: 1.125rem;
+    font-size: var(--text-lg);
     font-weight: 600;
     color: var(--text-primary);
 }
 
 .card-subtitle {
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
     color: var(--text-secondary);
 }
 
-/* Stats Grid */
+/*
+ * Series colour helpers. Put one of these on any element that should take a
+ * data-series colour: it sets --c (solid) and --t (tint) for children.
+ */
+.is-import { --c: var(--series-import); --t: var(--tint-import); }
+.is-export { --c: var(--series-export); --t: var(--tint-export); }
+.is-net    { --c: var(--series-net);    --t: var(--tint-neutral); }
+.is-solar  { --c: var(--series-solar);  --t: var(--tint-solar); }
+.is-gas    { --c: var(--series-gas);    --t: var(--tint-gas); }
+.is-water  { --c: var(--series-water);  --t: var(--tint-water); }
+.is-cost   { --c: var(--series-cost);   --t: var(--tint-cost); }
+.is-neutral { --c: var(--text-secondary); --t: var(--tint-neutral); }
+
+/* ============================================================================
+   KPI / STAT CARDS
+   ============================================================================ */
+
+.stats-section {
+    margin-bottom: var(--space-4);
+}
+
 .stats-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--space-3);
-    margin-top: var(--space-4);
+}
+
+.stat-card {
+    --c: var(--text-secondary);
+    --t: var(--tint-neutral);
+    background-color: var(--bg-card);
+    border-radius: var(--radius-lg);
+    padding: var(--space-3);
+    border: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-width: 0;
+}
+
+/* On phones the icon is dropped so the value gets the full card width */
+.stat-card .stat-icon {
+    display: none;
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-md);
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    background: var(--t);
+    color: var(--c);
+}
+
+.stat-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.stat-label {
+    font-size: var(--text-xs);
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+    margin-bottom: var(--space-1);
+    line-height: 1.3;
+}
+
+.stat-value {
+    font-size: var(--text-xl);
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.2;
+}
+
+/* Values wrap between number and unit rather than being cut off */
+.stat-card .stat-value {
+    overflow-wrap: anywhere;
+}
+
+.stat-subtitle {
+    font-size: var(--text-xs);
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .stat-item {
@@ -135,40 +167,302 @@
     padding: var(--space-4);
     border-radius: var(--radius-md);
     border: 1px solid var(--border-color);
-    transition: all var(--transition-fast);
 }
 
-.stat-item:hover {
-    background-color: var(--bg-hover);
+/* ============================================================================
+   SEGMENTED CONTROLS (period tabs, zoom buttons)
+   ============================================================================ */
+
+.period-tabs {
+    display: flex;
+    gap: var(--space-1);
+    margin-bottom: var(--space-4);
+    background-color: var(--bg-secondary);
+    padding: var(--space-1);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-color);
+    overflow-x: auto;
+    scrollbar-width: none;
 }
 
-.stat-label {
-    font-size: 0.75rem;
+.period-tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.period-tab {
+    flex: 1 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    min-height: var(--touch-target);
+    padding: var(--space-2) var(--space-3);
+    border: none;
+    border-radius: var(--radius-md);
+    background-color: transparent;
     color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: var(--space-2);
+    font-size: var(--text-sm);
     font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background-color var(--transition-fast), color var(--transition-fast);
 }
 
-.stat-value {
-    font-size: 1.25rem;
-    font-weight: 700;
+.period-tab:hover {
+    background-color: var(--bg-hover);
     color: var(--text-primary);
 }
 
-/* Gauge */
-.gauge-container {
+.period-tab.active {
+    background-color: var(--accent-primary);
+    color: var(--accent-on-primary);
+}
+
+.period-tab .tab-icon {
+    display: none;
+}
+
+/* Chart controls bar */
+.chart-controls-section {
+    margin-bottom: var(--space-4);
+}
+
+.chart-controls {
+    background-color: var(--bg-card);
+    border-radius: var(--radius-lg);
+    padding: var(--space-3);
+    border: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.control-group {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-width: 0;
+}
+
+.control-label {
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    font-weight: 500;
+    flex-shrink: 0;
+    min-width: 3.5rem;
+}
+
+.button-group {
+    display: flex;
+    gap: var(--space-1);
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.button-group::-webkit-scrollbar {
+    display: none;
+}
+
+.control-button {
+    min-height: 36px;
+    padding: var(--space-1) var(--space-3);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.control-button:hover {
+    background-color: var(--bg-hover);
+}
+
+.control-button.active {
+    background-color: var(--accent-primary);
+    color: var(--accent-on-primary);
+    border-color: var(--accent-primary);
+}
+
+/* Toggle switches */
+.toggle-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-4);
+}
+
+.toggle-switch {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: 36px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.toggle-switch input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+    width: 1px;
+    height: 1px;
+}
+
+.toggle-slider {
     position: relative;
-    width: 200px;
-    height: 200px;
-    margin: var(--space-6) auto;
+    width: 40px;
+    height: 22px;
+    background-color: var(--border-strong);
+    border-radius: var(--radius-full);
+    transition: background-color var(--transition-fast);
+    flex-shrink: 0;
+}
+
+.toggle-slider::before {
+    content: '';
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background-color: #ffffff;
+    top: 2px;
+    left: 2px;
+    transition: transform var(--transition-fast);
+}
+
+.toggle-switch input[type="checkbox"]:checked + .toggle-slider {
+    background-color: var(--accent-primary);
+}
+
+.toggle-switch input[type="checkbox"]:checked + .toggle-slider::before {
+    transform: translateX(18px);
+}
+
+.toggle-switch input[type="checkbox"]:focus-visible + .toggle-slider {
+    outline: 2px solid var(--accent-primary);
+    outline-offset: 2px;
+}
+
+.toggle-switch input[type="checkbox"]:disabled + .toggle-slider {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.toggle-label {
+    font-size: var(--text-sm);
+    color: var(--text-primary);
+}
+
+/* ============================================================================
+   CHART CARD + LEGEND
+   ============================================================================ */
+
+.chart-section {
+    margin-bottom: var(--space-6);
+}
+
+.chart-card {
+    padding: 0;
+    overflow: hidden;
+}
+
+.chart-header {
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-4);
+}
+
+.chart-title {
+    font-size: var(--text-lg);
+    font-weight: 600;
+    margin: 0;
+}
+
+.chart-legend {
+    display: flex;
+    gap: var(--space-1) var(--space-4);
+    flex-wrap: wrap;
+}
+
+.legend-item {
+    --c: var(--text-secondary);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+}
+
+/* Default swatch: a filled square (bar series) */
+.legend-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    background: var(--c);
+    flex-shrink: 0;
+}
+
+/* Line series */
+.legend-item.line .legend-color {
+    width: 18px;
+    height: 0;
+    border-radius: 0;
+    background: none;
+    border-top: 3px solid var(--c);
+}
+
+.legend-item.dashed .legend-color {
+    border-top-style: dashed;
+    border-top-width: 2px;
+}
+
+/* Legend series (map legacy class names onto series tokens) */
+.legend-item.consumption { --c: var(--series-import); }
+.legend-item.production  { --c: var(--series-export); }
+.legend-item.net         { --c: var(--series-net); }
+.legend-item.solar       { --c: var(--series-solar); }
+.legend-item.power       { --c: var(--series-solar-power); }
+.legend-item.gas         { --c: var(--series-gas); }
+.legend-item.water       { --c: var(--series-water); }
+.legend-item.degree-days { --c: var(--series-degreedays); }
+.legend-item.temp-max    { --c: var(--series-temp-max); }
+.legend-item.temp-avg    { --c: var(--series-temp-avg); }
+.legend-item.temp-min    { --c: var(--series-temp-min); }
+
+.chart-container-large {
+    height: 320px;
+    padding: var(--space-2);
+}
+
+.chart-container-large canvas {
+    width: 100% !important;
+    height: 100% !important;
+    touch-action: pan-y;
+}
+
+/* ============================================================================
+   GAUGES
+   ============================================================================ */
+
+.gauge-container,
+.gauge-container-small {
+    position: relative;
+    width: 140px;
+    height: 140px;
+    margin: 0 auto var(--space-4) auto;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
-.gauge-container canvas {
+.gauge-container canvas,
+.gauge-container-small canvas {
     position: absolute;
     top: 0;
     left: 0;
@@ -178,24 +472,22 @@
 
 .gauge-value {
     position: relative;
-    z-index: 10;
+    z-index: 1;
     text-align: center;
-    width: auto;
-    padding: 0 var(--space-4);
+    padding: 0 var(--space-2);
     pointer-events: none;
 }
 
 .gauge-number {
-    font-size: 2rem;
+    font-size: var(--text-xl);
     font-weight: 700;
     display: block;
     color: var(--text-primary);
     line-height: 1.2;
-    margin: 0;
 }
 
 .gauge-unit {
-    font-size: 0.875rem;
+    font-size: var(--text-xs);
     color: var(--text-secondary);
     font-weight: 500;
     display: block;
@@ -203,67 +495,22 @@
     line-height: 1;
 }
 
-/* Phase Bars */
-.phase-bars {
-    display: flex;
-    gap: var(--space-3);
-    margin-top: var(--space-4);
-}
+/* ============================================================================
+   FEEDBACK: timer, loading, messages
+   ============================================================================ */
 
-.phase-bar {
-    flex: 1;
-    text-align: center;
-}
-
-.phase-label {
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-    margin-bottom: var(--space-2);
-    font-weight: 600;
-}
-
-.phase-fill-container {
-    background-color: var(--bg-secondary);
-    height: 100px;
-    border-radius: var(--radius-md);
-    position: relative;
-    overflow: hidden;
-    border: 1px solid var(--border-color);
-}
-
-.phase-fill {
-    position: absolute;
-    bottom: 0;
-    width: 100%;
-    transition: height var(--transition-slow);
-    border-radius: var(--radius-md) var(--radius-md) 0 0;
-}
-
-.phase-value {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 0.875rem;
-    font-weight: 700;
-    z-index: 1;
-    color: var(--text-primary);
-}
-
-/* Update Timer */
 .update-timer {
     display: inline-flex;
     align-items: center;
     gap: var(--space-2);
-    padding: var(--space-2) var(--space-4);
-    background-color: var(--bg-secondary);
+    padding: var(--space-1) var(--space-3);
+    background-color: var(--bg-primary);
     border-radius: var(--radius-full);
-    font-size: 0.875rem;
+    font-size: var(--text-xs);
     color: var(--text-secondary);
     border: 1px solid var(--border-color);
 }
 
-/* Loading State */
 .loading {
     text-align: center;
     padding: var(--space-10);
@@ -281,39 +528,18 @@
     60%, 100% { content: '...'; }
 }
 
-/* Error Message */
-.error {
-    background-color: rgba(239, 68, 68, 0.1);
-    border: 1px solid rgba(239, 68, 68, 0.3);
-    color: #ef4444;
-    padding: var(--space-4);
-    border-radius: var(--radius-md);
-    margin-bottom: var(--space-4);
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
+@keyframes spin {
+    to { transform: rotate(360deg); }
 }
 
-.dark-theme .error {
-    color: #fca5a5;
-}
-
-/* Success Message */
-.success {
-    background-color: rgba(16, 185, 129, 0.1);
-    border: 1px solid rgba(16, 185, 129, 0.3);
-    color: #10b981;
-    padding: var(--space-4);
-    border-radius: var(--radius-md);
-    margin-bottom: var(--space-4);
-}
-
-/* Warning Message */
+.error,
+.success,
 .warning {
-    background-color: rgba(245, 158, 11, 0.1);
-    border: 1px solid rgba(245, 158, 11, 0.3);
-    color: #f59e0b;
-    padding: var(--space-4);
+    --c: var(--accent-danger);
+    background-color: color-mix(in srgb, var(--c) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--c) 30%, transparent);
+    color: var(--c);
+    padding: var(--space-3) var(--space-4);
     border-radius: var(--radius-md);
     margin-bottom: var(--space-4);
     display: flex;
@@ -321,12 +547,11 @@
     gap: var(--space-2);
 }
 
-.dark-theme .warning {
-    color: #fbbf24;
-}
+.success { --c: var(--accent-success); }
+.warning { --c: var(--accent-warning); }
 
-/* Connection Status Indicator */
 .connection-status {
+    --c: var(--accent-success);
     position: fixed;
     top: calc(var(--header-height) + var(--space-4));
     right: var(--space-4);
@@ -337,1439 +562,106 @@
     display: flex;
     align-items: center;
     gap: var(--space-2);
-    font-size: 0.875rem;
+    font-size: var(--text-sm);
     font-weight: 500;
+    background-color: var(--bg-card);
+    border: 1px solid color-mix(in srgb, var(--c) 40%, transparent);
+    color: var(--c);
     animation: slideInDown 0.3s ease-out;
 }
 
-.connection-status.online {
-    background-color: rgba(16, 185, 129, 0.1);
-    border: 1px solid rgba(16, 185, 129, 0.3);
-    color: #10b981;
-}
-
-.dark-theme .connection-status.online {
-    color: #6ee7b7;
-}
-
-.connection-status.offline {
-    background-color: rgba(239, 68, 68, 0.1);
-    border: 1px solid rgba(239, 68, 68, 0.3);
-    color: #ef4444;
-}
-
-.dark-theme .connection-status.offline {
-    color: #fca5a5;
-}
+.connection-status.offline { --c: var(--accent-danger); }
 
 @keyframes slideInDown {
-    from {
-        opacity: 0;
-        transform: translateY(-20px);
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ============================================================================
+   TABLET (>= 600px)
+   ============================================================================ */
+
+@media (min-width: 600px) {
+    .card {
+        padding: var(--space-6);
     }
-    to {
-        opacity: 1;
-        transform: translateY(0);
+
+    .stats-section,
+    .period-tabs,
+    .chart-controls-section {
+        margin-bottom: var(--space-5);
     }
-}
 
-/* Period Tabs */
-.period-tabs {
-    display: flex;
-    gap: var(--space-2);
-    margin-bottom: var(--space-5);
-    background-color: var(--bg-secondary);
-    padding: var(--space-2);
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--border-color);
-}
-
-.period-tab {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--space-2);
-    padding: var(--space-3) var(--space-4);
-    border: none;
-    border-radius: var(--radius-md);
-    background-color: transparent;
-    color: var(--text-secondary);
-    font-size: 0.875rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all var(--transition-fast);
-}
-
-.period-tab:hover {
-    background-color: var(--bg-hover);
-    color: var(--text-primary);
-}
-
-.period-tab.active {
-    background-color: var(--accent-production);
-    color: white;
-}
-
-.period-tab .tab-icon {
-    font-size: 1.125rem;
-}
-
-/* Stats Section */
-.stats-section {
-    margin-bottom: var(--space-5);
-}
-
-.stat-card {
-    background-color: var(--bg-card);
-    border-radius: var(--radius-lg);
-    padding: var(--space-5);
-    border: 1px solid var(--border-color);
-    transition: all var(--transition-base);
-    display: flex;
-    align-items: center;
-    gap: var(--space-4);
-}
-
-.stat-card:hover {
-    box-shadow: var(--shadow-hover);
-    transform: translateY(-2px);
-}
-
-.stat-card .stat-icon {
-    width: 56px;
-    height: 56px;
-    border-radius: var(--radius-lg);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.5rem;
-    flex-shrink: 0;
-}
-
-.stat-card.consumption .stat-icon {
-    background: linear-gradient(135deg, var(--accent-consumption-light) 0%, var(--accent-consumption) 100%);
-}
-
-.stat-card.production .stat-icon {
-    background: linear-gradient(135deg, var(--accent-production-light) 0%, var(--accent-production) 100%);
-}
-
-.stat-card.gas .stat-icon,
-.stat-card.cost .stat-icon {
-    background: linear-gradient(135deg, var(--accent-gas-light) 0%, var(--accent-gas) 100%);
-}
-
-.stat-card.average .stat-icon,
-.stat-card.flow .stat-icon {
-    background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
-}
-
-.stat-card.peak .stat-icon {
-    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-}
-
-.stat-content {
-    flex: 1;
-}
-
-.stat-card .stat-label {
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: var(--space-1);
-    font-weight: 600;
-}
-
-.stat-card .stat-value {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--text-primary);
-    margin-bottom: var(--space-1);
-}
-
-.stat-subtitle {
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-}
-
-/* Chart controls */
-.chart-controls-section {
-    margin-bottom: var(--space-5);
-}
-
-.chart-controls {
-    background-color: var(--bg-card);
-    border-radius: var(--radius-lg);
-    padding: var(--space-4);
-    border: 1px solid var(--border-color);
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-6);
-    align-items: center;
-}
-
-.control-group {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-}
-
-.control-label {
-    font-size: 0.875rem;
-    color: var(--text-secondary);
-    font-weight: 500;
-}
-
-.button-group {
-    display: flex;
-    gap: var(--space-2);
-}
-
-.control-button {
-    padding: var(--space-2) var(--space-4);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    background-color: var(--bg-secondary);
-    color: var(--text-primary);
-    font-size: 0.875rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all var(--transition-fast);
-}
-
-.control-button:hover {
-    background-color: var(--bg-hover);
-}
-
-.control-button.active {
-    background-color: var(--accent-production);
-    color: white;
-    border-color: var(--accent-production);
-}
-
-/* Toggle switches */
-.toggle-group {
-    display: flex;
-    gap: var(--space-4);
-}
-
-.toggle-switch {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    cursor: pointer;
-    user-select: none;
-}
-
-.toggle-switch input[type="checkbox"] {
-    display: none;
-}
-
-.toggle-slider {
-    position: relative;
-    width: 40px;
-    height: 20px;
-    background-color: var(--border-color);
-    border-radius: var(--radius-full);
-    transition: background-color var(--transition-fast);
-}
-
-.toggle-slider::before {
-    content: '';
-    position: absolute;
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    background-color: white;
-    top: 2px;
-    left: 2px;
-    transition: transform var(--transition-fast);
-}
-
-.toggle-switch input[type="checkbox"]:checked + .toggle-slider {
-    background-color: var(--accent-production);
-}
-
-.toggle-switch input[type="checkbox"]:checked + .toggle-slider::before {
-    transform: translateX(20px);
-}
-
-.toggle-switch input[type="checkbox"]:disabled + .toggle-slider {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-.toggle-label {
-    font-size: 0.875rem;
-    color: var(--text-primary);
-}
-
-/* Chart section */
-.chart-section {
-    margin-bottom: var(--space-6);
-}
-
-.chart-card {
-    padding: 0;
-    overflow: hidden;
-}
-
-.chart-header {
-    padding: var(--space-5);
-    border-bottom: 1px solid var(--border-color);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: var(--space-4);
-}
-
-.chart-title {
-    font-size: 1.25rem;
-    font-weight: 600;
-    margin: 0;
-}
-
-.chart-legend {
-    display: flex;
-    gap: var(--space-4);
-    flex-wrap: wrap;
-}
-
-.legend-item {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    font-size: 0.875rem;
-    color: var(--text-secondary);
-}
-
-.legend-color {
-    width: 16px;
-    height: 16px;
-    border-radius: var(--radius-sm);
-}
-
-.legend-item.consumption .legend-color {
-    background-color: var(--accent-consumption);
-}
-
-.legend-item.production .legend-color {
-    background-color: var(--accent-production);
-}
-
-.legend-item.net .legend-color {
-    background-color: #64748b;
-}
-
-/* Temperature legend items */
-.legend-item.temp-max .legend-color {
-    background-color: #ef4444;
-    border: 2px dashed #ef4444;
-    background: linear-gradient(45deg, transparent 40%, #ef4444 40%, #ef4444 60%, transparent 60%),
-                linear-gradient(-45deg, transparent 40%, #ef4444 40%, #ef4444 60%, transparent 60%);
-    background-size: 4px 4px;
-}
-
-.legend-item.temp-avg .legend-color {
-    background-color: #374151;  /* Dark gray (off-black) */
-}
-
-.legend-item.temp-min .legend-color {
-    background-color: #3b82f6;
-    border: 2px dashed #3b82f6;
-    background: linear-gradient(45deg, transparent 40%, #3b82f6 40%, #3b82f6 60%, transparent 60%),
-                linear-gradient(-45deg, transparent 40%, #3b82f6 40%, #3b82f6 60%, transparent 60%);
-    background-size: 4px 4px;
-}
-
-.chart-container-large {
-    height: 500px;
-    padding: var(--space-5);
-}
-
-.chart-container-large canvas {
-    width: 100% !important;
-    height: 100% !important;
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-    .period-tabs {
-        flex-direction: column;
-    }
-    
     .stats-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: var(--space-4);
     }
-    
+
+    .stat-card {
+        padding: var(--space-4);
+        gap: var(--space-4);
+    }
+
+    .stat-card .stat-icon {
+        display: flex;
+        width: 40px;
+        height: 40px;
+        border-radius: var(--radius-lg);
+    }
+
+
+    .period-tab .tab-icon {
+        display: flex;
+    }
+
     .chart-controls {
-        flex-direction: column;
-        align-items: stretch;
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--space-4) var(--space-6);
+        padding: var(--space-4);
     }
-    
-    .control-group {
-        flex-direction: column;
-        align-items: stretch;
+
+    .control-label {
+        min-width: 0;
     }
-    
-    .button-group,
-    .toggle-group {
-        flex-direction: column;
+
+    .chart-header {
+        padding: var(--space-4) var(--space-5);
     }
-    
+
+    .chart-title {
+        font-size: var(--text-xl);
+    }
+
     .chart-container-large {
-        height: 350px;
-    }
-}
-
-/* ============================================================================
-   GAS PAGE STYLES
-   ============================================================================ */
-
-
-/* Degree Days Legend Color */
-
-.legend-item.degree-days .legend-color {
-    background: #3b82f6;
-}
-
-/* Optional: Add a line style to match the chart visualization */
-.legend-item.degree-days .legend-color {
-    background: linear-gradient(to right, #3b82f6 0%, #3b82f6 100%);
-    height: 3px;
-    width: 24px;
-    border-radius: 2px;
-}
-
-/* ============================================================================
-   SOLAR PAGE STYLES
-   ============================================================================ */
-
-/* Solar-specific stat card colors */
-.stats-grid .stat-card.production .stat-icon {
-    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-}
-
-.stats-grid .stat-card.energy .stat-icon {
-    background: linear-gradient(135deg, #fbbf24 0%, #f97316 100%);
-}
-
-.stats-grid .stat-card.capacity .stat-icon {
-    background: linear-gradient(135deg, #84cc16 0%, #65a30d 100%);
-}
-
-.stats-grid .stat-card.sunlight .stat-icon {
-    background: linear-gradient(135deg, #fbbf24 0%, #eab308 100%);
-}
-
-/* Solar legend item - production bars */
-.chart-legend .legend-item.production .legend-color {
-    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-}
-
-/* Solar legend item - power line */
-.chart-legend .legend-item.power .legend-color {
-    background: #ea580c;
-    height: 3px;
-    border-radius: 2px;
-}
-
-/* Temperature legend items (reuse from electricity but ensure visibility) */
-.chart-legend .legend-item.temp-max .legend-color {
-    background: #ef4444;
-    border: 2px dashed #ef4444;
-    background-clip: padding-box;
-}
-
-.chart-legend .legend-item.temp-avg .legend-color {
-    background: #f59e0b;
-}
-
-.chart-legend .legend-item.temp-min .legend-color {
-    background: #3b82f6;
-    border: 2px dashed #3b82f6;
-    background-clip: padding-box;
-}
-
-/* Capacity factor indicator colors */
-.stat-card.capacity .stat-value {
-    background: linear-gradient(135deg, #84cc16, #65a30d);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-
-/* Dark theme adjustments */
-.dark-theme .stat-card.capacity .stat-value {
-    background: linear-gradient(135deg, #a3e635, #84cc16);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-
-/* Solar chart specific - ensure good contrast */
-#solar-chart {
-    background: var(--card-background);
-}
-
-/* Mobile optimizations for solar stats */
-@media (max-width: 768px) {
-    .stats-grid {
-        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    }
-    
-    .stat-card .stat-value {
-        font-size: 1.25rem;
-    }
-}
-
-/* ============================================================================
-   DASHBOARD PAGE STYLES
-   ============================================================================ */
-
-/* Dashboard Grid Layout */
-.dashboard-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-    gap: var(--space-4);
-    margin-top: var(--space-4);
-}
-
-@media (min-width: 768px) {
-    .dashboard-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
-}
-
-@media (min-width: 1200px) {
-    .dashboard-grid {
-        grid-template-columns: repeat(3, 1fr);
-    }
-}
-
-/* Dashboard Card */
-.dashboard-card {
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-xl);
-    padding: 0;
-    transition: all var(--transition-base);
-    overflow: hidden;
-}
-
-.dashboard-card:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-hover);
-}
-
-/* Dashboard Card Header */
-.dashboard-card .card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: var(--space-5);
-    border-bottom: 1px solid var(--border-color);
-    background: transparent;
-}
-
-.dashboard-card .card-title {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    margin: 0;
-    font-size: 1.125rem;
-    font-weight: 600;
-    color: var(--text-primary);
-}
-
-.dashboard-card .card-icon {
-    font-size: 1.5rem;
-    line-height: 1;
-}
-
-.dashboard-card .card-link {
-    color: var(--accent-production);
-    text-decoration: none;
-    font-size: 0.875rem;
-    font-weight: 500;
-    transition: color var(--transition-fast);
-}
-
-.dashboard-card .card-link:hover {
-    color: var(--accent-production-dark);
-}
-
-/* Dashboard Card Body */
-.dashboard-card .card-body {
-    padding: var(--space-5);
-}
-
-/* Dashboard Gauge Container (smaller than standard) */
-.dashboard-card .gauge-container-small {
-    position: relative;
-    width: 140px;
-    height: 140px;
-    margin: 0 auto var(--space-4) auto;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.dashboard-card .gauge-container-small canvas {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100% !important;
-    height: 100% !important;
-}
-
-.dashboard-card .gauge-container-small .gauge-value {
-    position: relative;
-    z-index: 10;
-    text-align: center;
-    width: auto;
-    padding: 0 var(--space-2);
-    pointer-events: none;
-}
-
-.dashboard-card .gauge-container-small .gauge-number {
-    font-size: 1.5rem;
-    font-weight: 700;
-    display: block;
-    color: var(--text-primary);
-    line-height: 1.2;
-    margin: 0;
-}
-
-.dashboard-card .gauge-container-small .gauge-unit {
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-    font-weight: 500;
-    display: block;
-    margin-top: var(--space-1);
-    line-height: 1;
-}
-
-/* Current Reading Display */
-.dashboard-card .current-reading {
-    text-align: center;
-    margin-bottom: var(--space-5);
-    padding-bottom: var(--space-5);
-    border-bottom: 1px solid var(--border-color);
-}
-
-.dashboard-card .reading-value {
-    font-size: 2.5rem;
-    font-weight: 700;
-    line-height: 1.2;
-    color: var(--text-primary);
-    margin-bottom: var(--space-2);
-}
-
-.dashboard-card .reading-label {
-    font-size: 0.875rem;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-/* Dashboard Card Stats */
-.dashboard-card .card-stats {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-}
-
-.dashboard-card .card-stats .stat-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 0.9375rem;
-    background: transparent;
-    border: none;
-    padding: 0;
-}
-
-.dashboard-card .card-stats .stat-item:hover {
-    background: transparent;
-}
-
-.dashboard-card .card-stats .stat-label {
-    color: var(--text-secondary);
-    text-transform: none;
-    letter-spacing: normal;
-    margin: 0;
-}
-
-.dashboard-card .card-stats .stat-value {
-    font-weight: 600;
-    font-size: 0.9375rem;
-    color: var(--text-primary);
-}
-
-/* Colored stat values */
-.dashboard-card .stat-value.consumption {
-    color: var(--accent-consumption);
-}
-
-.dashboard-card .stat-value.production {
-    color: var(--accent-production);
-}
-
-.dashboard-card .stat-value.net {
-    color: #64748b;
-}
-
-/* Card-Specific Icon Colors */
-.dashboard-card.electricity-card .card-icon {
-    color: var(--accent-production);
-}
-
-.dashboard-card.electricity-card .reading-value {
-    color: var(--accent-production);
-}
-
-.dashboard-card.gas-card .card-icon {
-    color: var(--accent-gas);
-}
-
-.dashboard-card.gas-card .reading-value {
-    color: var(--accent-gas);
-}
-
-.dashboard-card.solar-card .card-icon {
-    color: #fbbf24;
-}
-
-.dashboard-card.solar-card .reading-value {
-    color: #fbbf24;
-}
-
-.dashboard-card.solar-card .stat-value.production {
-    color: #fbbf24;
-}
-
-.dashboard-card.water-card .card-icon {
-    color: var(--accent-water);
-}
-
-.dashboard-card.water-card .reading-value {
-    color: var(--accent-water);
-}
-
-.dashboard-card.costs-card .card-icon {
-    color: #10b981;
-}
-
-.dashboard-card.costs-card .reading-value {
-    color: #10b981;
-}
-
-/* Dashboard Mobile Optimizations */
-@media (max-width: 767px) {
-    .dashboard-grid {
-        grid-template-columns: 1fr;
-        gap: var(--space-3);
-    }
-
-    .dashboard-card .card-header {
+        height: 400px;
         padding: var(--space-4);
     }
-
-    .dashboard-card .card-body {
-        padding: var(--space-4);
-    }
-
-    .dashboard-card .reading-value {
-        font-size: 2rem;
-    }
-
-    .dashboard-card .card-stats .stat-item {
-        font-size: 0.875rem;
-    }
-}
-
-/* Dashboard Loading State */
-.dashboard-card.loading {
-    opacity: 0.6;
-    pointer-events: none;
-    position: relative;
-}
-
-.dashboard-card.loading::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 24px;
-    height: 24px;
-    margin: -12px 0 0 -12px;
-    border: 3px solid var(--border-color);
-    border-top-color: var(--accent-production);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-    to { transform: rotate(360deg); }
 }
 
 /* ============================================================================
-   HEADER WIDGET STYLES
+   DESKTOP (>= 1024px)
    ============================================================================ */
 
-/* Header Widget Base */
-.header-widget {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    padding: var(--space-2) var(--space-3);
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    margin-right: var(--space-3);
-    transition: all var(--transition-base);
-}
-
-.header-widget:hover {
-    background: var(--bg-hover);
-    transform: translateY(-1px);
-}
-
-/* Solar Widget Specific */
-.solar-widget {
-    border-color: rgba(251, 191, 36, 0.3);
-    background: linear-gradient(135deg, rgba(251, 191, 36, 0.1) 0%, rgba(245, 158, 11, 0.05) 100%);
-}
-
-.solar-widget .widget-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-    border-radius: var(--radius-sm);
-    color: white;
-}
-
-.solar-widget .widget-icon svg {
-    animation: solar-pulse 2s ease-in-out infinite;
-}
-
-@keyframes solar-pulse {
-    0%, 100% {
-        opacity: 1;
-        transform: scale(1);
+@media (min-width: 1024px) {
+    .chart-container-large {
+        height: 500px;
+        padding: var(--space-5);
     }
-    50% {
-        opacity: 0.8;
-        transform: scale(1.05);
-    }
-}
-
-.solar-widget .widget-content {
-    display: flex;
-    flex-direction: column;
-    gap: 0.125rem;
-}
-
-.solar-widget .widget-value {
-    font-size: 1rem;
-    font-weight: 700;
-    color: #f59e0b;
-    line-height: 1.2;
-}
-
-.solar-widget .widget-label {
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-    line-height: 1.2;
-}
-
-/* Weather Info Adjustments */
-.weather-info {
-    display: flex;
-    gap: var(--space-3);
-    padding: var(--space-2) var(--space-3);
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    margin-right: var(--space-3);
-}
-
-.weather-item {
-    display: flex;
-    align-items: center;
-    gap: 0.375rem;
-    font-size: 0.875rem;
-    color: var(--text-secondary);
-    cursor: help;
-}
-
-.weather-item svg {
-    opacity: 0.7;
-}
-
-/* Header Time Widget */
-.header-time {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    padding: var(--space-2) var(--space-3);
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    font-size: 0.9375rem;
-    font-weight: 500;
-    color: var(--text-primary);
-}
-
-.header-time svg {
-    color: var(--text-secondary);
-}
-
-/* Header Widget Mobile Responsive */
-@media (max-width: 1024px) {
-    .weather-info {
-        gap: var(--space-2);
-    }
-    
-    .weather-item {
-        font-size: 0.8125rem;
-    }
-    
-    .solar-widget .widget-value {
-        font-size: 0.9375rem;
-    }
-    
-    .solar-widget .widget-label {
-        font-size: 0.6875rem;
-    }
-}
-
-@media (max-width: 768px) {
-    /* Hide weather on mobile, keep solar and time */
-    .weather-info {
-        display: none !important;
-    }
-    
-    .header-widget,
-    .header-time {
-        padding: var(--space-2);
-        font-size: 0.8125rem;
-        margin-right: var(--space-2);
-    }
-    
-    .solar-widget .widget-icon {
-        width: 28px;
-        height: 28px;
-    }
-    
-    .solar-widget .widget-icon svg {
-        width: 16px;
-        height: 16px;
-    }
-}
-
-@media (max-width: 480px) {
-    /* Show only solar power on very small screens */
-    .solar-widget .widget-label {
-        display: none;
-    }
-}
-
-/* Dark Theme Header Widget Adjustments */
-.dark-theme .solar-widget {
-    background: linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(245, 158, 11, 0.08) 100%);
-    border-color: rgba(251, 191, 36, 0.25);
-}
-
-.dark-theme .header-widget:hover,
-.dark-theme .weather-info:hover,
-.dark-theme .header-time:hover {
-    background: var(--bg-hover);
-}
-
-/* Loading State for Solar Widget */
-.solar-widget.loading .widget-value {
-    opacity: 0.5;
-    animation: pulse-opacity 1.5s ease-in-out infinite;
-}
-
-@keyframes pulse-opacity {
-    0%, 100% {
-        opacity: 0.5;
-    }
-    50% {
-        opacity: 0.8;
-    }
-}
-
-/* Error State for Solar Widget */
-.solar-widget.error {
-    border-color: rgba(239, 68, 68, 0.3);
-    background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.05) 100%);
-}
-
-.solar-widget.error .widget-icon {
-    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-}
-
-.solar-widget.error .widget-value {
-    color: #ef4444;
 }
 
 /* ============================================================================
-   DASHBOARD PAGE STYLES
+   THEME TOGGLE: show the icon of the theme you would switch to
    ============================================================================ */
 
-/* Dashboard Grid Layout */
-.dashboard-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-    gap: var(--space-4);
-    margin-top: var(--space-4);
-}
-
-@media (min-width: 768px) {
-    .dashboard-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
-}
-
-@media (min-width: 1200px) {
-    .dashboard-grid {
-        grid-template-columns: repeat(3, 1fr);
-    }
-}
-
-/* Dashboard Card */
-.dashboard-card {
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-xl);
-    padding: 0;
-    transition: all var(--transition-base);
-    overflow: hidden;
-}
-
-.dashboard-card:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-hover);
-}
-
-/* Dashboard Card Header */
-.dashboard-card .card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: var(--space-5);
-    border-bottom: 1px solid var(--border-color);
-    background: transparent;
-}
-
-.dashboard-card .card-title {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    margin: 0;
-    font-size: 1.125rem;
-    font-weight: 600;
-    color: var(--text-primary);
-}
-
-.dashboard-card .card-icon {
-    font-size: 1.5rem;
-    line-height: 1;
-}
-
-.dashboard-card .card-link {
-    color: var(--accent-production);
-    text-decoration: none;
-    font-size: 0.875rem;
-    font-weight: 500;
-    transition: color var(--transition-fast);
-}
-
-.dashboard-card .card-link:hover {
-    color: var(--accent-production-dark);
-}
-
-/* Dashboard Card Body */
-.dashboard-card .card-body {
-    padding: var(--space-5);
-}
-
-/* Current Reading Display */
-.dashboard-card .current-reading {
-    text-align: center;
-    margin-bottom: var(--space-5);
-    padding-bottom: var(--space-5);
-    border-bottom: 1px solid var(--border-color);
-}
-
-.dashboard-card .reading-value {
-    font-size: 2.5rem;
-    font-weight: 700;
-    line-height: 1.2;
-    color: var(--text-primary);
-    margin-bottom: var(--space-2);
-}
-
-.dashboard-card .reading-label {
-    font-size: 0.875rem;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-/* Dashboard Card Stats */
-.dashboard-card .card-stats {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-}
-
-.dashboard-card .card-stats .stat-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 0.9375rem;
-    background: transparent;
-    border: none;
-    padding: 0;
-}
-
-.dashboard-card .card-stats .stat-item:hover {
-    background: transparent;
-}
-
-.dashboard-card .card-stats .stat-label {
-    color: var(--text-secondary);
-    text-transform: none;
-    letter-spacing: normal;
-    margin: 0;
-}
-
-.dashboard-card .card-stats .stat-value {
-    font-weight: 600;
-    font-size: 0.9375rem;
-    color: var(--text-primary);
-}
-
-/* Colored stat values */
-.dashboard-card .stat-value.consumption {
-    color: var(--accent-consumption);
-}
-
-.dashboard-card .stat-value.production {
-    color: var(--accent-production);
-}
-
-.dashboard-card .stat-value.net {
-    color: #64748b;
-}
-
-/* Card-Specific Icon Colors */
-.dashboard-card.electricity-card .card-icon {
-    color: var(--accent-production);
-}
-
-.dashboard-card.electricity-card .reading-value {
-    color: var(--accent-production);
-}
-
-.dashboard-card.gas-card .card-icon {
-    color: var(--accent-gas);
-}
-
-.dashboard-card.gas-card .reading-value {
-    color: var(--accent-gas);
-}
-
-.dashboard-card.solar-card .card-icon {
-    color: #fbbf24;
-}
-
-.dashboard-card.solar-card .reading-value {
-    color: #fbbf24;
-}
-
-.dashboard-card.solar-card .stat-value.production {
-    color: #fbbf24;
-}
-
-.dashboard-card.water-card .card-icon {
-    color: var(--accent-water);
-}
-
-.dashboard-card.water-card .reading-value {
-    color: var(--accent-water);
-}
-
-.dashboard-card.costs-card .card-icon {
-    color: #10b981;
-}
-
-.dashboard-card.costs-card .reading-value {
-    color: #10b981;
-}
-
-/* Dashboard Mobile Optimizations */
-@media (max-width: 767px) {
-    .dashboard-grid {
-        grid-template-columns: 1fr;
-        gap: var(--space-3);
-    }
-
-    .dashboard-card .card-header {
-        padding: var(--space-4);
-    }
-
-    .dashboard-card .card-body {
-        padding: var(--space-4);
-    }
-
-    .dashboard-card .reading-value {
-        font-size: 2rem;
-    }
-
-    .dashboard-card .card-stats .stat-item {
-        font-size: 0.875rem;
-    }
-}
-
-/* Dashboard Loading State */
-.dashboard-card.loading {
-    opacity: 0.6;
-    pointer-events: none;
-    position: relative;
-}
-
-.dashboard-card.loading::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 24px;
-    height: 24px;
-    margin: -12px 0 0 -12px;
-    border: 3px solid var(--border-color);
-    border-top-color: var(--accent-production);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
-
-/* ============================================================================
-   HEADER WIDGET STYLES
-   ============================================================================ */
-
-/* Header Widget Base */
-.header-widget {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    padding: var(--space-2) var(--space-3);
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    margin-right: var(--space-3);
-    transition: all var(--transition-base);
-}
-
-.header-widget:hover {
-    background: var(--bg-hover);
-    transform: translateY(-1px);
-}
-
-/* Solar Widget Specific */
-.solar-widget {
-    border-color: rgba(251, 191, 36, 0.3);
-    background: linear-gradient(135deg, rgba(251, 191, 36, 0.1) 0%, rgba(245, 158, 11, 0.05) 100%);
-}
-
-.solar-widget .widget-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-    border-radius: var(--radius-sm);
-    color: white;
-}
-
-.solar-widget .widget-icon svg {
-    animation: solar-pulse 2s ease-in-out infinite;
-}
-
-@keyframes solar-pulse {
-    0%, 100% {
-        opacity: 1;
-        transform: scale(1);
-    }
-    50% {
-        opacity: 0.8;
-        transform: scale(1.05);
-    }
-}
-
-.solar-widget .widget-content {
-    display: flex;
-    flex-direction: column;
-    gap: 0.125rem;
-}
-
-.solar-widget .widget-value {
-    font-size: 1rem;
-    font-weight: 700;
-    color: #f59e0b;
-    line-height: 1.2;
-}
-
-.solar-widget .widget-label {
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-    line-height: 1.2;
-}
-
-/* Weather Info Adjustments */
-.weather-info {
-    display: flex;
-    gap: var(--space-3);
-    padding: var(--space-2) var(--space-3);
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    margin-right: var(--space-3);
-}
-
-.weather-item {
-    display: flex;
-    align-items: center;
-    gap: 0.375rem;
-    font-size: 0.875rem;
-    color: var(--text-secondary);
-    cursor: help;
-}
-
-.weather-item svg {
-    opacity: 0.7;
-}
-
-/* Header Time Widget */
-.header-time {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    padding: var(--space-2) var(--space-3);
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    font-size: 0.9375rem;
-    font-weight: 500;
-    color: var(--text-primary);
-}
-
-.header-time svg {
-    color: var(--text-secondary);
-}
-
-/* Header Widget Mobile Responsive */
-@media (max-width: 1024px) {
-    .weather-info {
-        gap: var(--space-2);
-    }
-    
-    .weather-item {
-        font-size: 0.8125rem;
-    }
-    
-    .solar-widget .widget-value {
-        font-size: 0.9375rem;
-    }
-    
-    .solar-widget .widget-label {
-        font-size: 0.6875rem;
-    }
-}
-
-@media (max-width: 768px) {
-    /* Hide weather on mobile, keep solar and time */
-    .weather-info {
-        display: none !important;
-    }
-    
-    .header-widget,
-    .header-time {
-        padding: var(--space-2);
-        font-size: 0.8125rem;
-        margin-right: var(--space-2);
-    }
-    
-    .solar-widget .widget-icon {
-        width: 28px;
-        height: 28px;
-    }
-    
-    .solar-widget .widget-icon svg {
-        width: 16px;
-        height: 16px;
-    }
-}
-
-@media (max-width: 480px) {
-    /* Show only solar power on very small screens */
-    .solar-widget .widget-label {
-        display: none;
-    }
-}
-
-/* Dark Theme Header Widget Adjustments */
-.dark-theme .solar-widget {
-    background: linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(245, 158, 11, 0.08) 100%);
-    border-color: rgba(251, 191, 36, 0.25);
-}
-
-.dark-theme .header-widget:hover,
-.dark-theme .weather-info:hover,
-.dark-theme .header-time:hover {
-    background: var(--bg-hover);
-}
-
-/* Loading State for Solar Widget */
-.solar-widget.loading .widget-value {
-    opacity: 0.5;
-    animation: pulse-opacity 1.5s ease-in-out infinite;
-}
-
-@keyframes pulse-opacity {
-    0%, 100% {
-        opacity: 0.5;
-    }
-    50% {
-        opacity: 0.8;
-    }
-}
-
-/* Error State for Solar Widget */
-.solar-widget.error {
-    border-color: rgba(239, 68, 68, 0.3);
-    background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.05) 100%);
-}
-
-.solar-widget.error .widget-icon {
-    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-}
-
-.solar-widget.error .widget-value {
-    color: #ef4444;
+.theme-toggle .sun-icon { display: none; }
+.theme-toggle .moon-icon { display: block; }
+
+:root[data-theme="dark"] .theme-toggle .sun-icon { display: block; }
+:root[data-theme="dark"] .theme-toggle .moon-icon { display: none; }
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme]) .theme-toggle .sun-icon { display: block; }
+    :root:not([data-theme]) .theme-toggle .moon-icon { display: none; }
 }

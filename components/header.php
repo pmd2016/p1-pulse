@@ -2,14 +2,24 @@
 <html lang="nl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#1e293b" media="(prefers-color-scheme: dark)">
     <meta name="robots" content="noindex">
     <title>P1 Monitor - <?php echo ucfirst($currentPage ?? 'Dashboard'); ?></title>
     <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico">
     
+    <script>
+        // Apply a stored theme choice before first paint (no flash).
+        // Without a stored choice the CSS follows prefers-color-scheme.
+        try {
+            var t = localStorage.getItem('p1mon_theme');
+            if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+        } catch (e) {}
+    </script>
     <?php includeCSS(); ?>
 </head>
-<body class="<?php echo $config['theme'] ?? 'dark'; ?>-theme" data-page="<?php echo $currentPage ?? 'dashboard'; ?>">
+<body data-page="<?php echo $currentPage ?? 'dashboard'; ?>">
     
     <div class="app-container">
         <!-- Header bar -->
@@ -23,7 +33,7 @@
                     </svg>
                 </button>
                 <h1 class="header-title">
-                    <span class="header-icon">⚡</span>
+                    <span class="header-icon"><?php echo icon('zap', 22); ?></span>
                     P1 Monitor
                 </h1>
             </div>

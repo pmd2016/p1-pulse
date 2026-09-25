@@ -184,7 +184,7 @@
             const totalBarWidth = graphWidth / count;
             const barWidth = Math.max(totalBarWidth - 2, 1);
 
-            this.ctx.fillStyle = '#fb923c';
+            this.ctx.fillStyle = ChartBase.color('series-gas');
             values.forEach((v, idx) => {
                 const x = paddingLeft + idx * totalBarWidth + 1;
                 const h = (v / niceMax) * graphHeight;
@@ -213,11 +213,11 @@
 
             const gasValue = this.plotValues[index] !== undefined ? this.plotValues[index] : (parseFloat(point.gas) || 0);
             const lines = [
-                { text: `Verbruik: ${ChartBase.formatNumber(gasValue, 3)} m³`, color: '#fb923c' }
+                { text: `Verbruik: ${ChartBase.formatNumber(gasValue, 3)} m³`, color: ChartBase.color('series-gas') }
             ];
 
             if (this.showDegreeDays && this.degreeDaysData && this.degreeDaysData[index] !== undefined) {
-                lines.push({ text: `Graaddagen: ${ChartBase.formatNumber(this.degreeDaysData[index], 1)}`, color: '#3b82f6' });
+                lines.push({ text: `Graaddagen: ${ChartBase.formatNumber(this.degreeDaysData[index], 1)}`, color: ChartBase.color('series-degreedays') });
             }
 
             if (this.showTemp && this.temperatureData && index < this.temperatureData.min.length) {
@@ -226,9 +226,9 @@
                 const tempMax = this.temperatureData.max[index];
 
                 if (tempMin !== null && tempAvg !== null && tempMax !== null) {
-                    lines.push({ text: `Max: ${ChartBase.formatNumber(tempMax, 1)}°C`, color: '#ef4444' });
-                    lines.push({ text: `Gem: ${ChartBase.formatNumber(tempAvg, 1)}°C`, color: '#374151' });
-                    lines.push({ text: `Min: ${ChartBase.formatNumber(tempMin, 1)}°C`, color: '#3b82f6' });
+                    lines.push({ text: `Max: ${ChartBase.formatNumber(tempMax, 1)}°C`, color: ChartBase.color('series-temp-max') });
+                    lines.push({ text: `Gem: ${ChartBase.formatNumber(tempAvg, 1)}°C`, color: ChartBase.color('series-temp-avg') });
+                    lines.push({ text: `Min: ${ChartBase.formatNumber(tempMin, 1)}°C`, color: ChartBase.color('series-temp-min') });
                 }
             }
 
@@ -439,7 +439,7 @@
                 y: getDDY(dd)
             }));
 
-            this.ctx.strokeStyle = '#3b82f6';
+            this.ctx.strokeStyle = ChartBase.color('series-degreedays');
             this.ctx.lineWidth = 2;
             this.ctx.setLineDash([]);
             this.ctx.beginPath();

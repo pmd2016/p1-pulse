@@ -9,7 +9,6 @@
     const ThemeManager = {
         // Storage keys
         STORAGE_KEY: 'p1mon_theme',
-        SESSION_KEY: 'theme_preference',
         
         // Theme options
         THEMES: {
@@ -19,36 +18,33 @@
         
         /**
          * Initialize theme system
+         * The inline script in header.php already applied a stored choice
+         * to <html data-theme>; without one, CSS follows the system theme.
          */
         init() {
-            // Set initial theme
-            const theme = this.getStoredTheme();
-            this.setTheme(theme, false);
-            
-            // Set up event listeners
+            const stored = this.getStoredTheme();
+            if (stored) {
+                this.applyTheme(stored);
+            }
+
             this.setupEventListeners();
-            
-            // Listen for system theme changes
             this.watchSystemTheme();
-            
-            P1Logger.log('Theme system initialized:', theme);
+
+            P1Logger.log('Theme system initialized:', this.getCurrentTheme(), stored ? '(stored)' : '(system)');
         },
-        
+
         /**
-         * Get stored theme preference
-         * Priority: localStorage > session > system preference
+         * Get the explicitly stored theme, or null when following the system
          */
         getStoredTheme() {
-            // Check localStorage first
-            const storedTheme = localStorage.getItem(this.STORAGE_KEY);
-            if (storedTheme && this.isValidTheme(storedTheme)) {
-                return storedTheme;
+            try {
+                const storedTheme = localStorage.getItem(this.STORAGE_KEY);
+                return this.isValidTheme(storedTheme) ? storedTheme : null;
+            } catch (e) {
+                return null;
             }
-            
-            // Fall back to system preference
-            return this.getSystemTheme();
         },
-        
+
         /**
          * Get system theme preference
          */
@@ -58,24 +54,35 @@
             }
             return this.THEMES.LIGHT;
         },
-        
+
         /**
          * Check if theme is valid
          */
         isValidTheme(theme) {
             return Object.values(this.THEMES).includes(theme);
         },
-        
+
         /**
-         * Get current theme
+         * Get the theme currently in effect
          */
         getCurrentTheme() {
-            if (document.body.classList.contains('dark-theme')) {
-                return this.THEMES.DARK;
-            }
-            return this.THEMES.LIGHT;
+            const explicit = document.documentElement.dataset.theme;
+            return this.isValidTheme(explicit) ? explicit : this.getSystemTheme();
         },
-        
+
+        /**
+         * Set <html data-theme> without persisting
+         */
+        applyTheme(theme) {
+            document.documentElement.dataset.theme = theme;
+
+            // Browser chrome colour follows the explicit choice
+            const color = theme === this.THEMES.DARK ? '#1e293b' : '#ffffff';
+            document.querySelectorAll('meta[name="theme-color"]').forEach(meta => {
+                meta.content = color;
+            });
+        },
+
         /**
          * Set theme
          * @param {string} theme - 'light' or 'dark'
@@ -86,84 +93,33 @@
                 P1Logger.warn('Invalid theme:', theme);
                 return;
             }
-            
+
             const oldTheme = this.getCurrentTheme();
-            
-            // Remove old theme class
-            document.body.classList.remove('light-theme', 'dark-theme');
-            
-            // Add new theme class
-            document.body.classList.add(`${theme}-theme`);
-            
-            // Update meta theme-color for mobile browsers
-            this.updateMetaThemeColor(theme);
-            
-            // Save to localStorage if requested
+            this.applyTheme(theme);
+
             if (persist) {
-                localStorage.setItem(this.STORAGE_KEY, theme);
-                
-                // Also sync to server session via AJAX
-                this.syncThemeToServer(theme);
+                try {
+                    localStorage.setItem(this.STORAGE_KEY, theme);
+                } catch (e) {
+                    // Storage unavailable (private mode): the choice lasts for this page only
+                }
             }
-            
-            // Dispatch custom event for other scripts to listen to
+
             this.dispatchThemeChangeEvent(theme, oldTheme);
-            
             P1Logger.log('Theme changed:', oldTheme, '->', theme);
         },
-        
+
         /**
          * Toggle between light and dark theme
          */
         toggleTheme() {
-            const currentTheme = this.getCurrentTheme();
-            const newTheme = currentTheme === this.THEMES.LIGHT 
-                ? this.THEMES.DARK 
+            const newTheme = this.getCurrentTheme() === this.THEMES.LIGHT
+                ? this.THEMES.DARK
                 : this.THEMES.LIGHT;
-            
+
             this.setTheme(newTheme, true);
         },
-        
-        /**
-         * Update meta theme-color for mobile browsers
-         */
-        updateMetaThemeColor(theme) {
-            let metaThemeColor = document.querySelector('meta[name="theme-color"]');
-            
-            if (!metaThemeColor) {
-                metaThemeColor = document.createElement('meta');
-                metaThemeColor.name = 'theme-color';
-                document.head.appendChild(metaThemeColor);
-            }
-            
-            // Set color based on theme
-            const color = theme === this.THEMES.DARK ? '#1e293b' : '#ffffff';
-            metaThemeColor.content = color;
-        },
-        
-        /**
-         * Sync theme preference to server
-         */
-        syncThemeToServer(theme) {
-            // Send AJAX request to save theme in PHP session
-            fetch('?action=set_theme', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: `theme=${theme}`
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    P1Logger.log('Theme synced to server');
-                }
-            })
-            .catch(error => {
-                P1Logger.warn('Failed to sync theme to server:', error);
-            });
-        },
-        
+
         /**
          * Set up event listeners
          */
@@ -196,12 +152,13 @@
             // Listen for changes
             darkModeQuery.addEventListener('change', (e) => {
                 // Only auto-switch if user hasn't manually set a preference
-                const hasManualPreference = localStorage.getItem(this.STORAGE_KEY);
+                const hasManualPreference = this.getStoredTheme();
                 
                 if (!hasManualPreference) {
                     const newTheme = e.matches ? this.THEMES.DARK : this.THEMES.LIGHT;
-                    this.setTheme(newTheme, false);
-                    P1Logger.log('System theme changed, auto-switching to:', newTheme);
+                    const oldTheme = newTheme === this.THEMES.DARK ? this.THEMES.LIGHT : this.THEMES.DARK;
+                    this.dispatchThemeChangeEvent(newTheme, oldTheme);
+                    P1Logger.log('System theme changed, following:', newTheme);
                 }
             });
         },
@@ -224,9 +181,15 @@
          * Reset theme to system preference
          */
         resetToSystem() {
-            localStorage.removeItem(this.STORAGE_KEY);
+            const oldTheme = this.getCurrentTheme();
+            try {
+                localStorage.removeItem(this.STORAGE_KEY);
+            } catch (e) {
+                // ignore
+            }
+            delete document.documentElement.dataset.theme;
             const systemTheme = this.getSystemTheme();
-            this.setTheme(systemTheme, false);
+            this.dispatchThemeChangeEvent(systemTheme, oldTheme);
             P1Logger.log('Theme reset to system preference:', systemTheme);
         }
     };

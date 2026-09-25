@@ -30,10 +30,23 @@
             this.gauges.gas = document.getElementById('gas-gauge');
             this.gauges.solar = document.getElementById('solar-gauge');
             this.gauges.water = document.getElementById('water-gauge');
+
+            document.addEventListener('themechange', () => {
+                Object.values(this.gauges).forEach(canvas => {
+                    if (canvas && canvas._gaugeArgs) this.drawGauge(canvas, ...canvas._gaugeArgs);
+                });
+            });
         },
 
-        drawGauge(canvas, value, max, color, label) {
+        /**
+         * @param {string} colorToken - series token name, e.g. 'series-gas'
+         */
+        drawGauge(canvas, value, max, colorToken, label) {
             if (!canvas) return;
+
+            // Remember the arguments so the gauge can be repainted on theme change
+            canvas._gaugeArgs = [value, max, colorToken, label];
+            const color = ChartBase.color(colorToken);
             
             const ctx = canvas.getContext('2d');
             const width = canvas.offsetWidth;
@@ -55,7 +68,7 @@
             // Draw background arc
             ctx.beginPath();
             ctx.arc(centerX, centerY, radius, 0.75 * Math.PI, 2.25 * Math.PI);
-            ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--border-color').trim() || '#e2e8f0';
+            ctx.strokeStyle = ChartBase.color('border-color');
             ctx.lineWidth = lineWidth;
             ctx.lineCap = 'round';
             ctx.stroke();
@@ -129,7 +142,7 @@
                     const maxPower = (window.P1MonConfig && window.P1MonConfig.maxConsumption) || 10;
                     const maxWatts = maxPower * 1000;
                     const gaugeValue = Math.abs(netWatts);
-                    const gaugeColor = netWatts < 0 ? '#22c55e' : '#3b82f6';
+                    const gaugeColor = netWatts < 0 ? 'series-export' : 'series-import';
                     this.drawGauge(this.gauges.elec, gaugeValue, maxWatts, gaugeColor, 'Elektriciteit');
                 }
 
@@ -160,7 +173,7 @@
                     this.updateElement('gas-current-flow', this.formatNumber(flow, 3) + ' m³/h');
 
                     // Draw gauge (max 5 m³/h typical residential)
-                    this.drawGauge(this.gauges.gas, flow, 5, '#fb923c', 'Gas');
+                    this.drawGauge(this.gauges.gas, flow, 5, 'series-gas', 'Gas');
 
                     // Calculate today's total
                     const gasValues = data.chartData.map(d => parseFloat(d.gas) || 0);
@@ -195,7 +208,7 @@
 
                     // Draw gauge using system capacity from config.php
                     const systemCapacity = window.P1MonConfig?.systemCapacityW ?? 3780;
-                    this.drawGauge(this.gauges.solar, power, systemCapacity, '#fbbf24', 'Zonneenergie');
+                    this.drawGauge(this.gauges.solar, power, systemCapacity, 'series-solar', 'Zonneenergie');
                 }
 
                 // Get today's totals (last 24 hours, but we'll filter to today only)

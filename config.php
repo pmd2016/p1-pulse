@@ -18,6 +18,8 @@ if (file_exists('/p1mon/www/util/p1mon-util.php')) {
 define('CUSTOM_BASE_PATH', dirname(__FILE__));
 define('CUSTOM_BASE_URL', '/custom');
 
+require_once CUSTOM_BASE_PATH . '/components/icon.php';
+
 // Configuration settings
 class P1Config {
     
@@ -136,7 +138,7 @@ function renderPage($page, $data = []) {
 
 // Helper function to include CSS files
 function includeCSS() {
-    $cssFiles = ['variables', 'base', 'components', 'layout'];
+    $cssFiles = ['variables', 'base', 'layout', 'components', 'dashboard'];
     foreach ($cssFiles as $file) {
         echo "<link rel='stylesheet' href='" . CUSTOM_BASE_URL . "/assets/css/{$file}.css'>\n";
     }
