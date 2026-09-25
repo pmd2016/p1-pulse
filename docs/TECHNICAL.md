@@ -23,8 +23,9 @@ This document provides detailed technical information for developers and advance
 ## Architecture Overview
 
 P1 Pulse is a PHP/JavaScript web application that provides a modern dashboard for P1 Monitor. It uses
-no build tools, package managers or third-party runtime libraries — files are served directly.
-Charts are drawn by hand on a `<canvas>` element; there is no charting library.
+no build tools or package managers — files are served directly. The one third-party runtime
+library is Chart.js, vendored in `assets/vendor/chartjs/` and served locally (no CDN), so the UI
+works on a P1 Monitor without internet access.
 
 ### Code Statistics
 
@@ -61,12 +62,14 @@ Pages are **fragments**. `header.php` opens the document and `footer.php` closes
 - **Module managers**: each JS file is an IIFE exposing one object with `init()` /
   `setupEventListeners()` / `destroy()`, auto-initialising on `DOMContentLoaded` when
   `window.P1MonConfig.currentPage` matches.
-- **ChartBase factory**: `assets/js/charts.js` exposes `ChartBase.createManager(config)`. The
-  electricity, gas and solar pages are all built from it and supply behaviour through hooks
-  (`onInit`, `onSetupEventListeners`, `onLoadData`, `onUpdateStatistics`, `onDrawChart`,
-  `onDrawTooltipContent`). New chart pages should go through this factory.
-- **CSS custom properties**: `--x-light` / `--x-dark` pairs defined on `:root`, remapped to semantic
-  names under the `.light-theme` / `.dark-theme` body classes.
+- **Section pages**: electricity, gas and solar are each three pieces: `P1Section`
+  (`section.js`) drives the period tabs and range buttons and calls `onLoad(period, zoom,
+  isCurrent)`; the page fetches data and fills its KPI cards; `P1Chart` (`p1chart.js`) draws the
+  chart and its legend. New chart pages should follow the same shape.
+- **Design tokens**: all colours are CSS custom properties in `variables.css`, one per data series
+  (`--series-import`, `--series-gas`, …). JS reads them with `P1Utils.color()`; nothing hard-codes
+  a colour. The theme is `<html data-theme="light|dark">`; without it the CSS follows
+  `prefers-color-scheme`.
 - **Configuration-driven UI**: visibility flags read from P1 Monitor via `config_read()`.
 
 ---
@@ -632,18 +635,28 @@ It is used by the electricity page, the gas page (for `chartData[].gas`) and the
 When financial data is unavailable, `totalCost` falls back to
 `net × P1MonConfig.electricityCostPerKwh`.
 
-### charts.js (845 lines)
+### utils.js
 
-`ChartBase` — shared chart machinery and the `createManager()` factory.
+`P1Utils` — shared helpers: range options per period (`zoomOptions`, `defaultZooms`), Dutch date
+formatting (`formatXAxisLabel()`, `formatTooltipTime()`, `formatPeakTime()`), `getPeriodKey()` for
+joining weather onto energy buckets, `formatNumber()`, `color()` (reads a CSS token), `isPhone()`,
+and the `updateElement()` / `showError()` / `hideError()` DOM helpers.
 
-Provides: canvas sizing, theme colour resolution, nice-tick calculation, Y/X axis drawing, Dutch
-date/label formatting, tooltips with hover tracking, rounded rects, bars, smooth lines, temperature
-overlays and a secondary temperature axis, plus `showError()` / `hideError()` /
-`showLoading()` / `hideLoading()` / `updateElement()` helpers.
+### p1chart.js
 
-Managers created by the factory get `currentPeriod`, `currentZoom`, `data`, `canvas`, `ctx`,
-`hoverState` and the methods `init()`, `setupEventListeners()`, `updateZoomButtons()`,
-`changePeriod()`, `changeZoom()`, `loadData()`, `updateStatistics()`, `redrawChart()`.
+`P1Chart.create(canvas, config)` — the one chart component, a thin layer over Chart.js. Series are
+declared as `{ key, label, type: 'bar'|'line', token, axis? }`; amounts per bucket are bars (grouped
+side by side), rates and derived values are lines. An optional right-hand axis (`axes.y2`) carries a
+second unit (W, degree days). `setData(points, period, { temperature })` adds a shared temperature
+overlay (min–max band behind the bars, average line) on its own axis. The legend is rendered as HTML
+toggle buttons; colours are re-read on `themechange`. Chart.js is only loaded on pages that use it
+(see the script map in `footer.php`).
+
+### section.js
+
+`P1Section.create({ zoomButtonsId, onLoad })` — period tabs and range buttons for a section page.
+Every load gets an `isCurrent()` check so a slow response for an old period never overwrites a newer
+one.
 
 ### dashboard.js (333 lines)
 
@@ -651,21 +664,21 @@ Overview cards for electricity, gas and solar, each with a hand-drawn arc gauge.
 `P1MonConfig.updateInterval` with a visible countdown. Solar figures are filtered to
 today-since-midnight client-side.
 
-### electricity.js (255 lines)
+### electricity.js
 
-Electricity page: period tabs, zoom controls, net-line and temperature toggles, statistics cards,
-tooltips. Built on `ChartBase.createManager`.
+Electricity page: consumption and export bars, net line, optional temperature, statistics cards.
 
-### gas.js (530 lines)
+### gas.js
 
-Gas page: consumption bars, degree-days overlay, temperature overlay, gap-filling for missing
-periods, dynamic legend. Sources its data from `P1API.getElectricityData()` and reads the `gas`
-field.
+Gas page: consumption bars and degree days (right-hand axis), optional temperature, gap-filling for
+missing periods. Sources its data from `P1API.getElectricityData()` (the `gas` field) and weather via
+`P1API.attachWeather()`.
 
-### solar.js (450 lines)
+### solar.js
 
-Solar page: production bars, power line, capacity factor, peak power, estimated sunlight hours,
-optional temperature overlay. Fetches `/custom/api/solar.php` directly rather than through `P1API`.
+Solar page: production bars, average power on a right-hand W axis, capacity factor, peak power,
+estimated sunlight hours, optional temperature. Fetches `/custom/api/solar.php` directly rather than
+through `P1API`.
 
 ### header.js (164 lines)
 
@@ -674,10 +687,10 @@ Clock (1s), weather widget (5 min) and solar production widget (10s). Interval I
 
 ### theme.js (245 lines)
 
-Dark/light switching via `.light-theme` / `.dark-theme` on `<body>`, persisted to `localStorage`
-(`p1mon_theme`), falling back to `prefers-color-scheme`. Also updates `<meta name="theme-color">`,
-dispatches a `themechange` event, and binds Ctrl/Cmd+Shift+L. See
-[Known Issues](#known-issues) regarding the server-side sync.
+Dark/light switching via `<html data-theme>`, persisted to `localStorage` (`p1mon_theme`). An
+inline script in `header.php` applies a stored choice before first paint; without one, no attribute
+is set and the CSS follows `prefers-color-scheme`. Also updates `<meta name="theme-color">`,
+dispatches a `themechange` event (charts and gauges redraw on it), and binds Ctrl/Cmd+Shift+L.
 
 ### sidebar.js (412 lines)
 
@@ -741,33 +754,33 @@ They are fallbacks used when P1 Monitor's financial API is unavailable.
 ]
 ```
 
-Only `theme` is read (by `header.php`, for the initial `<body>` class). `sidebar_collapsed`,
+None of these are read: the theme lives in `localStorage` (see `theme.js`), and `sidebar_collapsed`,
 `default_page` and `update_interval` are never read, and `P1Config::setUserPref()` is never called —
 see [Known Issues](#known-issues). Client-side state lives in `localStorage` instead.
 
 ### CSS Variables
 
-Defined in `assets/css/variables.css` as light/dark pairs on `:root`, remapped under the theme body
-classes. Also defines spacing (`--space-1` … `--space-12`), radii, transitions, layout dimensions
-(`--sidebar-width`, `--header-height`) and a z-index scale.
+Defined in `assets/css/variables.css`. `:root` holds the light palette; the dark palette is declared
+for `:root[data-theme="dark"]` and, as the system fallback, for `:root:not([data-theme])` inside
+`@media (prefers-color-scheme: dark)`.
 
 ```css
-/* Paired, remapped by .light-theme / .dark-theme */
+/* Surfaces and text (remapped per theme) */
 --bg-primary, --bg-secondary, --bg-card, --bg-hover
---text-primary, --text-secondary
---border-color, --shadow, --shadow-hover
+--text-primary, --text-secondary, --border-color, --border-strong, --shadow, --shadow-hover
 
-/* Accents (identical in both themes) */
---accent-consumption: #f59e0b;
---accent-production:  #10b981;
---accent-gas:         #3b82f6;
---accent-water:       #06b6d4;
---accent-solar:       #f59e0b;
---accent-cost:        #8b5cf6;
+/* One colour per data series, used by CSS and by charts via P1Utils.color() */
+--series-import, --series-export, --series-net, --series-solar, --series-solar-power,
+--series-gas, --series-water, --series-cost, --series-degreedays,
+--series-temp-max, --series-temp-avg, --series-temp-min, --series-temp-band
+
+/* Icon tints and chart chrome */
+--tint-*, --chart-grid, --chart-text, --chart-tooltip-bg, --chart-tooltip-border
 ```
 
-Chart code does not read these variables; `ChartBase.getThemeColors()` hard-codes its palette based
-on the presence of `.dark-theme`.
+Also defines a type scale (`--text-xs` … `--text-4xl`), spacing (`--space-1` … `--space-12`),
+radii, transitions, layout dimensions, `--touch-target` and a z-index scale. CSS is mobile first
+with two breakpoints: 600px (tablet) and 1024px (desktop, sidebar in the flow).
 
 ---
 
@@ -847,22 +860,12 @@ asserting which. Diagnosing it needs `ls -la` on the device.
 This bit in practice: the web server reported the database as unavailable while the same
 file opened fine from a CLI shell.
 
-### Theme is never persisted server-side
-
-`theme.js::syncThemeToServer()` POSTs to `?action=set_theme`, but `p1mon.php` has no action handling
-at all. The request returns the dashboard HTML, `response.json()` throws, and the `.catch()` swallows
-it silently. Consequences:
-
-- `P1Config::setUserPref()` is dead code;
-- the PHP-rendered `<body>` class always reflects the session default rather than the user's choice;
-- the theme is re-applied by JS after first paint, so there is a visible flash on load.
-
 ### Capacity factor is calculated three different ways
 
 For the same underlying data:
 
 - `api/solar.php` divides by `zoom` hours (and approximates months as 30 days, years as 365);
-- `solar.js::calculateCapacityFactor()` divides by the zoom window, same approximations;
+- `solar.js::capacityFactor()` divides by the zoom window, same approximations;
 - `dashboard.js::calculateSolarTotals()` divides by *hours elapsed so far today*.
 
 The dashboard card and the solar page will therefore disagree about the same day. There is no single
@@ -915,8 +918,8 @@ the "filter to today since midnight" logic is duplicated in both files.
 5. Register the script in the page-specific block in `components/footer.php`
    (**not** in `config.php::includeJS()`, which is for globally loaded modules only).
 
-For a chart page, build the manager with `ChartBase.createManager()` rather than driving the canvas
-directly.
+For a chart page, use `P1Section` for the controls and `P1Chart` for the chart (see
+`electricity.js`), and add `$chartScripts` to the page's entry in `footer.php`.
 
 ### Running the tests
 
@@ -955,7 +958,8 @@ harness keeps it that way.
   `init()` / `setupEventListeners()` / `destroy()`. Timers tracked and cleared on `beforeunload`.
 - **Logging**: `P1Logger` only, never bare `console`.
 - **DOM**: `textContent` and `replaceChildren()`; never `innerHTML` with data.
-- **CSS**: organised by purpose — `variables`, `base`, `layout`, `components`.
+- **CSS**: organised by purpose — `variables`, `base`, `layout`, `components`, `dashboard`. Mobile
+  first; colours only through tokens.
 - **Language**: UI strings in Dutch, code and comments in English.
 
 ---

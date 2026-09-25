@@ -91,13 +91,8 @@
                         </div>
                         
                         <div class="control-group">
-                            <label class="control-label">Toon:</label>
+                            <label class="control-label">Extra:</label>
                             <div class="toggle-group">
-                                <label class="toggle-switch">
-                                    <input type="checkbox" id="toggle-solar-smoothed" checked>
-                                    <span class="toggle-slider"></span>
-                                    <span class="toggle-label">Glad gemiddelde</span>
-                                </label>
                                 <label class="toggle-switch">
                                     <input type="checkbox" id="toggle-solar-temp">
                                     <span class="toggle-slider"></span>
@@ -112,32 +107,11 @@
                 <div class="chart-section">
                     <div class="card chart-card">
                         <div class="chart-header">
-                            <h3 class="chart-title">Zonne-energie Productie</h3>
-                            <div class="chart-legend">
-                                <span class="legend-item solar">
-                                    <span class="legend-color"></span>
-                                    <span class="legend-text">Productie (kWh)</span>
-                                </span>
-                                <span class="legend-item power line">
-                                    <span class="legend-color"></span>
-                                    <span class="legend-text">Vermogen (W)</span>
-                                </span>
-                                <span class="legend-item temp-max line dashed" id="legend-temp-max" style="display: none;">
-                                    <span class="legend-color"></span>
-                                    <span class="legend-text">Temp Max</span>
-                                </span>
-                                <span class="legend-item temp-avg line" id="legend-temp-avg" style="display: none;">
-                                    <span class="legend-color"></span>
-                                    <span class="legend-text">Temp Gem</span>
-                                </span>
-                                <span class="legend-item temp-min line dashed" id="legend-temp-min" style="display: none;">
-                                    <span class="legend-color"></span>
-                                    <span class="legend-text">Temp Min</span>
-                                </span>
-                            </div>
+                            <h3 class="chart-title">Opgewekte zonne-energie</h3>
+                            <div class="chart-legend" id="solar-legend" aria-label="Reeksen tonen of verbergen"></div>
                         </div>
                         <div class="chart-container-large">
-                            <canvas id="solar-chart"></canvas>
+                            <canvas id="solar-chart" role="img" aria-label="Grafiek van opgewekte zonne-energie en vermogen"></canvas>
                         </div>
                     </div>
                 </div>

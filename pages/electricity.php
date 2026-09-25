@@ -54,7 +54,7 @@
                             <div class="stat-content">
                                 <div class="stat-label">Netto</div>
                                 <div class="stat-value" id="stat-net">-- kWh</div>
-                                <div class="stat-subtitle">Verbruik - Productie</div>
+                                <div class="stat-subtitle">Verbruik − teruglevering</div>
                             </div>
                         </div>
                         

@@ -18,8 +18,10 @@
  *       legendEl: document.getElementById('electricity-legend'),
  *       series: [
  *           { key: 'consumption', label: 'Verbruik', type: 'bar', token: 'series-import' },
- *           { key: 'net', label: 'Netto', type: 'line', token: 'series-net' }
- *       ]
+ *           { key: 'net', label: 'Netto', type: 'line', token: 'series-net' },
+ *           { key: 'power', label: 'Vermogen', type: 'line', token: 'series-solar-power', axis: 'y2' }
+ *       ],
+ *       axes: { y2: { unit: 'W', decimals: 0, title: '' } }   // optional right-hand axis
  *   });
  *   chart.setData(points, 'hours', { temperature: true });
  *
@@ -42,7 +44,13 @@
 
     function formatTick(value, unit) {
         // Axis ticks: at most 2 decimals, trailing zeros dropped
-        return `${+Number(value).toFixed(2)} ${unit}`;
+        const n = +Number(value).toFixed(2);
+        return unit ? `${n} ${unit}` : `${n}`;
+    }
+
+    function formatValue(value, decimals, unit) {
+        const n = P1Utils.formatNumber(value, decimals);
+        return unit ? `${n} ${unit}` : n;
     }
 
     function toDate(point) {
@@ -62,7 +70,7 @@
 
             const instance = Object.create(ChartProto);
             instance.canvas = canvas;
-            instance.config = Object.assign({ unit: '', decimals: 2, series: [] }, config);
+            instance.config = Object.assign({ unit: '', decimals: 2, series: [], axes: {} }, config);
             instance.hidden = new Set(config.hiddenByDefault || []);
             instance.points = [];
             instance.period = 'hours';
@@ -111,7 +119,7 @@
         },
 
         buildDatasets() {
-            const color = (token) => ChartBase.color(token);
+            const color = (token) => P1Utils.color(token);
 
             return this.activeSeries().map((s, index) => {
                 const data = this.points.map(p => {
@@ -169,11 +177,13 @@
         buildOptions() {
             const cfg = this.config;
             const period = this.period;
-            const isPhone = ChartBase.isPhone();
-            const text = ChartBase.color('chart-text');
-            const grid = ChartBase.color('chart-grid');
+            const isPhone = P1Utils.isPhone();
+            const text = P1Utils.color('chart-text');
+            const grid = P1Utils.color('chart-grid');
             const dates = this.points.map(toDate);
             const tempVisible = this.temperature && TEMPERATURE_SERIES.some(s => !this.hidden.has(s.key));
+            const y2 = Object.assign({ unit: '', decimals: 2 }, cfg.axes.y2 || {});
+            const y2Visible = cfg.series.some(s => s.axis === 'y2' && !this.hidden.has(s.key));
 
             return {
                 responsive: true,
@@ -186,23 +196,27 @@
                     // Area fills (the temperature band) go behind the bars
                     filler: { drawTime: 'beforeDatasetsDraw' },
                     tooltip: {
-                        backgroundColor: ChartBase.color('chart-tooltip-bg'),
-                        borderColor: ChartBase.color('chart-tooltip-border'),
+                        backgroundColor: P1Utils.color('chart-tooltip-bg'),
+                        borderColor: P1Utils.color('chart-tooltip-border'),
                         borderWidth: 1,
-                        titleColor: ChartBase.color('text-primary'),
-                        bodyColor: ChartBase.color('text-primary'),
+                        titleColor: P1Utils.color('text-primary'),
+                        bodyColor: P1Utils.color('text-primary'),
                         padding: 10,
                         boxPadding: 4,
                         usePointStyle: true,
                         itemSort: (a, b) => a.dataset.p1Index - b.dataset.p1Index,
                         filter: (item) => item.raw !== null,
                         callbacks: {
-                            title: (items) => items.length ? ChartBase.formatTooltipTime(dates[items[0].dataIndex], period) : '',
+                            title: (items) => items.length ? P1Utils.formatTooltipTime(dates[items[0].dataIndex], period) : '',
                             label: (item) => {
-                                if (item.dataset.yAxisID === 'temp') {
-                                    return ` ${item.dataset.label}: ${ChartBase.formatNumber(item.raw, 1)} °C`;
+                                const axis = item.dataset.yAxisID;
+                                if (axis === 'temp') {
+                                    return ` ${item.dataset.label}: ${formatValue(item.raw, 1, '°C')}`;
                                 }
-                                return ` ${item.dataset.label}: ${ChartBase.formatNumber(item.raw, cfg.decimals)} ${cfg.unit}`;
+                                if (axis === 'y2') {
+                                    return ` ${item.dataset.label}: ${formatValue(item.raw, y2.decimals, y2.unit)}`;
+                                }
+                                return ` ${item.dataset.label}: ${formatValue(item.raw, cfg.decimals, cfg.unit)}`;
                             },
                             labelPointStyle: (item) => ({
                                 pointStyle: item.dataset.type === 'bar' ? 'rectRounded' : 'line',
@@ -222,7 +236,7 @@
                             autoSkipPadding: 12,
                             maxTicksLimit: isPhone ? 6 : 12,
                             callback: (value, index) => dates[index]
-                                ? ChartBase.formatXAxisLabel(dates[index], period, isPhone)
+                                ? P1Utils.formatXAxisLabel(dates[index], period, isPhone)
                                 : ''
                         }
                     },
@@ -234,6 +248,19 @@
                             color: text,
                             maxTicksLimit: isPhone ? 5 : 7,
                             callback: (value) => formatTick(value, cfg.unit)
+                        }
+                    },
+                    y2: {
+                        display: y2Visible,
+                        position: 'right',
+                        beginAtZero: true,
+                        title: { display: !!y2.title && !isPhone, text: y2.title || '', color: text },
+                        grid: { drawOnChartArea: false },
+                        border: { display: false },
+                        ticks: {
+                            color: text,
+                            maxTicksLimit: isPhone ? 5 : 7,
+                            callback: (value) => formatTick(value, y2.unit)
                         }
                     },
                     temp: {

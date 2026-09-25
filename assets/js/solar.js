@@ -1,374 +1,155 @@
 /**
- * Solar Page Manager
- * Handles chart rendering and interactivity for solar production data
- * Uses ChartBase for common functionality
+ * Solar page
+ *
+ * Production comes from the local solar API (api/solar.php), temperature
+ * from the P1 weather history. P1Section handles the period and range
+ * controls, P1Chart draws the chart and its legend.
  */
 
 (function() {
     'use strict';
 
-    const SolarManager = window.ChartBase.createManager({
-        canvasId: 'solar-chart',
-        zoomButtonsId: 'zoom-buttons-solar',
-        pageName: 'solar',
-        defaultPeriod: 'hours',
-        defaultZoom: 24,
-        features: {},
+    const SolarPage = {
+        chart: null,
+        section: null,
+        showTemp: false,
+        // System capacity from config.php (default: 3780W for 14 × 270Wp panels)
+        systemCapacity: 3780,
 
-        onInit() {
-            this.showSmoothed = true;
-            this.showTemp = false;
-            this.temperatureData = null;
-            // System capacity from config.php (default: 3780W for 14 × 270Wp panels)
+        init() {
             this.systemCapacity = window.P1MonConfig?.systemCapacityW ?? 3780;
-        },
 
-        onSetupEventListeners() {
-            const smoothToggle = document.getElementById('toggle-solar-smoothed');
-            if (smoothToggle) {
-                smoothToggle.addEventListener('change', (e) => {
-                    this.showSmoothed = e.target.checked;
-                    this.redrawChart();
-                });
-            }
+            this.chart = P1Chart.create(document.getElementById('solar-chart'), {
+                unit: 'kWh',
+                decimals: 3,
+                legendEl: document.getElementById('solar-legend'),
+                series: [
+                    { key: 'production', label: 'Opgewekt', type: 'bar', token: 'series-solar' },
+                    { key: 'power', label: 'Gem. vermogen', type: 'line', token: 'series-solar-power', axis: 'y2' }
+                ],
+                axes: { y2: { unit: 'W', decimals: 0 } }
+            });
+
+            this.section = P1Section.create({
+                zoomButtonsId: 'zoom-buttons-solar',
+                onLoad: (period, zoom, isCurrent) => this.load(period, zoom, isCurrent)
+            });
 
             const tempToggle = document.getElementById('toggle-solar-temp');
             if (tempToggle) {
                 tempToggle.addEventListener('change', (e) => {
                     this.showTemp = e.target.checked;
-                    this.toggleTemperatureLegend(e.target.checked);
-                    if (e.target.checked && !this.temperatureData) {
-                        this.loadTemperatureData();
-                    } else {
-                        this.redrawChart();
-                    }
+                    this.section.reload();
                 });
             }
+
+            this.section.init();
         },
 
-        async onLoadData() {
+        async load(period, zoom, isCurrent) {
             try {
-                ChartBase.showLoading();
-
-                const url = `/custom/api/solar.php?period=${this.currentPeriod}&zoom=${this.currentZoom}`;
-                const response = await fetch(url);
-
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-
+                const response = await fetch(`/custom/api/solar.php?period=${period}&zoom=${zoom}`);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 const payload = await response.json();
-
-                if (!payload || !payload.chartData) {
-                    ChartBase.showError('Geen data beschikbaar');
-                    return;
-                }
+                if (!isCurrent()) return;
 
                 // An unavailable database returns empty chartData, which would
                 // otherwise render as a flat chart indistinguishable from a
                 // night with no production.
-                if (payload.error) {
+                if (payload && payload.error) {
                     P1Logger.error('Solar API unavailable:', payload.error);
-                    ChartBase.showError('Zonnedata niet beschikbaar — controleer de solar database op de server.');
+                    P1Utils.showError('Zonnedata niet beschikbaar — controleer de solar database op de server.');
                     return;
                 }
 
-                this.data = payload.chartData;
-                this.updateStatistics(payload.stats);
+                if (!payload || !payload.chartData) {
+                    P1Utils.showError('Geen data beschikbaar');
+                    return;
+                }
 
+                let points = payload.chartData;
                 if (this.showTemp) {
-                    await this.loadTemperatureData();
-                } else {
-                    this.redrawChart();
+                    points = await window.P1API.attachWeather(points, period, zoom);
+                    if (!isCurrent()) return;
                 }
 
-                ChartBase.hideError();
+                this.updateStatistics(points, payload.stats, period, zoom);
+                this.chart.setData(points, period, { temperature: this.showTemp });
+                P1Utils.hideError();
             } catch (err) {
+                if (!isCurrent()) return;
                 P1Logger.error('Error loading solar data:', err);
-                ChartBase.showError('Fout bij ophalen zonnedata');
-            } finally {
-                ChartBase.hideLoading();
+                P1Utils.showError('Fout bij ophalen zonnedata');
             }
         },
 
-        onUpdateStatistics() {
-            // Called by base, but we handle stats in updateStatistics with payload
-        },
+        updateStatistics(points, stats, period, zoom) {
+            const fmt = P1Utils.formatNumber;
 
-        onDrawChart(dimensions, theme) {
-            const { paddingLeft, paddingRight, paddingTop, paddingBottom, graphWidth, graphHeight, width, height } = dimensions;
-
-            // Update features based on current state
-            this.features.showTemp = this.showTemp;
-
-            const values = this.data.map(d => parseFloat(d.production) || 0);
-            const maxV = Math.max(...values, 0.001);
-            const ticks = ChartBase.calculateNiceTicks(0, maxV, 5);
-            const niceMax = Math.max(...ticks);
-
-            // Draw Y-axis
-            ChartBase.drawYAxis(this.ctx, dimensions, theme, ticks, niceMax, 'kWh');
-            ChartBase.drawXAxisLine(this.ctx, dimensions, theme);
-
-            // Draw production bars
-            const count = values.length;
-            const totalBarWidth = graphWidth / count;
-            const barWidth = Math.max(totalBarWidth - 2, 1);
-
-            this.ctx.fillStyle = ChartBase.color('series-solar');
-
-            values.forEach((v, idx) => {
-                const x = paddingLeft + idx * totalBarWidth + 1;
-                const h = (v / niceMax) * graphHeight;
-                const y = paddingTop + graphHeight - h;
-                this.ctx.fillRect(x, y, barWidth, h);
-            });
-
-            // Draw power line if enabled
-            if (this.showSmoothed) {
-                this.drawPowerLine(dimensions, totalBarWidth);
-            }
-
-            // Draw temperature overlay if enabled
-            if (this.showTemp && this.temperatureData) {
-                this.drawTemperatureOverlay(dimensions, theme);
-            }
-
-            // Draw X-axis labels
-            ChartBase.drawXAxisLabels(this.ctx, dimensions, theme, this.data, this.currentPeriod);
-        },
-
-        onDrawTooltipContent(point, index) {
-            const date = new Date(point.unixTimestamp * 1000);
-            const header = ChartBase.formatTooltipTime(date, this.currentPeriod);
-
-            const production = parseFloat(point.production) || 0;
-            const power = parseFloat(point.power) || 0;
-
-            const lines = [
-                { text: `Productie: ${ChartBase.formatNumber(production, 3)} kWh`, color: ChartBase.color('series-solar') },
-                { text: `Vermogen: ${ChartBase.formatNumber(power, 0)} W`, color: ChartBase.color('series-solar-power') }
-            ];
-
-            if (this.showTemp && this.temperatureData) {
-                const tempData = this.temperatureData[point.unixTimestamp];
-                if (tempData) {
-                    lines.push({
-                        text: `Temp: ${ChartBase.formatNumber(tempData.min, 1)}°C - ${ChartBase.formatNumber(tempData.max, 1)}°C`,
-                        color: ChartBase.color('series-temp-avg')
-                    });
-                }
-            }
-
-            return { header, lines };
-        }
-    });
-
-    // Custom methods for solar-specific functionality
-    Object.assign(SolarManager, {
-        toggleTemperatureLegend(show) {
-            ['legend-temp-max', 'legend-temp-avg', 'legend-temp-min'].forEach(id => {
-                const el = document.getElementById(id);
-                if (el) el.style.display = show ? 'inline-flex' : 'none';
-            });
-        },
-
-        updateStatistics(stats) {
             if (!stats) {
-                if (!this.data || this.data.length === 0) return;
-
-                const totalEnergy = this.data.reduce((sum, d) => sum + (parseFloat(d.production) || 0), 0);
-                const powers = this.data.map(d => parseFloat(d.power) || 0);
-                const maxPower = Math.max(...powers);
+                const powers = points.map(d => parseFloat(d.power) || 0);
+                const maxPower = powers.length ? Math.max(...powers) : 0;
                 const maxIndex = powers.indexOf(maxPower);
-                const peakTime = maxIndex >= 0 ? this.data[maxIndex].timestamp : '';
-
                 stats = {
-                    totalEnergy: totalEnergy,
-                    peakPower: { value: maxPower, time: peakTime }
+                    totalEnergy: points.reduce((sum, d) => sum + (parseFloat(d.production) || 0), 0),
+                    peakPower: { value: maxPower, time: maxIndex >= 0 ? points[maxIndex].unixTimestamp : '' }
                 };
             }
 
-            const periodLabel = ChartBase.periodLabels[this.currentPeriod] || 'uren';
+            const currentPower = points.length > 0 ? (parseFloat(points[points.length - 1].power) || 0) : 0;
+            P1Utils.updateElement('stat-current-power', fmt(currentPower, 0) + ' W');
 
-            const currentPower = this.data && this.data.length > 0 ?
-                (parseFloat(this.data[this.data.length - 1].power) || 0) : 0;
-            ChartBase.updateElement('stat-current-power', ChartBase.formatNumber(currentPower, 0) + ' W');
+            P1Utils.updateElement('stat-total-energy', fmt(stats.totalEnergy || 0, 2) + ' kWh');
+            P1Utils.updateElement('stat-energy-period', P1Utils.rangeLabel(period, zoom));
 
-            ChartBase.updateElement('stat-total-energy', ChartBase.formatNumber(stats.totalEnergy || 0, 2) + ' kWh');
-            ChartBase.updateElement('stat-energy-period', `Laatste ${this.currentZoom} ${periodLabel}`);
+            P1Utils.updateElement('stat-peak-power', fmt(stats.peakPower?.value || 0, 0) + ' W');
+            P1Utils.updateElement('stat-peak-time', P1Utils.formatPeakTime(stats.peakPower?.time, period, true));
 
-            const peakPower = stats.peakPower?.value || 0;
-            ChartBase.updateElement('stat-peak-power', ChartBase.formatNumber(peakPower, 0) + ' W');
-            ChartBase.updateElement('stat-peak-time', this.formatPeakTime(stats.peakPower?.time));
+            P1Utils.updateElement('stat-capacity-factor', fmt(this.capacityFactor(stats.totalEnergy || 0, period, zoom), 1) + '%');
+            P1Utils.updateElement('stat-capacity-period', P1Utils.rangeLabel(period, zoom));
 
-            const capacityFactor = this.calculateCapacityFactor(stats.totalEnergy || 0);
-            ChartBase.updateElement('stat-capacity-factor', ChartBase.formatNumber(capacityFactor, 1) + '%');
-            ChartBase.updateElement('stat-capacity-period', `Laatste ${this.currentZoom} ${periodLabel}`);
-
-            const sunlightHours = this.calculateSunlightHours();
-            ChartBase.updateElement('stat-sunlight-hours', ChartBase.formatNumber(sunlightHours, 1) + ' uur');
+            P1Utils.updateElement('stat-sunlight-hours', fmt(this.sunlightHours(points, period), 1) + ' uur');
         },
 
-        calculateCapacityFactor(totalEnergyKWh) {
-            let hours = this.currentZoom;
-            if (this.currentPeriod === 'days') hours *= 24;
-            else if (this.currentPeriod === 'months') hours = this.currentZoom * 30 * 24;
-            else if (this.currentPeriod === 'years') hours = this.currentZoom * 365 * 24;
-
-            const systemCapacityKW = this.systemCapacity / 1000;
-            const theoreticalMaxKWh = systemCapacityKW * hours;
-
-            if (theoreticalMaxKWh === 0) return 0;
-            return (totalEnergyKWh / theoreticalMaxKWh) * 100;
+        capacityFactor(totalEnergyKWh, period, zoom) {
+            const hoursPer = { hours: 1, days: 24, months: 30 * 24, years: 365 * 24 };
+            const theoreticalMaxKWh = (this.systemCapacity / 1000) * zoom * (hoursPer[period] || 1);
+            return theoreticalMaxKWh === 0 ? 0 : (totalEnergyKWh / theoreticalMaxKWh) * 100;
         },
 
-        calculateSunlightHours() {
-            if (!this.data || this.data.length === 0) return 0;
-
-            const threshold = 10;
+        sunlightHours(points, period) {
+            const threshold = 10; // W
             let productiveHours = 0;
 
-            this.data.forEach(point => {
+            points.forEach(point => {
                 const power = parseFloat(point.power) || 0;
-                if (power > threshold) {
-                    if (this.currentPeriod === 'hours') {
-                        productiveHours += 1;
-                    } else if (this.currentPeriod === 'days') {
-                        const production = parseFloat(point.production) || 0;
-                        if (production > 0) productiveHours += 8;
-                    } else {
-                        const production = parseFloat(point.production) || 0;
-                        const avgPower = 1000;
-                        productiveHours += (production * 1000) / avgPower;
-                    }
+                if (power <= threshold) return;
+
+                const production = parseFloat(point.production) || 0;
+                if (period === 'hours') {
+                    productiveHours += 1;
+                } else if (period === 'days') {
+                    if (production > 0) productiveHours += 8;
+                } else {
+                    // Rough estimate: energy at an average of 1 kW
+                    productiveHours += production;
                 }
             });
 
             return productiveHours;
-        },
-
-        formatPeakTime(ts) {
-            if (!ts) return '--:--';
-
-            let timestamp;
-            if (typeof ts === 'string') {
-                const date = new Date(ts);
-                if (!isNaN(date.getTime())) {
-                    return date.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
-                }
-                timestamp = parseInt(ts);
-            } else {
-                timestamp = ts;
-            }
-
-            if (timestamp && !isNaN(timestamp)) {
-                const date = new Date(timestamp * 1000);
-                return date.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
-            }
-
-            return String(ts);
-        },
-
-        async loadTemperatureData() {
-            try {
-                let hoursNeeded = this.currentZoom;
-                if (this.currentPeriod === 'days') hoursNeeded *= 24;
-                else if (this.currentPeriod === 'months') hoursNeeded = this.currentZoom * 30 * 24;
-                else if (this.currentPeriod === 'years') hoursNeeded = this.currentZoom * 365 * 24;
-
-                const url = `/api/v1/weather/hour?limit=${hoursNeeded}&json=object`;
-                const response = await fetch(url);
-
-                if (!response.ok) {
-                    P1Logger.warn('Failed to load temperature data');
-                    return;
-                }
-
-                const weatherData = await response.json();
-                this.temperatureData = this.processTemperatureData(weatherData);
-                this.redrawChart();
-            } catch (err) {
-                P1Logger.error('Error loading temperature data:', err);
-            }
-        },
-
-        processTemperatureData(weatherData) {
-            if (!Array.isArray(weatherData)) return {};
-
-            const tempMap = {};
-
-            weatherData.forEach(record => {
-                const timestamp = parseInt(record.TIMESTAMP_UTC);
-                const tempLow = parseFloat(record.TEMPERATURE_LOW);
-                const tempAvg = parseFloat(record.TEMPERATURE_AVERAGE);
-                const tempHigh = parseFloat(record.TEMPERATURE_HIGH);
-
-                let key;
-                if (this.currentPeriod === 'hours') {
-                    key = Math.floor(timestamp / 3600) * 3600;
-                } else {
-                    const date = new Date(timestamp * 1000);
-                    date.setHours(0, 0, 0, 0);
-                    key = Math.floor(date.getTime() / 1000);
-                }
-
-                if (!tempMap[key]) {
-                    tempMap[key] = { min: tempLow, avg: tempAvg, max: tempHigh };
-                } else {
-                    tempMap[key].min = Math.min(tempMap[key].min, tempLow);
-                    tempMap[key].max = Math.max(tempMap[key].max, tempHigh);
-                    tempMap[key].avg = (tempMap[key].avg + tempAvg) / 2;
-                }
-            });
-
-            return tempMap;
-        },
-
-        drawPowerLine(dimensions, totalBarWidth) {
-            const { paddingLeft, paddingTop, graphHeight } = dimensions;
-
-            const powers = this.data.map(d => parseFloat(d.power) || 0);
-            const maxPower = Math.max(...powers, 1);
-
-            const points = powers.map((power, idx) => ({
-                x: paddingLeft + (idx * totalBarWidth) + totalBarWidth / 2,
-                y: paddingTop + graphHeight - ((power / maxPower) * graphHeight * 0.7)
-            }));
-
-            this.ctx.strokeStyle = ChartBase.color('series-solar-power');
-            this.ctx.lineWidth = 2;
-            this.ctx.beginPath();
-
-            points.forEach((point, idx) => {
-                if (idx === 0) {
-                    this.ctx.moveTo(point.x, point.y);
-                } else {
-                    this.ctx.lineTo(point.x, point.y);
-                }
-            });
-
-            this.ctx.stroke();
-        },
-
-        drawTemperatureOverlay(dimensions, theme) {
-            if (!this.temperatureData) return;
-
-            // Align weather readings with the bars; gaps stay null
-            const tempData = this.data.map(point => this.temperatureData[point.unixTimestamp] || null);
-            const tempScale = ChartBase.calculateTemperatureScale(tempData);
-            if (!tempScale) return;
-
-            ChartBase.drawTemperatureLines(this.ctx, dimensions, tempData, tempScale);
-            ChartBase.drawTemperatureAxis(this.ctx, dimensions, theme, tempScale);
         }
-    });
+    };
 
-    // Auto-init when on solar page
-    document.addEventListener('DOMContentLoaded', () => {
-        if (window.P1MonConfig && window.P1MonConfig.currentPage === 'solar') {
-            SolarManager.init();
-        }
-    });
+    function start() {
+        if (document.body.dataset.page === 'solar') SolarPage.init();
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', start);
+    } else {
+        start();
+    }
+
+    window.SolarPage = SolarPage;
 
 })();

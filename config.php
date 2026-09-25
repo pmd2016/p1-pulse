@@ -146,7 +146,7 @@ function includeCSS() {
 
 // Helper function to include JS files
 function includeJS() {
-    $jsFiles = ['logger', 'theme', 'sidebar', 'api', 'header', 'charts'];
+    $jsFiles = ['logger', 'theme', 'sidebar', 'api', 'header', 'utils'];
     foreach ($jsFiles as $file) {
         echo "<script src='" . CUSTOM_BASE_URL . "/assets/js/{$file}.js'></script>\n";
     }
