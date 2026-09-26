@@ -110,5 +110,9 @@
             
             <div class="header-right">
                 <?php include 'theme-toggle.php'; ?>
+                <!-- Phones only; from 600px Inloggen is in the sidebar -->
+                <a href="/login.php" class="icon-button header-login" aria-label="Inloggen" title="Inloggen">
+                    <?php echo icon('log-in', 20); ?>
+                </a>
             </div>
         </header>

@@ -754,7 +754,12 @@ dispatches a `themechange` event (charts and gauges redraw on it), and binds Ctr
 Collapse/expand with `localStorage` persistence (`p1mon_sidebar_collapsed`), mobile drawer behaviour
 below 1024px, click-outside-to-close. Keeps the menu button's `aria-expanded` in sync. Hidden pages
 (gas, water) are left out server-side by `nav_items()` in `components/nav.php`, which also feeds
-the phone bottom tab bar (`components/bottom-nav.php`, first five pages, below 600px).
+the phone bottom tab bar (`components/bottom-nav.php`).
+
+There is exactly one menu per width: below 600px the bottom tab bar (every page; no hamburger, the
+sidebar is `display: none`, and Inloggen is an icon in the header); 600–1023px the hamburger drawer;
+from 1024px the sidebar. A closed drawer is also `visibility: hidden`, so its links are out of
+the tab order and the accessibility tree.
 
 ---
 
@@ -860,7 +865,7 @@ links) uses a `*-text` token. The `.is-import` / `.is-gas` / … helpers set `--
 Also defines a type scale (`--text-xs` … `--text-4xl`), spacing (`--space-1` … `--space-12`),
 radii, transitions, layout dimensions (`--header-height`, `--bottom-nav-height`),
 `--touch-target` and a z-index scale. CSS is mobile first with two breakpoints: 600px (tablet, the
-bottom tab bar gives way to the hamburger drawer) and 1024px (desktop, sidebar in the flow).
+bottom tab bar is replaced by the hamburger drawer) and 1024px (desktop, sidebar in the flow).
 
 ---
 

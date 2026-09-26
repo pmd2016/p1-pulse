@@ -45,8 +45,8 @@ A modern, responsive web dashboard for monitoring real-time energy, gas, water, 
 ├── components/                  # Reusable UI components
 │   ├── header.php               # Top navigation and branding
 │   ├── nav.php                  # The page list, shared by both menus
-│   ├── sidebar.php              # Navigation menu (drawer below 1024px)
-│   ├── bottom-nav.php           # Tab bar on phones
+│   ├── sidebar.php              # Menu on tablet (drawer) and desktop
+│   ├── bottom-nav.php           # Menu on phones (tab bar)
 │   ├── footer.php               # Page footer
 │   ├── icon.php                 # Inline SVG icon set
 │   ├── section.php              # Section page template (toolbar, KPIs, chart card)
