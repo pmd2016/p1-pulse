@@ -10,7 +10,9 @@
     'use strict';
 
     const fmt = (v, d) => P1Utils.formatNumber(v, d);
-    const m3 = (v) => `${fmt(v, 3)} m³`;
+    // Decimals follow the period shown (P1Utils.amountDecimals)
+    let decimals = 3;
+    const m3 = (v, d = decimals) => `${fmt(v, d)} m³`;
     const eur = (v) => `€ ${fmt(v, 2)}`;
 
     const GasPage = {
@@ -20,7 +22,7 @@
         init() {
             this.chart = P1Chart.create(document.getElementById('gas-chart'), {
                 unit: 'm³',
-                decimals: 3,
+                decimals: 'period',
                 legendEl: document.getElementById('gas-legend'),
                 series: [
                     { key: 'gas', label: 'Verbruik', type: 'bar', token: 'series-gas' },
@@ -62,6 +64,7 @@
         },
 
         updateKpis(points, { stats, previous }, weatherRows, period) {
+            decimals = P1Utils.amountDecimals(period);
             const s = this.section;
             const prev = previous || {};
             const values = points.map(p => parseFloat(p.gas) || 0);
@@ -125,7 +128,7 @@
             if (!latest) return;
 
             this.section.setKpi('now', {
-                value: m3(parseFloat(latest.CONSUMPTION_GAS_DELTA_M3) || 0),
+                value: m3(parseFloat(latest.CONSUMPTION_GAS_DELTA_M3) || 0, 3),
                 sub: 'laatste uur'
             });
         },

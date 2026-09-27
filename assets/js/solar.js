@@ -10,7 +10,9 @@
     'use strict';
 
     const fmt = (v, d) => P1Utils.formatNumber(v, d);
-    const kwh = (v) => `${fmt(v, 2)} kWh`;
+    // Decimals follow the period shown (P1Utils.amountDecimals)
+    let decimals = 2;
+    const kwh = (v, d = decimals) => `${fmt(v, d)} kWh`;
     const eur = (v) => `€ ${fmt(v, 2)}`;
     const HOURS_PER = { hours: 1, days: 24, months: 30 * 24, years: 365 * 24 };
 
@@ -25,7 +27,7 @@
 
             this.chart = P1Chart.create(document.getElementById('solar-chart'), {
                 unit: 'kWh',
-                decimals: 3,
+                decimals: 'period',
                 legendEl: document.getElementById('solar-legend'),
                 series: [
                     { key: 'production', label: 'Opgewekt', type: 'bar', token: 'series-solar' },
@@ -105,6 +107,7 @@
         },
 
         updateKpis(points, stats, previousPoints, period, zoom) {
+            decimals = P1Utils.amountDecimals(period);
             const s = this.section;
             const cur = this.totals(points, stats, period, zoom);
             const prev = previousPoints ? this.totals(previousPoints, null, period, zoom) : {};
@@ -159,7 +162,7 @@
 
             this.section.setKpi('now', {
                 value: `${fmt(current.power || 0, 0)} W`,
-                sub: `vandaag ${kwh(current.energyToday || 0)}`
+                sub: `vandaag ${kwh(current.energyToday || 0, 2)}`
             });
         }
     };

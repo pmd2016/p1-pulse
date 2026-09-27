@@ -600,6 +600,75 @@ button.legend-item[aria-pressed="false"] .legend-text {
     touch-action: pan-y;
 }
 
+/*
+ * Chart tooltip (P1Chart.renderTooltip): an HTML element fixed over the
+ * page, so it is never clipped by a small canvas such as a sparkline.
+ * Rows are swatch | label | value, values right-aligned in one column.
+ */
+.chart-tooltip {
+    position: fixed;
+    z-index: var(--z-tooltip);
+    max-width: calc(100vw - 16px);
+    padding: var(--space-2) var(--space-3) 10px;
+    background: var(--chart-tooltip-bg);
+    border: 1px solid var(--chart-tooltip-border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-hover);
+    font-size: var(--text-sm);
+    line-height: 1.35;
+    color: var(--text-primary);
+    pointer-events: none;
+}
+
+.chart-tooltip[hidden] {
+    display: none;
+}
+
+.chart-tooltip-title {
+    margin-bottom: 6px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+.chart-tooltip-rows {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 4px var(--space-2);
+}
+
+.chart-tooltip-swatch {
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+    background: var(--c);
+}
+
+.chart-tooltip-swatch.is-line {
+    width: 12px;
+    height: 0;
+    border-radius: 0;
+    background: none;
+    border-top: 3px solid var(--c);
+}
+
+.chart-tooltip-swatch.is-dashed {
+    border-top: 2px dashed var(--c);
+}
+
+.chart-tooltip-label {
+    white-space: nowrap;
+}
+
+.chart-tooltip-value {
+    padding-left: var(--space-3);
+    text-align: right;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
 /* Chart states: data-state="loading | ready | empty | error" on the card */
 .chart-body {
     position: relative;
