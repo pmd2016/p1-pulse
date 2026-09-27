@@ -73,7 +73,7 @@
             s.setKpi('total', {
                 value: m3(total),
                 sub: previous ? `vorige: ${m3(prev.totalGas)}` : '',
-                delta: { current: total, previous: prev.totalGas, goodWhen: 'down' }
+                delta: { current: total, previous: prev.totalGas, goodWhen: 'down', format: m3 }
             });
 
             s.setKpi('cost', {
@@ -88,7 +88,7 @@
             s.setKpi('average', {
                 value: m3(average),
                 sub: `per ${P1Utils.periodLabelsSingular[period] || 'periode'}`,
-                delta: { current: average, previous: previousAverage, goodWhen: 'down' }
+                delta: { current: average, previous: previousAverage, goodWhen: 'down', format: m3 }
             });
 
             const peak = values.reduce((best, v, i) => (v > best.value ? { value: v, index: i } : best), { value: 0, index: -1 });
@@ -114,7 +114,7 @@
             s.setKpi('extra', {
                 value: hasDegreeDays ? fmt(degreeDays, 1) : '--',
                 sub: previousDegreeDays !== undefined ? `vorige: ${fmt(previousDegreeDays, 1)}` : '',
-                delta: { current: hasDegreeDays ? degreeDays : undefined, previous: previousDegreeDays }
+                delta: { current: hasDegreeDays ? degreeDays : undefined, previous: previousDegreeDays, format: (v) => fmt(v, 1) }
             });
         },
 

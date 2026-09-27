@@ -697,9 +697,13 @@ toggle buttons; colours are re-read on `themechange`. Chart.js is only loaded on
 - **Loading**: every load gets an `isCurrent()` check so a slow response never overwrites a newer
   one. The chart card shows `data-state="loading | ready | empty | error"`; errors offer a retry.
   Throw `P1Section.userError(message)` to show a specific message.
-- **KPIs**: `setKpi(key, { value, sub, tone, delta: { current, previous, goodWhen, format } })`
+- **KPIs**: `setKpi(key, { value, sub, tone, delta: { current, previous, goodWhen, format, compareText } })`
   renders the change vs the previous window as a percentage, or as an absolute difference
-  (`format`) when the previous value is zero or negative (net costs).
+  (`format`) when a percentage means nothing: the previous value is zero or negative (net costs),
+  or the change passes ±200% because the previous value is small ("▲ 20,41 kWh", not
+  "▲ 1385%"). Without `format` the badge is hidden in those cases, so pass it for every amount.
+  The badge's tooltip names both values. `compareText` fills a visible `.kpi-compare` line
+  where the card has one (dashboard: "t.o.v. gisteren tot 14:25").
 - **Live**: `live()` refreshes the "Nu" card every `P1MonConfig.updateInterval` (at least 10 s),
   paused while the tab is hidden.
 

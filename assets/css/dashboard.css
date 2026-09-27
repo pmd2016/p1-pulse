@@ -105,6 +105,16 @@
     color: var(--ct, var(--text-primary));
 }
 
+/* What the change badge compares with: "t.o.v. gisteren tot 14:25" */
+.dash-figure .kpi-compare {
+    font-size: var(--text-xs);
+    color: var(--text-secondary);
+}
+
+.dash-figure .kpi-compare[hidden] {
+    display: none;
+}
+
 /* Sparkline of today, 24 hourly slots */
 .sparkline {
     position: relative;

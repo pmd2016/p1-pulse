@@ -22,6 +22,7 @@ function dashboard_card($key, $title, $icon, $link, $tone, $totalLabel, array $r
                                     <span class="kpi-delta" hidden></span>
                                     <span class="kpi-sub"><?php echo htmlspecialchars($totalLabel); ?></span>
                                 </div>
+                                <div class="kpi-compare" hidden></div>
                             </div>
                             <?php if ($chart): ?>
                             <div class="sparkline" data-state="loading">
