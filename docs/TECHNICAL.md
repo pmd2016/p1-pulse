@@ -658,7 +658,9 @@ figures exclude fixed charges (vastrecht).
 `P1Utils` — shared helpers: range options per period (`zoomOptions`, `defaultZooms`), Dutch date
 formatting (`formatXAxisLabel()`, `formatTooltipTime()`, `formatPeakTime()`), `getPeriodKey()` for
 joining weather onto energy buckets, `formatNumber()` / `formatCompact()` (Dutch notation via
-`Intl.NumberFormat('nl-NL')`: `1.234,56`; display only, never parse the result), `tariffs()`,
+`Intl.NumberFormat('nl-NL')`: `1.234,56`; display only, never parse the result),
+`amountDecimals(period)` (decimals for kWh and m³: 3 per hour, 2 per day, 1 per month or year),
+`tariffs()`,
 `color()` (reads a CSS token), `isPhone()`, and the `updateElement()` / `showError()` /
 `hideError()` DOM helpers.
 
@@ -670,7 +672,12 @@ side by side), rates and derived values are lines. An optional right-hand axis (
 second unit (W, degree days). `setData(points, period, { temperature })` adds a shared temperature
 overlay (min–max band behind the bars, average line) on its own axis. Options: `compact` (sparkline,
 no axes), `stacked` (bars stack, negatives below zero; lines stay unstacked) and `prefix` (currency
-before values, e.g. `'€ '`). `showTable(el)` renders the same data as a `<table>` (one row per
+before values, e.g. `'€ '`). `decimals` is a number or `'period'`, which follows
+`P1Utils.amountDecimals()` for the period shown. The tooltip is HTML (Chart.js external tooltip,
+`.chart-tooltip` in `components.css`) rather than drawn on the canvas, so it is never clipped by a
+small chart such as a sparkline: it sits above the data point, flips below when there is no room,
+and stays between the header and the phone tab bar. It hides on scroll, resize and a tap outside
+the chart. `showTable(el)` renders the same data as a `<table>` (one row per
 bucket, one column per visible series) and keeps it in sync; the chart card's "Toon als tabel"
 button uses it (via `P1Section`, remembered per section). The legend is rendered as HTML
 toggle buttons; colours are re-read on `themechange`. Chart.js is only loaded on pages that use it

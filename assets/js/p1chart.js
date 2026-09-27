@@ -14,7 +14,7 @@
  * Usage:
  *   const chart = P1Chart.create(canvas, {
  *       unit: 'kWh',
- *       decimals: 3,
+ *       decimals: 'period',         // or a number; 'period' = P1Utils.amountDecimals
  *       legendEl: document.getElementById('electricity-legend'),
  *       series: [
  *           { key: 'consumption', label: 'Verbruik', type: 'bar', token: 'series-import' },
@@ -29,6 +29,7 @@
  * a value of null leaves that slot empty (e.g. the rest of today).
  *
  * `compact: true` draws a sparkline: no axes, grid or legend, tooltips kept.
+ * Tooltips are HTML (renderTooltip), so they can extend past the canvas.
  * `stacked: true` stacks the bar series (negative values below zero);
  * line series stay unstacked. `prefix: '€ '` puts a currency before values.
  * With temperature enabled, points may carry tempMin, tempAvg and tempMax.
@@ -142,7 +143,8 @@
                     hidden: this.hidden.has(s.key),
                     yAxisID: s.axis === 'temp' ? 'temp' : (s.axis || 'y'),
                     p1Key: s.key,
-                    p1Index: index
+                    p1Index: index,
+                    p1Dashed: !!s.dashed
                 };
 
                 if (s.type === 'bar') {
@@ -205,42 +207,19 @@
                     legend: { display: false },
                     // Area fills (the temperature band) go behind the bars
                     filler: { drawTime: 'beforeDatasetsDraw' },
+                    /*
+                     * Tooltip as an HTML element over the page (renderTooltip),
+                     * not drawn on the canvas: a canvas tooltip is clipped to
+                     * the canvas, so it was cut off on the 56px sparklines.
+                     * Chart.js still computes which points are active.
+                     */
                     tooltip: {
-                        backgroundColor: P1Utils.color('chart-tooltip-bg'),
-                        borderColor: P1Utils.color('chart-tooltip-border'),
-                        borderWidth: 1,
-                        // Match the app's type: 13px, 600-weight heading, secondary title colour
-                        titleColor: P1Utils.color('text-secondary'),
-                        bodyColor: P1Utils.color('text-primary'),
-                        titleFont: { size: 13, weight: '600' },
-                        bodyFont: { size: 13 },
-                        titleMarginBottom: 6,
-                        bodySpacing: 4,
-                        padding: { top: 8, bottom: 10, left: 12, right: 12 },
-                        cornerRadius: 8,
-                        // Small swatch, centred on the text, one even gap before the label
-                        boxWidth: 10,
-                        boxHeight: 10,
-                        boxPadding: 6,
-                        usePointStyle: true,
+                        enabled: false,
+                        external: (context) => this.renderTooltip(context),
                         itemSort: (a, b) => a.dataset.p1Index - b.dataset.p1Index,
                         filter: (item) => item.raw !== null,
                         callbacks: {
-                            title: (items) => items.length ? P1Utils.formatTooltipTime(dates[items[0].dataIndex], period) : '',
-                            label: (item) => {
-                                const axis = item.dataset.yAxisID;
-                                if (axis === 'temp') {
-                                    return `${item.dataset.label}: ${formatValue(item.raw, 1, '°C')}`;
-                                }
-                                if (axis === 'y2') {
-                                    return `${item.dataset.label}: ${formatValue(item.raw, y2.decimals, y2.unit)}`;
-                                }
-                                return `${item.dataset.label}: ${formatValue(item.raw, cfg.decimals, cfg.unit, cfg.prefix)}`;
-                            },
-                            labelPointStyle: (item) => ({
-                                pointStyle: item.dataset.type === 'bar' ? 'rectRounded' : 'line',
-                                rotation: 0
-                            })
+                            title: (items) => items.length ? P1Utils.formatTooltipTime(dates[items[0].dataIndex], period) : ''
                         }
                     }
                 },
@@ -352,16 +331,8 @@
          * as in the tooltip.
          */
         renderTable(el) {
-            const cfg = this.config;
-            const y2 = Object.assign({ unit: '', decimals: 2 }, cfg.axes.y2 || {});
             const series = this.activeSeries().filter(s => !this.hidden.has(s.key));
-
-            const format = (s, v) => {
-                if (v === undefined || v === null || isNaN(v)) return '–';
-                if (s.axis === 'temp') return formatValue(v, 1, '°C');
-                if (s.axis === 'y2') return formatValue(v, y2.decimals, y2.unit);
-                return formatValue(v, cfg.decimals, cfg.unit, cfg.prefix);
-            };
+            const format = (s, v) => this.formatAmount(s.axis === 'temp' ? 'temp' : s.axis, v);
 
             const table = document.createElement('table');
             table.className = 'data-table';
@@ -424,8 +395,129 @@
             });
         },
 
+        /**
+         * Decimals for the main axis. `decimals: 'period'` follows the period
+         * shown (P1Utils.amountDecimals: 3 for hours ... 1 for months/years).
+         */
+        decimals() {
+            const d = this.config.decimals;
+            return d === 'period' ? P1Utils.amountDecimals(this.period) : d;
+        },
+
+        /**
+         * A value as shown in tooltips and tables, by axis ('temp', 'y2', main)
+         */
+        formatAmount(axis, v) {
+            if (v === undefined || v === null || isNaN(v)) return '–';
+            const cfg = this.config;
+            if (axis === 'temp') return formatValue(v, 1, '°C');
+            if (axis === 'y2') {
+                const y2 = Object.assign({ unit: '', decimals: 2 }, cfg.axes.y2 || {});
+                return formatValue(v, y2.decimals, y2.unit);
+            }
+            return formatValue(v, this.decimals(), cfg.unit, cfg.prefix);
+        },
+
+        /**
+         * The tooltip element for this chart, created on first use. Fixed to
+         * the viewport so no container can clip it; hidden from assistive
+         * tech (the same data is in the table view and the KPI cards).
+         */
+        tooltipEl() {
+            if (this._tooltip) return this._tooltip;
+
+            const el = document.createElement('div');
+            el.className = 'chart-tooltip';
+            el.setAttribute('aria-hidden', 'true');
+            el.hidden = true;
+            document.body.appendChild(el);
+            this._tooltip = el;
+
+            // A tap elsewhere or a scroll dismisses it (touch has no mouseleave)
+            this._hideTooltip = (e) => {
+                if (e && e.type === 'touchstart' && e.target === this.canvas) return;
+                el.hidden = true;
+            };
+            document.addEventListener('touchstart', this._hideTooltip, { passive: true });
+            window.addEventListener('scroll', this._hideTooltip, { passive: true });
+            window.addEventListener('resize', this._hideTooltip);
+
+            return el;
+        },
+
+        /**
+         * Chart.js `external` tooltip handler: title, then one row per active
+         * series (swatch, label, value), placed above the hovered point and
+         * kept inside the visible area between the header and the tab bar.
+         */
+        renderTooltip({ chart, tooltip }) {
+            const el = this.tooltipEl();
+            if (tooltip.opacity === 0 || !tooltip.dataPoints || !tooltip.dataPoints.length) {
+                el.hidden = true;
+                return;
+            }
+
+            const title = document.createElement('div');
+            title.className = 'chart-tooltip-title';
+            title.textContent = (tooltip.title || []).join(' ');
+
+            const rows = document.createElement('div');
+            rows.className = 'chart-tooltip-rows';
+            tooltip.dataPoints.forEach(item => {
+                const ds = item.dataset;
+                const swatch = document.createElement('span');
+                swatch.className = 'chart-tooltip-swatch'
+                    + (ds.type === 'line' ? ' is-line' : '')
+                    + (ds.p1Dashed ? ' is-dashed' : '');
+                swatch.style.setProperty('--c', ds.type === 'line' ? ds.borderColor : ds.backgroundColor);
+
+                const label = document.createElement('span');
+                label.className = 'chart-tooltip-label';
+                label.textContent = ds.label;
+
+                const value = document.createElement('span');
+                value.className = 'chart-tooltip-value';
+                value.textContent = this.formatAmount(ds.yAxisID === 'y' ? 'main' : ds.yAxisID, item.raw);
+
+                rows.append(swatch, label, value);
+            });
+
+            el.replaceChildren(title, rows);
+            el.hidden = false;
+
+            // Position: centred above the point, flipped below if there is no
+            // room, and clamped to the space between header and bottom bar
+            const margin = 8;
+            const rect = chart.canvas.getBoundingClientRect();
+            const header = document.querySelector('.app-header');
+            const bar = document.querySelector('.bottom-nav');
+            const minTop = (header ? header.getBoundingClientRect().bottom : 0) + margin;
+            const barRect = bar && bar.offsetParent !== null ? bar.getBoundingClientRect() : null;
+            const maxBottom = (barRect ? barRect.top : window.innerHeight) - margin;
+
+            const w = el.offsetWidth;
+            const h = el.offsetHeight;
+            const x = rect.left + tooltip.caretX;
+            const y = rect.top + tooltip.caretY;
+
+            let left = Math.min(Math.max(x - w / 2, margin), window.innerWidth - w - margin);
+            let top = y - h - 12;
+            if (top < minTop) top = y + 12;
+            top = Math.max(minTop, Math.min(top, maxBottom - h));
+
+            el.style.left = `${Math.round(left)}px`;
+            el.style.top = `${Math.round(top)}px`;
+        },
+
         destroy() {
             document.removeEventListener('themechange', this._onTheme);
+            if (this._tooltip) {
+                document.removeEventListener('touchstart', this._hideTooltip);
+                window.removeEventListener('scroll', this._hideTooltip);
+                window.removeEventListener('resize', this._hideTooltip);
+                this._tooltip.remove();
+                this._tooltip = null;
+            }
             if (this.chart) this.chart.destroy();
             this.chart = null;
         }

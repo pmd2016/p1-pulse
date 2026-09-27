@@ -220,6 +220,15 @@
         },
 
         /**
+         * Decimals for energy amounts (kWh, m³) at the precision of the
+         * period: small hourly values need 3 (0,032 kWh), monthly and yearly
+         * totals read better with 1 (576,5 kWh). Money always uses 2.
+         */
+        amountDecimals(period) {
+            return { hours: 3, days: 2, months: 1, years: 1 }[period] ?? 2;
+        },
+
+        /**
          * Dutch number formatting with a fixed number of decimals:
          * formatNumber(1234.5, 2) → "1.234,50". For display only; never
          * parse the result back into a number.

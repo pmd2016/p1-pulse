@@ -9,7 +9,9 @@
     'use strict';
 
     const fmt = (v, d) => P1Utils.formatNumber(v, d);
-    const kwh = (v) => `${fmt(v, 3)} kWh`;
+    // Decimals follow the period shown (P1Utils.amountDecimals)
+    let decimals = 3;
+    const kwh = (v) => `${fmt(v, decimals)} kWh`;
     const eur = (v) => `€ ${fmt(v, 2)}`;
 
     const ElectricityPage = {
@@ -19,7 +21,7 @@
         init() {
             this.chart = P1Chart.create(document.getElementById('electricity-chart'), {
                 unit: 'kWh',
-                decimals: 3,
+                decimals: 'period',
                 legendEl: document.getElementById('electricity-legend'),
                 series: [
                     { key: 'consumption', label: 'Verbruik', type: 'bar', token: 'series-import' },
@@ -54,6 +56,7 @@
         },
 
         updateKpis({ stats, previous }, period) {
+            decimals = P1Utils.amountDecimals(period);
             const s = this.section;
             const per = P1Utils.periodLabelsSingular[period] || 'periode';
             const prev = previous || {};
