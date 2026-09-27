@@ -108,12 +108,19 @@
 /* Sparkline of today, 24 hourly slots */
 .sparkline {
     position: relative;
-    height: 72px;
+}
+
+/*
+ * Chart.js sizes the canvas bitmap to its parent, so the height is set on
+ * this wrapper. Forcing a different size on the canvas itself would scale
+ * the drawing unevenly (text and bars came out flattened).
+ */
+.sparkline-canvas {
+    position: relative;
+    height: 56px;
 }
 
 .sparkline canvas {
-    width: 100% !important;
-    height: 56px !important;
     touch-action: pan-y;
 }
 

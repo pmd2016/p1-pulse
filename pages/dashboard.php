@@ -25,7 +25,10 @@ function dashboard_card($key, $title, $icon, $link, $tone, $totalLabel, array $r
                             </div>
                             <?php if ($chart): ?>
                             <div class="sparkline" data-state="loading">
-                                <canvas id="<?php echo $key; ?>-spark" role="img" aria-label="<?php echo htmlspecialchars($title); ?> vandaag per uur"></canvas>
+                                <!-- Chart.js sizes the canvas to this wrapper; never size the canvas itself -->
+                                <div class="sparkline-canvas">
+                                    <canvas id="<?php echo $key; ?>-spark" role="img" aria-label="<?php echo htmlspecialchars($title); ?> vandaag per uur"></canvas>
+                                </div>
                                 <div class="sparkline-axis" aria-hidden="true"><span>00:00</span><span>12:00</span><span>24:00</span></div>
                             </div>
                             <?php else: ?>
