@@ -59,8 +59,11 @@
      * @param {Object} kpi - { value, sub, delta: { current, previous, goodWhen, previousText, format } }
      *   goodWhen: 'down' (usage, cost) or 'up' (production); omit for neutral
      *   format: formats an absolute difference, shown instead of a
-     *   percentage when the previous value is zero or below (net costs)
+     *   percentage when a percentage means nothing: the previous value is
+     *   zero or below (net costs), or so small that the change passes
+     *   ±MAX_PERCENT (1,5 → 21,9 kWh is "▲ 20,4 kWh", not "▲ 1360%")
      *   compareLabel: what `previous` is, for the tooltip (default "de vorige periode")
+     *   compareText: shown in the card's .kpi-compare line, if it has one
      */
     function setKpi(key, kpi) {
         const el = document.querySelector(`[data-kpi="${key}"]`);
@@ -74,8 +77,20 @@
         }
 
         const deltaEl = el.querySelector('.kpi-delta');
-        if (deltaEl && 'delta' in kpi) renderDelta(deltaEl, kpi.delta);
+        if (deltaEl && 'delta' in kpi) {
+            renderDelta(deltaEl, kpi.delta);
+            const compareEl = el.querySelector('.kpi-compare');
+            if (compareEl) {
+                const text = (kpi.delta && kpi.delta.compareText) || '';
+                compareEl.textContent = text;
+                compareEl.hidden = deltaEl.hidden || !text;
+            }
+        }
     }
+
+    // Beyond this a percentage stops being readable ("▲ 1385%"), which
+    // happens when the previous value is small; show the difference instead
+    const MAX_PERCENT = 200;
 
     function renderDelta(el, delta) {
         el.classList.remove('is-better', 'is-worse', 'is-same');
@@ -91,18 +106,19 @@
             return hide();
         }
 
-        // A percentage of a zero or negative base means nothing
-        // (net costs can be negative): show the difference instead
+        // A percentage of a zero or negative base means nothing (net costs
+        // can be negative), nor does one of a tiny base: show the
+        // difference instead, or nothing when there is no way to format it
         const diff = delta.current - delta.previous;
-        const percentage = delta.previous > 1e-9;
-        if (!percentage && typeof delta.format !== 'function') {
+        const percent = delta.previous > 1e-9 ? Math.round((diff / delta.previous) * 100) : null;
+        const percentage = percent !== null && Math.abs(percent) <= MAX_PERCENT;
+        const format = typeof delta.format === 'function' ? delta.format : null;
+        if (!percentage && !format) {
             return hide();
         }
 
-        const change = percentage
-            ? Math.round((diff / delta.previous) * 100)
-            : (Math.abs(diff) < 0.005 ? 0 : diff);
-        const amount = percentage ? `${Math.abs(change)}%` : delta.format(Math.abs(diff));
+        const change = percentage ? percent : (Math.abs(diff) < 0.005 ? 0 : diff);
+        const amount = percentage ? `${Math.abs(change)}%` : format(Math.abs(diff));
 
         let arrow = '→';
         let direction = 'gelijk aan';
@@ -122,8 +138,11 @@
         el.classList.add(cls);
         el.textContent = `${arrow} ${amount}`;
 
+        // With a formatter, name both values: "20,41 kWh hoger dan gisteren (21,88 kWh vs 1,47 kWh)"
+        const values = delta.previousText
+            || (format ? `${format(delta.current)} vs ${format(delta.previous)}` : '');
         const context = `${amount} ${direction} ${delta.compareLabel || 'de vorige periode'}`
-            + (delta.previousText ? ` (${delta.previousText})` : '');
+            + (values ? ` (${values})` : '');
         el.title = context;
         el.setAttribute('aria-label', context);
     }

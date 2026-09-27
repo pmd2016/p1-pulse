@@ -24,6 +24,11 @@
     const kwh = (v) => `${fmt(v, 2)} kWh`;
     const m3 = (v) => `${fmt(v, 3)} m³`;
     const eur = (v) => `€ ${fmt(v, 2)}`;
+    // Visible line under the change badge: "t.o.v. gisteren tot 14:25"
+    const compareText = () => {
+        const d = new Date();
+        return `t.o.v. gisteren tot ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    };
     const power = (w) => (Math.abs(w) >= 1000 ? `${fmt(w / 1000, 2)} kW` : `${Math.round(w)} W`);
 
     const Dashboard = {
@@ -217,7 +222,7 @@
 
             P1Section.setKpi('elec-today', {
                 value: kwh(t.consumption),
-                delta: { current: t.consumption, previous: y.consumption, goodWhen: 'down', compareLabel: COMPARE }
+                delta: { current: t.consumption, previous: y.consumption, goodWhen: 'down', compareLabel: COMPARE, compareText: compareText(), format: kwh }
             });
             P1Utils.updateElement('elec-export-today', kwh(t.production));
             P1Utils.updateElement('elec-net-today', kwh(t.consumption - t.production));
@@ -225,7 +230,7 @@
 
             P1Section.setKpi('gas-today', {
                 value: m3(t.gas),
-                delta: { current: t.gas, previous: y.gas, goodWhen: 'down', compareLabel: COMPARE }
+                delta: { current: t.gas, previous: y.gas, goodWhen: 'down', compareLabel: COMPARE, compareText: compareText(), format: m3 }
             });
             const newest = points[0];
             P1Utils.updateElement('gas-last-hour', newest ? m3(newest.gas) : '--');
@@ -254,7 +259,7 @@
             P1Section.setKpi('solar-today', {
                 value: kwh(energy),
                 sub: 'opgewekt vandaag',
-                delta: { current: energy, previous: yesterday.length ? sum(yesterday) : undefined, goodWhen: 'up', compareLabel: COMPARE }
+                delta: { current: energy, previous: yesterday.length ? sum(yesterday) : undefined, goodWhen: 'up', compareLabel: COMPARE, compareText: compareText(), format: kwh }
             });
 
             const peak = today.reduce((best, p) => {

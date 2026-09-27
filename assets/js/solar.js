@@ -115,7 +115,7 @@
             s.setKpi('total', {
                 value: kwh(cur.energy),
                 sub: previousPoints ? `vorige: ${kwh(prev.energy)}` : '',
-                delta: { current: cur.energy, previous: prev.energy, goodWhen: 'up' }
+                delta: { current: cur.energy, previous: prev.energy, goodWhen: 'up', format: kwh }
             });
 
             s.setKpi('cost', {
@@ -127,7 +127,7 @@
             s.setKpi('average', {
                 value: kwh(cur.average),
                 sub: `per ${P1Utils.periodLabelsSingular[period] || 'periode'}`,
-                delta: { current: cur.average, previous: prev.average, goodWhen: 'up' }
+                delta: { current: cur.average, previous: prev.average, goodWhen: 'up', format: kwh }
             });
 
             // Peak power is momentary, so keep the time of day

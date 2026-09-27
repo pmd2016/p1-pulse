@@ -64,7 +64,7 @@
             s.setKpi('total', {
                 value: kwh(stats.totalConsumption),
                 sub: previous ? `vorige: ${kwh(prev.totalConsumption)}` : '',
-                delta: { current: stats.totalConsumption, previous: prev.totalConsumption, goodWhen: 'down' }
+                delta: { current: stats.totalConsumption, previous: prev.totalConsumption, goodWhen: 'down', format: kwh }
             });
 
             s.setKpi('cost', {
@@ -77,7 +77,7 @@
             s.setKpi('average', {
                 value: kwh(stats.average),
                 sub: `per ${per}`,
-                delta: { current: stats.average, previous: prev.average, goodWhen: 'down' }
+                delta: { current: stats.average, previous: prev.average, goodWhen: 'down', format: kwh }
             });
 
             s.setKpi('peak', {
@@ -89,7 +89,7 @@
             s.setKpi('extra', {
                 value: kwh(stats.totalProduction),
                 sub: `netto ${kwh(stats.netConsumption)}`,
-                delta: { current: stats.totalProduction, previous: prev.totalProduction, goodWhen: 'up' }
+                delta: { current: stats.totalProduction, previous: prev.totalProduction, goodWhen: 'up', format: kwh }
             });
         },
 
