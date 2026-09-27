@@ -209,10 +209,19 @@
                         backgroundColor: P1Utils.color('chart-tooltip-bg'),
                         borderColor: P1Utils.color('chart-tooltip-border'),
                         borderWidth: 1,
-                        titleColor: P1Utils.color('text-primary'),
+                        // Match the app's type: 13px, 600-weight heading, secondary title colour
+                        titleColor: P1Utils.color('text-secondary'),
                         bodyColor: P1Utils.color('text-primary'),
-                        padding: 10,
-                        boxPadding: 4,
+                        titleFont: { size: 13, weight: '600' },
+                        bodyFont: { size: 13 },
+                        titleMarginBottom: 6,
+                        bodySpacing: 4,
+                        padding: { top: 8, bottom: 10, left: 12, right: 12 },
+                        cornerRadius: 8,
+                        // Small swatch, centred on the text, one even gap before the label
+                        boxWidth: 10,
+                        boxHeight: 10,
+                        boxPadding: 6,
                         usePointStyle: true,
                         itemSort: (a, b) => a.dataset.p1Index - b.dataset.p1Index,
                         filter: (item) => item.raw !== null,
@@ -221,12 +230,12 @@
                             label: (item) => {
                                 const axis = item.dataset.yAxisID;
                                 if (axis === 'temp') {
-                                    return ` ${item.dataset.label}: ${formatValue(item.raw, 1, '°C')}`;
+                                    return `${item.dataset.label}: ${formatValue(item.raw, 1, '°C')}`;
                                 }
                                 if (axis === 'y2') {
-                                    return ` ${item.dataset.label}: ${formatValue(item.raw, y2.decimals, y2.unit)}`;
+                                    return `${item.dataset.label}: ${formatValue(item.raw, y2.decimals, y2.unit)}`;
                                 }
-                                return ` ${item.dataset.label}: ${formatValue(item.raw, cfg.decimals, cfg.unit, cfg.prefix)}`;
+                                return `${item.dataset.label}: ${formatValue(item.raw, cfg.decimals, cfg.unit, cfg.prefix)}`;
                             },
                             labelPointStyle: (item) => ({
                                 pointStyle: item.dataset.type === 'bar' ? 'rectRounded' : 'line',

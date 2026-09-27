@@ -62,7 +62,8 @@
             const make = (key, unit, series) => {
                 const canvas = document.getElementById(`${key}-spark`);
                 if (!canvas) return;
-                this.sparks[key] = P1Chart.create(canvas, { compact: true, unit, decimals: 3, series });
+                // 2 decimals, like the card figures above the sparkline
+                this.sparks[key] = P1Chart.create(canvas, { compact: true, unit, decimals: 2, series });
             };
 
             make('elec', 'kWh', [

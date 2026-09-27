@@ -595,9 +595,8 @@ button.legend-item[aria-pressed="false"] .legend-text {
     padding: var(--space-2);
 }
 
+/* Chart.js sizes the canvas to this container; never size the canvas itself */
 .chart-container-large canvas {
-    width: 100% !important;
-    height: 100% !important;
     touch-action: pan-y;
 }
 
