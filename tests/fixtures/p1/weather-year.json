@@ -1,7 +1,7 @@
 [
     {
-        "CITY_ID": 2749611,
-        "CITY_NAME": "Ommen",
+        "CITY_ID": 0,
+        "CITY_NAME": "",
         "DEGREE_DAYS": 111.02199999999999,
         "HUMIDITY_AVERAGE": 45,
         "HUMIDITY_HIGH": 96,

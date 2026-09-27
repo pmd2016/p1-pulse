@@ -67,12 +67,12 @@
     {
         "CONFIGURATION_ID": 13,
         "LABEL": "Weather API key",
-        "PARAMETER": "VxA2eybjz2C0+qk/a7Rg/pQnjg1nBtrFSfcw1glWmf5NExNFBkdTOncsxcWeUlJUfzisvyiq3rOeXfg15poEeQ=="
+        "PARAMETER": ""
     },
     {
         "CONFIGURATION_ID": 14,
         "LABEL": "Weather locatie",
-        "PARAMETER": "Ommen"
+        "PARAMETER": ""
     },
     {
         "CONFIGURATION_ID": 15,
@@ -127,7 +127,7 @@
     {
         "CONFIGURATION_ID": 25,
         "LABEL": "Weather API ID",
-        "PARAMETER": "2749611"
+        "PARAMETER": ""
     },
     {
         "CONFIGURATION_ID": 26,
@@ -142,22 +142,22 @@
     {
         "CONFIGURATION_ID": 28,
         "LABEL": "FTP user name.",
-        "PARAMETER": "michiel"
+        "PARAMETER": ""
     },
     {
         "CONFIGURATION_ID": 29,
         "LABEL": "FTP wachtwoord.",
-        "PARAMETER": "VGhlTel67X0SpewtA6Ot6FqxED0SL+w7JGIXpF7RjIw="
+        "PARAMETER": ""
     },
     {
         "CONFIGURATION_ID": 30,
         "LABEL": "FTP remote directory/folder.",
-        "PARAMETER": "/media/drv01/backup/p1mon"
+        "PARAMETER": ""
     },
     {
         "CONFIGURATION_ID": 31,
         "LABEL": "FTP server IP/URL",
-        "PARAMETER": "192.168.1.37"
+        "PARAMETER": ""
     },
     {
         "CONFIGURATION_ID": 32,
@@ -167,7 +167,7 @@
     {
         "CONFIGURATION_ID": 33,
         "LABEL": "FTP Filenaam + path om te kopieren",
-        "PARAMETER": "/p1mon/www/download/p1mon-sql-export1789941902-0590-F968-C88E-48F1-0A93.zip"
+        "PARAMETER": ""
     },
     {
         "CONFIGURATION_ID": 34,
@@ -292,7 +292,7 @@
     {
         "CONFIGURATION_ID": 58,
         "LABEL": "Systeem ID",
-        "PARAMETER": "noOehE0EVAEL780X+IUU0xHBd0X0aVgO+SWcUcbHIqusSSuErhSzepk2l+jh1Hwa"
+        "PARAMETER": ""
     },
     {
         "CONFIGURATION_ID": 59,
@@ -317,17 +317,17 @@
     {
         "CONFIGURATION_ID": 63,
         "LABEL": "mail user account",
-        "PARAMETER": "p1mon"
+        "PARAMETER": ""
     },
     {
         "CONFIGURATION_ID": 64,
         "LABEL": "mail user wachtwoord(crypto)",
-        "PARAMETER": "Wlitj7qOBlwjyM88W4C5jT/kGVPVNSimr1X+T1o1OSkUx+fItis3/dG1NTrct3Hu"
+        "PARAMETER": ""
     },
     {
         "CONFIGURATION_ID": 65,
         "LABEL": "mail server hostname",
-        "PARAMETER": "mail.smtp2go.com"
+        "PARAMETER": ""
     },
     {
         "CONFIGURATION_ID": 66,
@@ -352,12 +352,12 @@
     {
         "CONFIGURATION_ID": 70,
         "LABEL": "mail TO voor notificaties (list)",
-        "PARAMETER": "p.m.doetjes@gmail.com"
+        "PARAMETER": ""
     },
     {
         "CONFIGURATION_ID": 71,
         "LABEL": "mail FROM alias voor notificaties",
-        "PARAMETER": "michiel@michieldoetjes.nl"
+        "PARAMETER": ""
     },
     {
         "CONFIGURATION_ID": 72,
@@ -752,7 +752,7 @@
     {
         "CONFIGURATION_ID": 150,
         "LABEL": "Publieke dynamische DNS naam (FQDN).",
-        "PARAMETER": "p1mon.micdo.nl"
+        "PARAMETER": ""
     },
     {
         "CONFIGURATION_ID": 151,
@@ -982,7 +982,7 @@
     {
         "CONFIGURATION_ID": 196,
         "LABEL": "vlag voor custom www export ID",
-        "PARAMETER": "1789941902-0590-F968-C88E-48F1-0A93"
+        "PARAMETER": ""
     },
     {
         "CONFIGURATION_ID": 197,

@@ -1,7 +1,7 @@
 [
     {
-        "CITY_ID": 2749611,
-        "CITY_NAME": "Ommen",
+        "CITY_ID": 0,
+        "CITY_NAME": "",
         "DEGREE_DAYS": 34.394999999999996,
         "HUMIDITY_AVERAGE": 47,
         "HUMIDITY_HIGH": 96,
@@ -22,8 +22,8 @@
         "WIND_SPEED_LOW": 0.65
     },
     {
-        "CITY_ID": 2749611,
-        "CITY_NAME": "Ommen",
+        "CITY_ID": 0,
+        "CITY_NAME": "",
         "DEGREE_DAYS": 19.909000000000002,
         "HUMIDITY_AVERAGE": 47,
         "HUMIDITY_HIGH": 90,
@@ -44,8 +44,8 @@
         "WIND_SPEED_LOW": 0.11
     },
     {
-        "CITY_ID": 2749611,
-        "CITY_NAME": "Ommen",
+        "CITY_ID": 0,
+        "CITY_NAME": "",
         "DEGREE_DAYS": 14.62,
         "HUMIDITY_AVERAGE": 44,
         "HUMIDITY_HIGH": 93,
@@ -66,8 +66,8 @@
         "WIND_SPEED_LOW": 0.45
     },
     {
-        "CITY_ID": 2749611,
-        "CITY_NAME": "Ommen",
+        "CITY_ID": 0,
+        "CITY_NAME": "",
         "DEGREE_DAYS": 39.686,
         "HUMIDITY_AVERAGE": 44,
         "HUMIDITY_HIGH": 95,
@@ -88,8 +88,8 @@
         "WIND_SPEED_LOW": 0.08
     },
     {
-        "CITY_ID": 2749611,
-        "CITY_NAME": "Ommen",
+        "CITY_ID": 0,
+        "CITY_NAME": "",
         "DEGREE_DAYS": 2.412,
         "HUMIDITY_AVERAGE": 41,
         "HUMIDITY_HIGH": 82,
