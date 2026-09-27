@@ -27,5 +27,7 @@ chart_card([
 ]);
 ?>
                 </div>
+
+<?php tariff_overview(P1Config::getTariffOverview(), $visibility ?? []); ?>
             </div>
         </main>

@@ -21,6 +21,7 @@ define('CUSTOM_BASE_URL', '/custom');
 require_once CUSTOM_BASE_PATH . '/components/icon.php';
 require_once CUSTOM_BASE_PATH . '/components/section.php';
 require_once CUSTOM_BASE_PATH . '/components/nav.php';
+require_once CUSTOM_BASE_PATH . '/components/tariffs.php';
 
 // Configuration settings
 class P1Config {
@@ -87,6 +88,39 @@ class P1Config {
     private static function averageTariff($lowId, $highId) {
         $values = array_filter([self::tariff($lowId), self::tariff($highId)], fn($v) => $v !== null);
         return $values ? array_sum($values) / count($values) : null;
+    }
+
+    // Read a number (zero included) from P1 Monitor's configuration, or null
+    private static function amount($id) {
+        $value = self::get($id);
+        return is_numeric($value) ? (float)$value : null;
+    }
+
+    // Everything cost-related in P1 Monitor's configuration, for display.
+    // Unlike getEnergyConfig() there are no defaults: null means not set,
+    // or P1 Monitor is not reachable.
+    public static function getTariffOverview() {
+        return [
+            // Config 204: 0 = fixed tariffs, 1 = dynamic (hourly) prices
+            'dynamic' => self::get(204) == 1,
+            'electricity' => [
+                'import_high' => self::amount(2),   // verbruik piek/dag
+                'import_low'  => self::amount(1),   // verbruik dal/nacht
+                'export_high' => self::amount(4),   // geleverd piek/dag
+                'export_low'  => self::amount(3),   // geleverd dal/nacht
+                'fixed'       => self::amount(5),   // vastrecht per maand
+                'surcharge'   => self::amount(205), // opslag per kWh bij dynamisch
+            ],
+            'gas' => [
+                'price'     => self::amount(15),
+                'fixed'     => self::amount(16),
+                'surcharge' => self::amount(208),   // opslag per m³ bij dynamisch
+            ],
+            'water' => [
+                'price' => self::amount(104),
+                'fixed' => self::amount(103),
+            ],
+        ];
     }
 
     // Get energy configuration values

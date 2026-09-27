@@ -17,7 +17,9 @@
  *   php dump-fixtures.php --only=solar --verbose
  *   php dump-fixtures.php --dry-run
  *
- * Privacy: raw output contains your real meter readings and half-hourly consumption.
+ * Privacy: credentials, addresses and locations are always blanked (see $REDACT
+ * and $REDACT_KEYS). Raw output still contains your real
+ * meter readings and half-hourly consumption.
  * That is an occupancy signal. Use --anonymise for anything you intend to commit to
  * a public repository. See the warning this script prints, and tests/fixtures/README.md.
  */
@@ -71,6 +73,35 @@ $SOLAR_ENDPOINTS = [
 // ----------------------------------------------------------------------------
 // Anonymisation rules
 // ----------------------------------------------------------------------------
+
+/**
+ * Rows blanked in every dump, with or without --anonymise: credentials, keys,
+ * addresses and locations that no test needs. Keyed by fixture name; each
+ * entry names the row's id field, its value field, and the ids to blank.
+ * Tariffs and UI flags stay: the app and its tests read them.
+ */
+$REDACT = [
+    'p1/configuration' => ['CONFIGURATION_ID', 'PARAMETER', [
+        11, 12,                 // Wifi ESSID, password
+        13, 14, 25,             // weather API key, location, city id
+        28, 29, 30, 31, 33,     // FTP user, password, directory, server, file
+        47, 151, 160, 170,      // Dropbox, DuckDNS, P1 API and refresh tokens
+        58,                     // system id
+        63, 64, 65, 70, 71, 74, 75, // mail account, password, server, addresses
+        107, 108, 109,          // MQTT user, password, broker
+        139, 140,               // SolarEdge API key, config
+        150, 159,               // public DNS name, LetsEncrypt email
+        164, 165, 166, 167, 223, 224, // static IP addresses
+        196, 198, 199,          // export id, socat address and port
+    ]],
+    'p1/status' => ['STATUS_ID', 'STATUS', [
+        20, 42, 72, 73, 122,    // LAN and Wifi IP and MAC addresses, gateway
+        26, 27,                 // public IP address and hostname
+    ]],
+];
+
+/** Keys blanked wherever they occur in every dump: they give away the location. */
+$REDACT_KEYS = ['CITY_NAME', 'CITY_ID'];
 
 /** Keys holding a unix timestamp that should be shifted. */
 $UNIX_TIME_KEYS = [
@@ -354,6 +385,37 @@ function anonymiseNode($node, $offset, $factor, $inMeasure = false) {
     return $result;
 }
 
+/**
+ * Blank the value of each listed row. Rows stay in place, so ids, labels and
+ * record counts are unchanged.
+ */
+function redactRows($rows, $idKey, $valueKey, array $ids) {
+    if (!isList($rows)) {
+        return $rows;
+    }
+    foreach ($rows as $i => $row) {
+        if (is_array($row) && in_array((int)($row[$idKey] ?? -1), $ids, true)) {
+            $rows[$i][$valueKey] = '';
+        }
+    }
+    return $rows;
+}
+
+/** Blank the listed keys at any depth: '' for strings, 0 for numbers. */
+function redactKeys($node, array $keys) {
+    if (!is_array($node)) {
+        return $node;
+    }
+    foreach ($node as $key => $value) {
+        if (is_array($value)) {
+            $node[$key] = redactKeys($value, $keys);
+        } elseif (is_string($key) && in_array($key, $keys, true)) {
+            $node[$key] = is_int($value) || is_float($value) ? 0 : '';
+        }
+    }
+    return $node;
+}
+
 /** Write a fixture file, creating parent directories as needed. */
 function writeFixture($path, $data) {
     $dir = dirname($path);
@@ -468,6 +530,12 @@ foreach ($targets as $name => $url) {
         $manifest['fixtures'][$name] = $entry;
         continue;
     }
+
+    if (isset($REDACT[$name])) {
+        [$idKey, $valueKey, $ids] = $REDACT[$name];
+        $decoded = redactRows($decoded, $idKey, $valueKey, $ids);
+    }
+    $decoded = redactKeys($decoded, $REDACT_KEYS);
 
     if ($anonymise) {
         $decoded = anonymiseNode($decoded, $dayOffset, $factor);

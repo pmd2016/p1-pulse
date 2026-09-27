@@ -116,7 +116,7 @@
     {
         "LABEL": "Netwerk LAN IP adres:",
         "SECURITY": 10,
-        "STATUS": "192.168.16.2",
+        "STATUS": "",
         "STATUS_ID": 20
     },
     {
@@ -152,13 +152,13 @@
     {
         "LABEL": "Internet IP adres:",
         "SECURITY": 0,
-        "STATUS": "85.145.12.108",
+        "STATUS": "",
         "STATUS_ID": 26
     },
     {
         "LABEL": "Internet hostnaam:",
         "SECURITY": 0,
-        "STATUS": "108-12-145-85.ftth.glasoperator.nl",
+        "STATUS": "",
         "STATUS_ID": 27
     },
     {
@@ -248,7 +248,7 @@
     {
         "LABEL": "Netwerk WifI IP adres:",
         "SECURITY": 10,
-        "STATUS": "onbekend",
+        "STATUS": "",
         "STATUS_ID": 42
     },
     {
@@ -428,13 +428,13 @@
     {
         "LABEL": "Netwerk LAN MAC adres:",
         "SECURITY": 10,
-        "STATUS": "EA:4E:D8:16:7B:CC",
+        "STATUS": "",
         "STATUS_ID": 72
     },
     {
         "LABEL": "Netwerk Wifi MAC adres:",
         "SECURITY": 10,
-        "STATUS": "onbekend",
+        "STATUS": "",
         "STATUS_ID": 73
     },
     {
@@ -728,7 +728,7 @@
     {
         "LABEL": "Default gateway/router:",
         "SECURITY": 0,
-        "STATUS": "192.168.16.1",
+        "STATUS": "",
         "STATUS_ID": 122
     },
     {

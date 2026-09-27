@@ -185,6 +185,10 @@ The dashboard reads configuration from P1 Monitor's database via `config_read()`
 - **Config 157**: Hide water utility
 - **Config 158**: Hide gas utility
 - **Config 206**: Hide peak kW information
+- **Config 1–5, 15–16, 103–104**: Tariffs and vastrecht (electricity, gas, water)
+- **Config 204, 205, 208**: Fixed or dynamic tariffs, and the dynamic surcharges
+
+The Kosten page shows all of these in a read-only *Tarieven* overview.
 
 ## 🔌 API Integration
 
