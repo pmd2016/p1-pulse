@@ -26,12 +26,95 @@ require_once CUSTOM_BASE_PATH . '/components/tariffs.php';
 // Configuration settings
 class P1Config {
     
-    // Get P1 Monitor configuration value
+    // The configuration ids this UI reads; only these are fetched and cached
+    const CONFIG_IDS = [1, 2, 3, 4, 5, 15, 16, 52, 53, 61, 96, 103, 104, 154, 158, 204, 205, 206, 208];
+
+    // Seconds a configuration read from the API stays in the session
+    const CONFIG_TTL = 300;
+
+    // Get P1 Monitor configuration value, or null when it cannot be read.
+    // config_read() is used when P1 Monitor's PHP provides it; otherwise the
+    // value comes from P1 Monitor's own API (/api/v1/configuration).
     public static function get($key) {
         if (function_exists('config_read')) {
-            return config_read($key);
+            $value = config_read($key);
+            if ($value !== null && $value !== false) {
+                return $value;
+            }
         }
-        return null;
+        return self::fromApi()[(int)$key] ?? null;
+    }
+
+    // Where the configuration came from: 'config_read', 'api' or null
+    public static function source() {
+        if (function_exists('config_read')) {
+            $value = config_read(0);
+            if ($value !== null && $value !== false) {
+                return 'config_read';
+            }
+        }
+        return self::fromApi() ? 'api' : null;
+    }
+
+    // [id => value] from P1 Monitor's API, [] when unreachable. Fetched at
+    // most once per request and cached in the session, failures included, so
+    // an unreachable API does not slow down every page.
+    private static function fromApi() {
+        static $values = null;
+        if ($values !== null) {
+            return $values;
+        }
+
+        $cached = $_SESSION['p1_config_cache'] ?? null;
+        if (is_array($cached) && time() - ($cached['at'] ?? 0) < self::CONFIG_TTL) {
+            return $values = $cached['values'];
+        }
+
+        $values = [];
+        foreach (self::apiUrls() as $url) {
+            $rows = self::fetchJson($url);
+            if (!is_array($rows)) {
+                continue;
+            }
+            foreach ($rows as $row) {
+                $id = (int)($row['CONFIGURATION_ID'] ?? -1);
+                if (in_array($id, self::CONFIG_IDS, true)) {
+                    $values[$id] = $row['PARAMETER'] ?? null;
+                }
+            }
+            if ($values) {
+                break;
+            }
+        }
+
+        $_SESSION['p1_config_cache'] = ['at' => time(), 'values' => $values];
+        return $values;
+    }
+
+    // Loopback first; then the host this page was requested on
+    private static function apiUrls() {
+        $path = '/api/v1/configuration?json=object';
+        $urls = ['http://127.0.0.1' . $path];
+        $host = $_SERVER['HTTP_HOST'] ?? '';
+        if ($host !== '' && preg_match('/^[A-Za-z0-9.\-:\[\]]+$/', $host)) {
+            $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+            $urls[] = $scheme . '://' . $host . $path;
+        }
+        return array_unique($urls);
+    }
+
+    private static function fetchJson($url) {
+        $context = stream_context_create(['http' => [
+            'timeout' => 2,
+            'header'  => "Accept: application/json\r\n",
+            'ignore_errors' => true,
+        ]]);
+        $body = @file_get_contents($url, false, $context);
+        if ($body === false) {
+            return null;
+        }
+        $data = json_decode($body, true);
+        return is_array($data) ? $data : null;
     }
     
     // User preferences with defaults
@@ -101,6 +184,8 @@ class P1Config {
     // or P1 Monitor is not reachable.
     public static function getTariffOverview() {
         return [
+            // False when neither config_read() nor the API gave anything
+            'available' => self::source() !== null,
             // Config 204: 0 = fixed tariffs, 1 = dynamic (hourly) prices
             'dynamic' => self::get(204) == 1,
             'electricity' => [

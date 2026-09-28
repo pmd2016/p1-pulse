@@ -63,8 +63,21 @@ function tariff_overview(array $t, array $visibility = []) {
                 <div class="card tariff-card">
                     <div class="tariff-header">
                         <h3 class="chart-title">Tarieven</h3>
+                        <?php if (!empty($t['available'])): ?>
                         <span class="tariff-mode"><?php echo $dynamic ? 'Dynamische tarieven' : 'Vaste tarieven'; ?></span>
+                        <?php endif; ?>
                     </div>
+                    <?php if (empty($t['available'])): ?>
+                    <p class="tariff-unavailable" role="status">
+                        <?php echo icon('alert', 16); ?>
+                        <span>De instellingen van P1 Monitor konden niet worden gelezen, dus de tarieven zijn onbekend.
+                        Controleer of <code>/api/v1/configuration</code> op het apparaat bereikbaar is.</span>
+                    </p>
+                </div>
+    <?php
+        return;
+    endif;
+    ?>
                     <div class="tariff-groups">
                         <?php foreach ($groups as [$title, $iconName, $tone, $rows]): ?>
                         <section class="tariff-group <?php echo $tone; ?>">

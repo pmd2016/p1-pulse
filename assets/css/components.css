@@ -874,6 +874,23 @@ button.legend-item[aria-pressed="false"] .legend-text {
     padding: var(--space-1) var(--space-2);
 }
 
+.tariff-unavailable {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    margin: var(--space-4);
+    padding: var(--space-3);
+    border-radius: var(--radius-md);
+    background: var(--tint-neutral);
+    font-size: var(--text-sm);
+    color: var(--text-primary);
+}
+
+.tariff-unavailable .icon {
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
 .tariff-groups {
     display: grid;
     grid-template-columns: 1fr;
