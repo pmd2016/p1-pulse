@@ -178,7 +178,7 @@ Stored in PHP sessions with the following defaults:
 
 ### P1 Monitor Integration
 
-The dashboard reads configuration from P1 Monitor's database via `config_read()`:
+The dashboard reads P1 Monitor's configuration via `config_read()` when available, otherwise from P1 Monitor's own API (`/api/v1/configuration`, cached for 5 minutes):
 - **Config 52/53**: Max consumption/production for gauges
 - **Config 61**: Enable three-phase information
 - **Config 154**: Fast telegram mode status

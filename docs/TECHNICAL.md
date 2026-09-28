@@ -778,9 +778,18 @@ the tab order and the accessibility tree.
 
 ### P1 Monitor Config Values
 
-Read via `config_read()` in `P1Config`. When P1 Monitor's `util/p1mon-util.php` is not present,
-`config_read()` does not exist, `P1Config::get()` returns `null`, and every flag falls back to its
-default.
+Read by `P1Config::get()`. It uses `config_read()` when P1 Monitor's PHP provides it (it is not
+defined by `util/p1mon-util.php`, so on a stock device it usually is not). Otherwise it reads
+P1 Monitor's own API, `/api/v1/configuration?json=object`: first on `http://127.0.0.1`, then on
+the host the page was requested on, with a 2-second timeout. Only the ids in
+`P1Config::CONFIG_IDS` are kept, cached in the session for 5 minutes, failures included. When
+neither source answers, `get()` returns `null` and every flag falls back to its default; the
+Tarieven card on the Kosten page then says the configuration could not be read.
+
+A new id must be added to `P1Config::CONFIG_IDS`, or the API path never returns it.
+
+Note for local testing with `php -S`: the built-in server handles one request at a time, so a
+page cannot read the API from the same server. Serve the API on a second port or on port 80.
 
 | Config ID | Read as | Purpose |
 |-----------|---------|---------|
