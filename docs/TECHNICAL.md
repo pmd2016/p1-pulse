@@ -505,6 +505,7 @@ paths under `/p1mon/www/custom`. They will not run from an arbitrary checkout.
 | `solar-collector.php` | Fetch current data, store, aggregate, prune | `php solar-collector.php [--force] [--verbose]` |
 | `solar-backfill.php` | Import historical data from Solplanet | `php solar-backfill.php [--days=N \| --start=DATE --end=DATE] [--delay=N] [--verbose] [--dry-run] [--force] [--help]` |
 | `validate-solar-data.php` | Check record counts, gaps, aggregation consistency | `php validate-solar-data.php` |
+| `backup-p1mon.sh` | Back up theme, `solar.db`, config and cron from the Docker host | `bash backup-p1mon.sh [-c CONTAINER] [-o DIR]` |
 
 `--force` on the collector bypasses both the `enabled` config check and the 300-second throttle.
 The backfill defaults to a window ending *yesterday*, to avoid racing the live collector.
@@ -954,6 +955,39 @@ Three things live only on the P1 Monitor host and are restored by no deployment:
 `data/solar.db`, `/p1mon/config/solplanet.ini`, and the collector's cron entry. Losing the
 SD card or reinstalling P1 Monitor loses all three at once. `.gitignore` keeps the first two
 out of this public repository; the README documents restoring all three.
+
+### Backing up before a P1 Monitor update
+
+Updating a Docker install of P1 Monitor replaces the container, and with it anything not on a
+volume — potentially the whole of `/p1mon/www/custom`. `scripts/backup-p1mon.sh` runs **on the
+Docker host** and pulls the theme, a consistent snapshot of `solar.db` (via `VACUUM INTO`, safe
+while the collector runs), `/p1mon/config`, the container's crontabs and its `docker inspect`
+output into `~/p1mon-backups/<timestamp>/`.
+
+```bash
+# On the host. The script is also inside the container, so copy it out once:
+docker cp p1monitor:/p1mon/www/custom/scripts/backup-p1mon.sh ~/
+bash ~/backup-p1mon.sh             # auto-detects the container; -c NAME to pick one
+```
+
+#### Restoring a backup
+
+After the new container is running:
+
+```bash
+B=~/p1mon-backups/<timestamp>
+C=p1monitor
+
+docker exec -i $C tar -C /p1mon/www -xzf - < $B/custom.tar.gz
+docker exec $C mkdir -p /p1mon/www/custom/data
+docker cp $B/solar.db $C:/p1mon/www/custom/data/solar.db
+docker exec -i $C tar -C /p1mon -xzf - < $B/config.tar.gz
+docker exec $C chown -R --reference=/p1mon/www /p1mon/www/custom   # web server must read solar.db
+```
+
+Then re-add the collector's cron entry (see `crontabs.tar.gz` for the exact line) and check the
+result with `php scripts/solar-diagnostics.php`. Only restore the theme over a *newer* P1 Monitor
+after checking it still works with the new version's API.
 
 ### `file_exists()` cannot distinguish absent from unreadable
 
