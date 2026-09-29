@@ -506,6 +506,7 @@ paths under `/p1mon/www/custom`. They will not run from an arbitrary checkout.
 | `solar-backfill.php` | Import historical data from Solplanet | `php solar-backfill.php [--days=N \| --start=DATE --end=DATE] [--delay=N] [--verbose] [--dry-run] [--force] [--help]` |
 | `validate-solar-data.php` | Check record counts, gaps, aggregation consistency | `php validate-solar-data.php` |
 | `backup-p1mon.sh` | Back up theme, `solar.db`, config and cron from the Docker host | `bash backup-p1mon.sh [-c CONTAINER] [-o DIR]` |
+| `restore-p1mon.sh` | Restore such a backup into the (updated) container, from the Docker host | `bash restore-p1mon.sh [-c CONTAINER] [-y] [BACKUP_DIR]` |
 
 `--force` on the collector bypasses both the `enabled` config check and the 300-second throttle.
 The backfill defaults to a window ending *yesterday*, to avoid racing the live collector.
@@ -972,22 +973,27 @@ bash ~/backup-p1mon.sh             # auto-detects the container; -c NAME to pick
 
 #### Restoring a backup
 
-After the new container is running:
+The backup also copies `scripts/restore-p1mon.sh` to `~/p1mon-backups/`, so it survives the update.
+Once the new container is running:
 
 ```bash
-B=~/p1mon-backups/<timestamp>
-C=p1monitor
-
-docker exec -i $C tar -C /p1mon/www -xzf - < $B/custom.tar.gz
-docker exec $C mkdir -p /p1mon/www/custom/data
-docker cp $B/solar.db $C:/p1mon/www/custom/data/solar.db
-docker exec -i $C tar -C /p1mon -xzf - < $B/config.tar.gz
-docker exec $C chown -R --reference=/p1mon/www /p1mon/www/custom   # web server must read solar.db
+bash ~/p1mon-backups/restore-p1mon.sh              # newest backup; asks before changing anything
+bash ~/p1mon-backups/restore-p1mon.sh ~/p1mon-backups/20260929-113441   # a specific one
 ```
 
-Then re-add the collector's cron entry (see `crontabs.tar.gz` for the exact line) and check the
-result with `php scripts/solar-diagnostics.php`. Only restore the theme over a *newer* P1 Monitor
-after checking it still works with the new version's API.
+It verifies `SHA256SUMS` first and stops on any mismatch. It then:
+
+- moves an existing `/p1mon/www/custom` aside to `custom.pre-restore-<timestamp>` (not deleted)
+  and extracts the theme with its original owners and modes;
+- copies `solar.db` back and restores the owner and mode recorded in `ownership.txt`, then runs
+  an integrity check;
+- extracts `/p1mon/config`;
+- adds only the cron lines that refer to `/p1mon/www/custom` to the matching user's crontab, and
+  only if they are not there yet. P1 Monitor's own jobs come from the new version and are not
+  touched, so re-running is safe.
+
+Check the result with `php scripts/solar-diagnostics.php` in the container, and check the theme
+against the new version's API before deleting the `custom.pre-restore-*` directory.
 
 ### `file_exists()` cannot distinguish absent from unreadable
 

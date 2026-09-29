@@ -9,6 +9,7 @@
 #   config.tar.gz      /p1mon/config (solplanet.ini credentials), if present
 #   crontabs.tar.gz    the container's crontabs (the solar collector job), if present
 #   host-crontab.txt   your own crontab on the host, in case the collector runs from there
+#   ownership.txt      owner and mode of data/ and solar.db, for the restore
 #   container.json     `docker inspect` output: image, volumes, ports, env to recreate with
 #   SHA256SUMS         checksums of all of the above
 #
@@ -20,7 +21,7 @@
 #   ./backup-p1mon.sh -c p1monitor          # name the container explicitly
 #   ./backup-p1mon.sh -o /some/other/dir    # different backup root
 #
-# Restore after the update: see "Restoring a backup" in docs/TECHNICAL.md.
+# Restore after the update with ~/p1mon-backups/restore-p1mon.sh (copied there by this script).
 
 set -euo pipefail
 
@@ -119,6 +120,9 @@ if exists_in_container "$DB_PATH"; then
 
     docker cp "$container:$SNAPSHOT" "$dest/solar.db"
     in_container rm -f "$SNAPSHOT"
+
+    # The snapshot is owned by root; the restore puts the original owner and mode back.
+    in_container stat -c '%U:%G %a %n' "$(dirname "$DB_PATH")" "$DB_PATH" > "$dest/ownership.txt"
 else
     warn "$DB_PATH not found in the container — skipped."
 fi
@@ -144,6 +148,13 @@ else
 fi
 
 docker inspect "$container" > "$dest/container.json"
+
+# The restore script lives in the theme, which the update is about to remove. Keep a copy
+# next to the backups so it is at hand afterwards.
+if exists_in_container "$CUSTOM_DIR/scripts/restore-p1mon.sh"; then
+    docker cp "$container:$CUSTOM_DIR/scripts/restore-p1mon.sh" "$backup_root/restore-p1mon.sh"
+    info "Restore script saved to $backup_root/restore-p1mon.sh"
+fi
 
 # --- Finish -----------------------------------------------------------------------------------
 
