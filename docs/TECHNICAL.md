@@ -505,6 +505,8 @@ paths under `/p1mon/www/custom`. They will not run from an arbitrary checkout.
 | `solar-collector.php` | Fetch current data, store, aggregate, prune | `php solar-collector.php [--force] [--verbose]` |
 | `solar-backfill.php` | Import historical data from Solplanet | `php solar-backfill.php [--days=N \| --start=DATE --end=DATE] [--delay=N] [--verbose] [--dry-run] [--force] [--help]` |
 | `validate-solar-data.php` | Check record counts, gaps, aggregation consistency | `php validate-solar-data.php` |
+| `backup-p1mon.sh` | Back up theme, `solar.db`, config and cron from the Docker host | `bash backup-p1mon.sh [-c CONTAINER] [-o DIR]` |
+| `restore-p1mon.sh` | Restore such a backup into the (updated) container, from the Docker host | `bash restore-p1mon.sh [-c CONTAINER] [-y] [BACKUP_DIR]` |
 
 `--force` on the collector bypasses both the `enabled` config check and the 300-second throttle.
 The backfill defaults to a window ending *yesterday*, to avoid racing the live collector.
@@ -954,6 +956,44 @@ Three things live only on the P1 Monitor host and are restored by no deployment:
 `data/solar.db`, `/p1mon/config/solplanet.ini`, and the collector's cron entry. Losing the
 SD card or reinstalling P1 Monitor loses all three at once. `.gitignore` keeps the first two
 out of this public repository; the README documents restoring all three.
+
+### Backing up before a P1 Monitor update
+
+Updating a Docker install of P1 Monitor replaces the container, and with it anything not on a
+volume — potentially the whole of `/p1mon/www/custom`. `scripts/backup-p1mon.sh` runs **on the
+Docker host** and pulls the theme, a consistent snapshot of `solar.db` (via `VACUUM INTO`, safe
+while the collector runs), `/p1mon/config`, the container's crontabs and its `docker inspect`
+output into `~/p1mon-backups/<timestamp>/`.
+
+```bash
+# On the host. The script is also inside the container, so copy it out once:
+docker cp p1monitor:/p1mon/www/custom/scripts/backup-p1mon.sh ~/
+bash ~/backup-p1mon.sh             # auto-detects the container; -c NAME to pick one
+```
+
+#### Restoring a backup
+
+The backup also copies `scripts/restore-p1mon.sh` to `~/p1mon-backups/`, so it survives the update.
+Once the new container is running:
+
+```bash
+bash ~/p1mon-backups/restore-p1mon.sh              # newest backup; asks before changing anything
+bash ~/p1mon-backups/restore-p1mon.sh ~/p1mon-backups/20260929-113441   # a specific one
+```
+
+It verifies `SHA256SUMS` first and stops on any mismatch. It then:
+
+- moves an existing `/p1mon/www/custom` aside to `custom.pre-restore-<timestamp>` (not deleted)
+  and extracts the theme with its original owners and modes;
+- copies `solar.db` back and restores the owner and mode recorded in `ownership.txt`, then runs
+  an integrity check;
+- extracts `/p1mon/config`;
+- adds only the cron lines that refer to `/p1mon/www/custom` to the matching user's crontab, and
+  only if they are not there yet. P1 Monitor's own jobs come from the new version and are not
+  touched, so re-running is safe.
+
+Check the result with `php scripts/solar-diagnostics.php` in the container, and check the theme
+against the new version's API before deleting the `custom.pre-restore-*` directory.
 
 ### `file_exists()` cannot distinguish absent from unreadable
 

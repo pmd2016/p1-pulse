@@ -153,6 +153,13 @@ A modern, responsive web dashboard for monitoring real-time energy, gas, water, 
    Check it with `php scripts/solar-diagnostics.php`, which reports what is
    missing rather than failing obscurely.
 
+### Before updating P1 Monitor (Docker)
+
+Run `scripts/backup-p1mon.sh` on the Docker host first. It saves the theme, the
+solar database, the credentials and the cron job to `~/p1mon-backups/`. After
+the update, run `~/p1mon-backups/restore-p1mon.sh` to put them back. Details in
+[docs/TECHNICAL.md](docs/TECHNICAL.md#backing-up-before-a-p1-monitor-update).
+
 ## ⚙️ Configuration
 
 ### Main Configuration (`config.php`)
