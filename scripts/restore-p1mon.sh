@@ -125,7 +125,8 @@ if [ -f "$src/solar.db" ]; then
     info "Solar database"
     data_dir=$(dirname "$DB_PATH")
     in_container mkdir -p "$data_dir"
-    docker cp "$src/solar.db" "$container:$DB_PATH"
+    # Streamed rather than `docker cp`, which cannot write to tmpfs mounts.
+    docker exec -i "$container" sh -c 'cat > "$1"' sh "$DB_PATH" < "$src/solar.db"
 
     if [ -f "$src/ownership.txt" ]; then
         while read -r owner_group mode path; do
