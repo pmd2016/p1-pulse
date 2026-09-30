@@ -118,7 +118,9 @@ if exists_in_container "$DB_PATH"; then
         echo $db->query("PRAGMA integrity_check")->fetchColumn();' "$SNAPSHOT" 2>/dev/null || echo "not checked")
     [ "$integrity" = ok ] || warn "integrity check of the snapshot: $integrity"
 
-    docker cp "$container:$SNAPSHOT" "$dest/solar.db"
+    # Streamed rather than `docker cp`: that cannot see files on a tmpfs mount, and /tmp in the
+    # P1 Monitor container is one.
+    in_container cat "$SNAPSHOT" > "$dest/solar.db"
     in_container rm -f "$SNAPSHOT"
 
     # The snapshot is owned by root; the restore puts the original owner and mode back.
