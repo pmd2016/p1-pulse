@@ -71,7 +71,9 @@ fi
 [ "$(docker inspect -f '{{.State.Running}}' "$container" 2>/dev/null)" = true ] \
     || die "container '$container' is not running. Back up before stopping it."
 
-in_container() { docker exec "$container" "$@"; }
+# As root: the image's default user cannot read the crontabs, change owners or edit another
+# user's crontab.
+in_container() { docker exec -u root "$container" "$@"; }
 exists_in_container() { in_container test -e "$1"; }
 
 exists_in_container "$CUSTOM_DIR" || die "$CUSTOM_DIR not found in '$container'. Is this the P1 Monitor container?"
