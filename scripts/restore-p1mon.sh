@@ -78,7 +78,9 @@ fi
 [ "$(docker inspect -f '{{.State.Running}}' "$container" 2>/dev/null)" = true ] \
     || die "container '$container' is not running. Start the updated container first."
 
-in_container() { docker exec "$container" "$@"; }
+# As root: the image's default user cannot read the crontabs, change owners or edit another
+# user's crontab.
+in_container() { docker exec -u root "$container" "$@"; }
 exists_in_container() { in_container test -e "$1"; }
 
 exists_in_container "$(dirname "$CUSTOM_DIR")" \
@@ -114,7 +116,7 @@ if [ -f "$src/custom.tar.gz" ]; then
     fi
     info "Theme files"
     # Extracting as root keeps the owners and modes the files had in the old container.
-    docker exec -i "$container" tar -C "$(dirname "$CUSTOM_DIR")" -xzf - < "$src/custom.tar.gz"
+    docker exec -i -u root "$container" tar -C "$(dirname "$CUSTOM_DIR")" -xzf - < "$src/custom.tar.gz"
 else
     warn "no custom.tar.gz in the backup — theme not restored."
 fi
@@ -126,7 +128,7 @@ if [ -f "$src/solar.db" ]; then
     data_dir=$(dirname "$DB_PATH")
     in_container mkdir -p "$data_dir"
     # Streamed rather than `docker cp`, which cannot write to tmpfs mounts.
-    docker exec -i "$container" sh -c 'cat > "$1"' sh "$DB_PATH" < "$src/solar.db"
+    docker exec -i -u root "$container" sh -c 'cat > "$1"' sh "$DB_PATH" < "$src/solar.db"
 
     if [ -f "$src/ownership.txt" ]; then
         while read -r owner_group mode path; do
@@ -150,7 +152,7 @@ fi
 
 if [ -f "$src/config.tar.gz" ]; then
     info "Config ($CONFIG_DIR)"
-    docker exec -i "$container" tar -C "$(dirname "$CONFIG_DIR")" -xzf - < "$src/config.tar.gz"
+    docker exec -i -u root "$container" tar -C "$(dirname "$CONFIG_DIR")" -xzf - < "$src/config.tar.gz"
 fi
 
 # --- Cron -------------------------------------------------------------------------------------
@@ -182,7 +184,7 @@ if [ -f "$src/crontabs.tar.gz" ]; then
         fi
 
         { [ -n "$current" ] && printf '%s\n' "$current"; printf '%s\n' "$missing"; } \
-            | docker exec -i "$container" crontab -u "$user" -
+            | docker exec -i -u root "$container" crontab -u "$user" -
         echo "$missing" | sed "s/^/    $user: added  /"
         cron_added=$((cron_added + $(grep -c '' <<< "$missing")))
     done
