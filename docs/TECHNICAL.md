@@ -748,7 +748,7 @@ Solar page: production bars, average power on a right-hand W axis, capacity fact
 estimated sunlight hours, optional temperature. Fetches `/custom/api/solar.php` directly rather than
 through `P1API`.
 
-### header.js (218 lines)
+### header.js (255 lines)
 
 Clock (1s), weather widget (5 min), solar production widget (10s) and P1 Monitor update notice (1 h). Interval IDs are collected in
 `this.timers`, cleared on `beforeunload` and while the tab is hidden. The latest weather record and
