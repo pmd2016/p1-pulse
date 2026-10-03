@@ -32,6 +32,7 @@
             this.updateTime();
             this.loadWeather();
             this.loadSolarWidget();
+            this.loadUpdateNotice();
 
             // Update time every second
             this.timers.push(setInterval(() => this.updateTime(), 1000));
@@ -41,6 +42,9 @@
                 P1Logger.log('[Header] Refreshing weather data');
                 this.loadWeather();
             }, 300000));
+
+            // P1 Monitor checks for new releases itself, about daily; hourly is plenty
+            this.timers.push(setInterval(() => this.loadUpdateNotice(), 3600000));
 
             // Update solar widget every 10 seconds
             this.timers.push(setInterval(() => {
@@ -172,6 +176,56 @@
                 if (solarWidget) {
                     solarWidget.style.display = 'none';
                 }
+            }
+        },
+
+        /**
+         * P1 Monitor's own update notice. Its status table carries the flags:
+         *   136 new software version available   66 version, 86 release URL
+         *   137 new patch available              133 patch number, 134 patch URL
+         * A flag is "1" when set. The badge hides when neither is, or when the
+         * status cannot be read.
+         */
+        async loadUpdateNotice() {
+            const badge = document.getElementById('update-badge');
+            if (!badge) return;
+            try {
+                const response = await fetch('/api/v1/status?json=object');
+                if (!response.ok) throw new Error('HTTP ' + response.status);
+                const rows = await response.json();
+                if (!Array.isArray(rows)) throw new Error('Unexpected status payload');
+
+                const status = {};
+                rows.forEach(row => { status[row.STATUS_ID] = String(row.STATUS ?? '').trim(); });
+
+                const newVersion = status[136] === '1';
+                const newPatch = status[137] === '1';
+                if (!newVersion && !newPatch) {
+                    badge.hidden = true;
+                    return;
+                }
+
+                const patchNr = /^[1-9]\d*$/.test(status[133] || '') ? status[133] : '';
+                const versionText = status[66] ? `Update ${status[66]}` : 'Update';
+                const patchText = patchNr ? `Patch ${patchNr}` : 'Patch';
+                const text = newVersion ? versionText : patchText;
+                const detail = [
+                    newVersion ? `Nieuwe P1 Monitor-versie beschikbaar${status[66] ? ': ' + status[66] : ''}` : '',
+                    newPatch ? `Nieuwe patch beschikbaar${patchNr ? ': ' + patchNr : ''}` : ''
+                ].filter(Boolean).join('. ');
+
+                // Only link to http(s) addresses
+                const url = (newVersion ? status[86] : status[134]) || status[86] || status[134] || '';
+                const safeUrl = /^https?:\/\//i.test(url) ? url : 'https://www.p1-monitor.nl/';
+
+                document.getElementById('update-badge-text').textContent = text;
+                badge.href = safeUrl;
+                badge.title = detail;
+                badge.setAttribute('aria-label', detail);
+                badge.hidden = false;
+            } catch (err) {
+                P1Logger.error('Error loading update notice:', err);
+                badge.hidden = true;
             }
         },
 

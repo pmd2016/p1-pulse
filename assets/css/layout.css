@@ -54,6 +54,43 @@
     flex-shrink: 0;
 }
 
+.update-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-1) var(--space-3);
+    border: 1px solid color-mix(in srgb, var(--accent-warning) 45%, transparent);
+    border-radius: var(--radius-md);
+    background: color-mix(in srgb, var(--accent-warning) 12%, var(--bg-primary));
+    color: var(--accent-warning-text);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    white-space: nowrap;
+    text-decoration: none;
+}
+
+.update-badge[hidden] {
+    display: none;
+}
+
+.update-badge:hover {
+    background: color-mix(in srgb, var(--accent-warning) 22%, var(--bg-primary));
+}
+
+/* Phones: the icon alone; the text is in the tooltip and aria-label */
+@media (max-width: 599px) {
+    .update-badge {
+        min-width: 40px;
+        min-height: 40px;
+        justify-content: center;
+        padding: 0;
+    }
+
+    .update-badge span {
+        display: none;
+    }
+}
+
 .header-title {
     display: flex;
     align-items: center;
