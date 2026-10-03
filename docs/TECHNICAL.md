@@ -748,12 +748,18 @@ Solar page: production bars, average power on a right-hand W axis, capacity fact
 estimated sunlight hours, optional temperature. Fetches `/custom/api/solar.php` directly rather than
 through `P1API`.
 
-### header.js (164 lines)
+### header.js (218 lines)
 
-Clock (1s), weather widget (5 min) and solar production widget (10s). Interval IDs are collected in
+Clock (1s), weather widget (5 min), solar production widget (10s) and P1 Monitor update notice (1 h). Interval IDs are collected in
 `this.timers`, cleared on `beforeunload` and while the tab is hidden. The latest weather record and
 solar reading (`{ power, todayKWh }`, or `null` when the solar database is unavailable) are
 published on `window.P1Live` and as a `p1:live` event for the dashboard.
+
+The update notice (`#update-badge`, hidden by default) reads P1 Monitor's own flags from
+`/api/v1/status`: `STATUS_ID` 136 (new version) and 137 (new patch), with 66/86 (latest version
+and release URL) and 133/134 (latest patch number and URL) for the text and link. P1 Monitor sets
+the flags itself when its periodic release check finds something; the badge shows nothing when
+neither is `1` or the status cannot be read. Links are restricted to http(s).
 
 ### theme.js (245 lines)
 

@@ -109,6 +109,11 @@
             </div>
             
             <div class="header-right">
+                <!-- P1 Monitor update / patch notice; shown by header.js when status says one is available -->
+                <a id="update-badge" class="update-badge" href="#" target="_blank" rel="noopener noreferrer" hidden>
+                    <?php echo icon('download', 16); ?>
+                    <span id="update-badge-text"></span>
+                </a>
                 <?php include 'theme-toggle.php'; ?>
                 <!-- Phones only; from 600px Inloggen is in the sidebar -->
                 <a href="/login.php" class="icon-button header-login" aria-label="Inloggen" title="Inloggen">
